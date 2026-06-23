@@ -3,8 +3,8 @@
 #
 # Usage:
 #   sudo ./install.sh redis
-#   sudo ./install.sh stunnel              # Mode A-lite (défaut prod)
-#   sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel   # A-strict (Cloud NAT)
+#   sudo STUNNEL_TLS_EMAIL=you@wise-eat.com ./install.sh certbot
+#   sudo ./install.sh stunnel
 #   sudo ./install.sh monitoring
 #   sudo ./install.sh permissions
 #   sudo ./install.sh all
@@ -12,8 +12,9 @@
 #
 # Variables:
 #   WISE_EAT_ROOT   Racine déploiement (défaut : répertoire de ce dépôt)
-#   GCP_EGRESS_IP         Optionnel — A-strict (Cloud NAT + IP statique)
-#   STUNNEL_AUTH_ONLY=1   A-lite explicite (défaut si GCP_EGRESS_IP absent)
+#   STUNNEL_TLS_EMAIL   Let's Encrypt (certbot)
+#   STUNNEL_TLS_DOMAIN  Défaut wise-eat.cloud
+#   GCP_EGRESS_IP       A-strict optionnel (Cloud NAT)
 set -euo pipefail
 
 INFRA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,14 +30,25 @@ Usage:
 
 Composants:
   redis         Redis Docker (cache :6379 + BullMQ :6380), secrets + ACL
-  stunnel       Stunnel TLS Mode A-lite (:6381 / :6382) — défaut prod, sans Cloud NAT
+  nginx         nginx + reverse-proxy WS + webroot Certbot
+  apache        apache2 + reverse-proxy WS + webroot Certbot
+  web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
+  certbot       Let's Encrypt (webroot nginx/apache + Stunnel)
+  stunnel       Stunnel TLS A-lite (:6381 / :6382)
+  tls           certbot + stunnel (nginx ou apache requis avant pour webroot)
   monitoring    Prometheus + Grafana + redis_exporter
-  permissions   Corrige ACL/data (UID 999) sans regénérer les secrets
-  all           redis + permissions + monitoring (pas stunnel)
+  permissions   Corrige ACL/data (UID 999)
+  all           redis + permissions + monitoring
 
-Stunnel :
-  sudo $0 stunnel                           # A-lite (prod, ~0 €)
-  sudo GCP_EGRESS_IP=x.x.x.x $0 stunnel     # A-strict (Cloud NAT, optionnel)
+Stack TLS prod (nginx recommandé) :
+  sudo $0 nginx
+  sudo STUNNEL_TLS_EMAIL=help@wise-eat.com $0 tls
+  # tls = certbot + stunnel (nginx doit être actif pour webroot)
+
+Apache à la place de nginx :
+  sudo WEB_SERVER=apache $0 web
+  sudo STUNNEL_TLS_EMAIL=help@wise-eat.com $0 certbot
+  sudo $0 stunnel
 
 Exemples:
   sudo $0 redis
@@ -47,7 +59,9 @@ Exemples:
 
 Env:
   WISE_EAT_ROOT=${WISE_EAT_ROOT:-$INFRA_ROOT}
-  GCP_EGRESS_IP=<ip>   A-strict optionnel (Cloud NAT)
+  WS_BACKEND_PORT=8000
+  WEB_SERVER=nginx|apache
+  GCP_EGRESS_IP=<ip>   A-strict optionnel
 
 Docs: README.md · docs/REDIS_VPS_PRODUCTION.md (monorepo AfrikaMeals)
 EOF
@@ -59,7 +73,23 @@ run_component() {
     redis)
       bash "${SCRIPTS}/install-redis.sh"
       ;;
+    nginx)
+      bash "${SCRIPTS}/install-nginx.sh"
+      ;;
+    apache)
+      bash "${SCRIPTS}/install-apache.sh"
+      ;;
+    web)
+      bash "${SCRIPTS}/install-web.sh"
+      ;;
+    certbot)
+      bash "${SCRIPTS}/install-certbot.sh"
+      ;;
     stunnel)
+      bash "${SCRIPTS}/install-stunnel.sh"
+      ;;
+    tls)
+      bash "${SCRIPTS}/install-certbot.sh"
       bash "${SCRIPTS}/install-stunnel.sh"
       ;;
     monitoring)

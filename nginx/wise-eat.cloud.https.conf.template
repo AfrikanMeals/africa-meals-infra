@@ -1,0 +1,37 @@
+# HTTPS — activé par scripts/enable-nginx-ssl.sh après Certbot
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${WISE_EAT_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${WISE_EAT_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${WISE_EAT_DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://${WS_BACKEND_HOST}:${WS_BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${WISE_EAT_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

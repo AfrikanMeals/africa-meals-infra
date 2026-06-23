@@ -1,61 +1,72 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Stunnel (Mode A-lite), monitoring Prometheus/Grafana.
-
-**Remote :** `https://github.com/AfrikanMeals/africa-meals-infra.git`
+Infra VPS Wise Eat : Redis, nginx/apache, Certbot, Stunnel, monitoring.
 
 ## Structure
 
 ```
-install.sh              → point d'entrée unique
+install.sh
 scripts/
-  lib/common.sh
-  install-redis.sh
-  install-stunnel.sh      → A-lite par défaut
-  install-monitoring.sh
-  fix-redis-permissions.sh
+  install-nginx.sh      reverse-proxy WS + Certbot webroot
+  install-apache.sh     idem Apache
+  install-web.sh        WEB_SERVER=nginx|apache
+  install-certbot.sh
+  install-stunnel.sh
+  enable-nginx-ssl.sh / enable-apache-ssl.sh
+nginx/                  templates site wise-eat.cloud
+apache/
 redis/
 monitoring/
 ```
 
-## Installation (VPS)
+## Installation complète (VPS)
 
 ```bash
 git clone https://github.com/AfrikanMeals/africa-meals-infra.git /opt/wise-eat
 cd /opt/wise-eat
 chmod +x install.sh scripts/*.sh
 
+# 1. Redis
 sudo ./install.sh redis
-sudo ./install.sh stunnel          # A-lite prod (sans Cloud NAT)
+
+# 2. Serveur web (un seul — nginx recommandé)
+sudo ./install.sh nginx
+# ou : sudo ./install.sh apache
+# ou : sudo WEB_SERVER=apache ./install.sh web
+
+# 3. TLS (Certbot + Stunnel Redis + HTTPS site)
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot
+sudo ./install.sh stunnel
+
+# 4. Monitoring
 sudo ./install.sh monitoring
-sudo ./install.sh all              # redis + permissions + monitoring
 ```
 
-Optionnel — A-strict avec Cloud NAT : `sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel`
-
-| Composant | Rôle |
-|-----------|------|
-| `redis` | Docker cache `:6379` + BullMQ `:6380` |
-| `stunnel` | TLS `:6381` / `:6382` pour Cloud Functions (**A-lite** par défaut) |
-| `monitoring` | Prometheus + Grafana |
-| `permissions` | Fix ACL `chown 999:999` |
-| `all` | redis + permissions + monitoring |
-
-Runbooks : `docs/REDIS_VPS_PRODUCTION.md`, `docs/REDIS_MONITORING.md` (monorepo AfrikaMeals).
-
-## Mise à jour
+**Une commande** après nginx :
 
 ```bash
-cd /opt/wise-eat && git pull origin main
-sudo ./install.sh stunnel    # réapplique UFW + Stunnel A-lite
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
 ```
 
-## Git — unrelated histories
+> **nginx et apache** ne tournent pas ensemble sur le port 80 — l’install de l’un arrête l’autre.
 
-```bash
-mkdir -p /root/wise-eat-backup
-cp -a redis/.env.redis redis/*.acl /root/wise-eat-backup/ 2>/dev/null || true
-git fetch origin && git checkout -B main && git reset --hard origin/main
-cp /root/wise-eat-backup/* redis/ 2>/dev/null || true
-sudo ./install.sh permissions
-```
+## Variables
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `WISE_EAT_DOMAIN` | `wise-eat.cloud` | vhost + certificat |
+| `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
+| `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
+| `WEB_SERVER` | `nginx` | pour `./install.sh web` |
+
+## Composants `install.sh`
+
+| Composant | Description |
+|-----------|-------------|
+| `nginx` | Installe nginx, proxy → WS, webroot Certbot |
+| `apache` | Installe apache2, proxy → WS, webroot Certbot |
+| `web` | `WEB_SERVER=nginx\|apache` |
+| `certbot` | LE + HTTPS site + certs Stunnel |
+| `stunnel` | Redis TLS :6381/:6382 |
+| `tls` | certbot + stunnel |
+| `redis` / `monitoring` / `permissions` | voir runbooks |

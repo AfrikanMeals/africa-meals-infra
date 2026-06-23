@@ -1,0 +1,36 @@
+# HTTPS — activé par scripts/enable-apache-ssl.sh après Certbot
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+    ServerName ${WISE_EAT_DOMAIN}
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/${WISE_EAT_DOMAIN}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/${WISE_EAT_DOMAIN}/privkey.pem
+    Include /etc/letsencrypt/options-ssl-apache.conf
+
+    ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "https"
+
+    ProxyPass / http://${WS_BACKEND_HOST}:${WS_BACKEND_PORT}/
+    ProxyPassReverse / http://${WS_BACKEND_HOST}:${WS_BACKEND_PORT}/
+
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/?(.*) ws://${WS_BACKEND_HOST}:${WS_BACKEND_PORT}/$1 [P,L]
+</VirtualHost>
+</IfModule>
+
+<VirtualHost *:80>
+    ServerName ${WISE_EAT_DOMAIN}
+
+    DocumentRoot ${CERTBOT_WEBROOT}
+    Alias /.well-known/acme-challenge/ ${CERTBOT_WEBROOT}/.well-known/acme-challenge/
+    <Directory ${CERTBOT_WEBROOT}/.well-known/acme-challenge/>
+        Require all granted
+    </Directory>
+
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</VirtualHost>

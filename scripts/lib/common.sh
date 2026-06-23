@@ -8,6 +8,35 @@ REDIS_DIR="${REDIS_DIR:-${WISE_EAT_ROOT}/redis}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
 STUNNEL_CONF_SRC="${INFRA_ROOT}/redis/stunnel"
+NGINX_CONF_SRC="${INFRA_ROOT}/nginx"
+APACHE_CONF_SRC="${INFRA_ROOT}/apache"
+
+WISE_EAT_DOMAIN="${WISE_EAT_DOMAIN:-wise-eat.cloud}"
+STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-${WISE_EAT_DOMAIN}}"
+WS_BACKEND_HOST="${WS_BACKEND_HOST:-127.0.0.1}"
+WS_BACKEND_PORT="${WS_BACKEND_PORT:-8000}"
+CERTBOT_WEBROOT="${CERTBOT_WEBROOT:-/var/www/certbot}"
+
+stop_conflicting_webserver() {
+  local keep="$1"
+  if [[ "${keep}" != "nginx" ]] && systemctl is-active nginx >/dev/null 2>&1; then
+    warn "Arrêt nginx (seul un serveur web doit écouter sur :80)"
+    systemctl stop nginx
+    systemctl disable nginx 2>/dev/null || true
+  fi
+  if [[ "${keep}" != "apache" ]] && systemctl is-active apache2 >/dev/null 2>&1; then
+    warn "Arrêt apache2 (seul un serveur web doit écouter sur :80)"
+    systemctl stop apache2
+    systemctl disable apache2 2>/dev/null || true
+  fi
+}
+
+render_template() {
+  local src="$1" dst="$2"
+  WISE_EAT_DOMAIN WS_BACKEND_HOST WS_BACKEND_PORT CERTBOT_WEBROOT \
+    envsubst '${WISE_EAT_DOMAIN} ${WS_BACKEND_HOST} ${WS_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
+    < "${src}" > "${dst}"
+}
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
