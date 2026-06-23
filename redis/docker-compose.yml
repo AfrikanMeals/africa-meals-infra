@@ -1,0 +1,52 @@
+# Wise Eat — Redis dual-instance (cache + BullMQ)
+# Déployer : voir docs/REDIS_VPS_PRODUCTION.md
+# ACL : chown 999:999 cache-users.acl bull-users.acl (Redis UID dans l'image)
+
+services:
+  redis-cache:
+    image: redis:7-alpine
+    container_name: wise-eat-redis-cache
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 1536mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --tcp-keepalive
+      - "300"
+      - --aclfile
+      - /etc/redis/users.acl
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - ./data-cache:/data
+      - ./cache-users.acl:/etc/redis/users.acl:ro
+    restart: unless-stopped
+
+  redis-bullmq:
+    image: redis:7-alpine
+    container_name: wise-eat-redis-bullmq
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - noeviction
+      - --tcp-keepalive
+      - "300"
+      - --aclfile
+      - /etc/redis/users.acl
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - ./data-bullmq:/data
+      - ./bull-users.acl:/etc/redis/users.acl:ro
+    restart: unless-stopped

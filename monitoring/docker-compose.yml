@@ -1,0 +1,77 @@
+# Wise Eat — monitoring Redis (Prometheus + Grafana + redis_exporter)
+# Déployer : docs/REDIS_MONITORING.md
+# Sécurité : Grafana/Prometheus bind 127.0.0.1 uniquement — accès via SSH tunnel ou reverse-proxy auth
+
+services:
+  redis-exporter-cache:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: wise-eat-redis-exporter-cache
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://host.docker.internal:6379
+      REDIS_USER: wise-eat-cache
+      REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
+      REDIS_EXPORTER_CHECK_KEYS: ""
+      REDIS_EXPORTER_IS_TILE38: "false"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "127.0.0.1:9121:9121"
+
+  redis-exporter-bullmq:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: wise-eat-redis-exporter-bullmq
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://host.docker.internal:6380
+      REDIS_USER: wise-eat-bull
+      REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "127.0.0.1:9122:9121"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: wise-eat-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - redis-exporter-cache
+      - redis-exporter-bullmq
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: wise-eat-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD requis}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:

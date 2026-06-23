@@ -1,0 +1,40 @@
+groups:
+  - name: wise-eat-redis
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Redis {{ $labels.redis_instance }} indisponible'
+          description: 'redis_exporter ne joint plus {{ $labels.redis_instance }} (port {{ $labels.redis_port }}).'
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+          and redis_memory_max_bytes > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Redis {{ $labels.redis_instance }} — mémoire > 85 %'
+          description: 'Utilisation mémoire élevée sur {{ $labels.redis_instance }}.'
+
+      - alert: RedisRejectedConnections
+        expr: increase(redis_rejected_connections_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Redis {{ $labels.redis_instance }} — connexions rejetées'
+          description: 'Des clients ont été rejetés (maxclients ou backlog).'
+
+      - alert: RedisEvictedKeys
+        expr: increase(redis_evicted_keys_total{redis_instance="cache"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: 'Redis cache — clés évincées'
+          description: 'Évictions LRU sur redis-cache (attendu sous charge ; surveiller si persistant).'
