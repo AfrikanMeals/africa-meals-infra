@@ -13,7 +13,7 @@ services:
       - --appendfsync
       - everysec
       - --maxmemory
-      - 1536mb
+      - 1024mb
       - --maxmemory-policy
       - allkeys-lru
       - --tcp-keepalive
