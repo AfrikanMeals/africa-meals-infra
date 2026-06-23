@@ -27,7 +27,8 @@ chmod +x install.sh scripts/*.sh scripts/lib/*.sh
 
 sudo ./install.sh redis              # Redis + secrets + ACL
 sudo ./install.sh permissions        # si ACL Permission denied
-sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel   # Mode A API → VPS
+sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel   # strict (Cloud NAT)
+sudo STUNNEL_AUTH_ONLY=1 ./install.sh stunnel     # sans IP statique (~0 €)
 sudo ./install.sh monitoring         # Prometheus + Grafana
 sudo ./install.sh all                # redis + permissions + monitoring
 ```
@@ -39,7 +40,7 @@ sudo ./install.sh all                # redis + permissions + monitoring
 | Composant | Rôle |
 |-----------|------|
 | `redis` | Docker cache `:6379` + BullMQ `:6380`, génère `.env.redis` + ACL |
-| `stunnel` | TLS `:6381` / `:6382` pour Cloud Functions (env `GCP_EGRESS_IP`) |
+| `stunnel` | TLS `:6381` / `:6382` — `GCP_EGRESS_IP` (strict) ou `STUNNEL_AUTH_ONLY=1` (~0 €) |
 | `monitoring` | redis_exporter + Prometheus + Grafana |
 | `permissions` | `chown 999:999` ACL + data (fix Restarting) |
 | `all` | `redis` + `permissions` + `monitoring` |
