@@ -1,0 +1,12 @@
+# Secrets & runtime VPS — ne jamais committer
+redis/.env.redis
+redis/cache-users.acl
+redis/bull-users.acl
+redis/data-cache/
+redis/data-bullmq/
+
+monitoring/.env.monitoring
+
+# OS / éditeur
+.DS_Store
+*.swp

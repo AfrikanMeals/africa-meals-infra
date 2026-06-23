@@ -1,6 +1,5 @@
 # Wise Eat — monitoring Redis (Prometheus + Grafana + redis_exporter)
-# Déployer : docs/REDIS_MONITORING.md
-# Sécurité : Grafana/Prometheus bind 127.0.0.1 uniquement — accès via SSH tunnel ou reverse-proxy auth
+# Install : sudo ./install.sh monitoring
 
 services:
   redis-exporter-cache:

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Télécharge le dashboard Grafana officiel redis_exporter (ID 763).
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT="${SCRIPT_DIR}/../grafana/dashboards/redis-prometheus.json"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+OUT="${MON_DIR}/grafana/dashboards/redis-prometheus.json"
 mkdir -p "$(dirname "${OUT}")"
 
 curl -fsSL "https://grafana.com/api/dashboards/763/revisions/latest/download" -o "${OUT}.tmp"
@@ -30,4 +31,4 @@ with open(dst, "w", encoding="utf-8") as f:
 PY
 
 rm -f "${OUT}.tmp"
-echo "Dashboard écrit : ${OUT}"
+log "Dashboard Grafana → ${OUT}"

@@ -1,6 +1,6 @@
 # Wise Eat — Redis dual-instance (cache + BullMQ)
-# Déployer : voir docs/REDIS_VPS_PRODUCTION.md
-# ACL : chown 999:999 cache-users.acl bull-users.acl (Redis UID dans l'image)
+# Install : sudo ./install.sh redis  (depuis la racine du dépôt)
+# Permissions ACL : sudo ./install.sh permissions
 
 services:
   redis-cache:
