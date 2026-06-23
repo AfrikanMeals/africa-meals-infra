@@ -8,23 +8,14 @@ require_root
 GCP_EGRESS_IP="${GCP_EGRESS_IP:-}"
 STUNNEL_AUTH_ONLY="${STUNNEL_AUTH_ONLY:-}"
 
-if [[ -z "${GCP_EGRESS_IP}" && "${STUNNEL_AUTH_ONLY}" != "1" ]]; then
-  cat >&2 <<'EOF'
-Stunnel Mode A — choisir une option :
-
-  A) Strict (pare-feu IP) — Cloud NAT + IP statique GCP (~30–45 €/mois)
-     sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel
-
-  B) Auth-only (sans Cloud NAT, ~0 €) — TLS Stunnel + mot de passe Redis ACL
-     sudo STUNNEL_AUTH_ONLY=1 ./install.sh stunnel
-
-Un domaine vers Cloud Functions (api.wise-eat.com) ne remplace PAS l’IP egress :
-l’API sort vers wise-eat.cloud:6381 avec une IP Google variable — UFW filtre
-la source IP, pas le domaine de l’API.
-
-Voir docs/REDIS_VPS_PRODUCTION.md § Mode A — coût.
-EOF
-  exit 1
+# Prod Wise Eat : A-lite par défaut (sans Cloud NAT). A-strict si GCP_EGRESS_IP est défini.
+if [[ -n "${GCP_EGRESS_IP}" ]]; then
+  STUNNEL_MODE="strict"
+elif [[ "${STUNNEL_AUTH_ONLY}" == "1" || -z "${STUNNEL_AUTH_ONLY}" ]]; then
+  STUNNEL_MODE="lite"
+  STUNNEL_AUTH_ONLY=1
+else
+  die "STUNNEL_AUTH_ONLY=0 sans GCP_EGRESS_IP — définir GCP_EGRESS_IP (A-strict) ou STUNNEL_AUTH_ONLY=1 (A-lite)"
 fi
 
 apt update
@@ -58,23 +49,22 @@ systemctl enable stunnel4
 systemctl restart stunnel4
 
 if command -v ufw >/dev/null 2>&1; then
-  if [[ -n "${GCP_EGRESS_IP}" ]]; then
-    log "UFW strict — autoriser ${GCP_EGRESS_IP} uniquement"
+  if [[ "${STUNNEL_MODE}" == "strict" ]]; then
+    log "Mode A-strict — UFW autorise ${GCP_EGRESS_IP} uniquement"
     ufw deny 6381/tcp 2>/dev/null || true
     ufw deny 6382/tcp 2>/dev/null || true
     ufw allow from "${GCP_EGRESS_IP}" to any port 6381 proto tcp comment 'GCP CF Redis cache'
     ufw allow from "${GCP_EGRESS_IP}" to any port 6382 proto tcp comment 'GCP CF Redis BullMQ'
   else
-    warn "Mode A-lite (STUNNEL_AUTH_ONLY) — :6381/:6382 ouverts (TLS + ACL Redis)"
-    warn "Exiger mots de passe forts + monitoring Grafana ; envisager fail2ban"
-    ufw allow 6381/tcp comment 'Stunnel Redis cache auth-only'
-    ufw allow 6382/tcp comment 'Stunnel Redis bull auth-only'
+    log "Mode A-lite (prod) — TLS + ACL Redis, sans Cloud NAT"
+    ufw allow 6381/tcp comment 'Stunnel Redis cache A-lite'
+    ufw allow 6382/tcp comment 'Stunnel Redis bull A-lite'
   fi
   ufw reload
 else
   warn "ufw absent — configurer le pare-feu manuellement"
 fi
 
-log "Stunnel actif — API : rediss://wise-eat-cache:***@wise-eat.cloud:6381"
+log "Stunnel ${STUNNEL_MODE} — API : rediss://wise-eat-cache:***@wise-eat.cloud:6381"
 ss -tlnp | grep -E '6381|6382' || warn "Ports Stunnel non visibles"
 systemctl status stunnel4 --no-pager || true

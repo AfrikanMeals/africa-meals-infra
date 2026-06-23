@@ -3,7 +3,8 @@
 #
 # Usage:
 #   sudo ./install.sh redis
-#   sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel
+#   sudo ./install.sh stunnel              # Mode A-lite (défaut prod)
+#   sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel   # A-strict (Cloud NAT)
 #   sudo ./install.sh monitoring
 #   sudo ./install.sh permissions
 #   sudo ./install.sh all
@@ -11,8 +12,8 @@
 #
 # Variables:
 #   WISE_EAT_ROOT   Racine déploiement (défaut : répertoire de ce dépôt)
-#   GCP_EGRESS_IP   Optionnel — IP egress statique (Mode A strict, Cloud NAT)
-#   STUNNEL_AUTH_ONLY=1   Stunnel sans filtre IP (~0 €, TLS + ACL Redis)
+#   GCP_EGRESS_IP         Optionnel — A-strict (Cloud NAT + IP statique)
+#   STUNNEL_AUTH_ONLY=1   A-lite explicite (défaut si GCP_EGRESS_IP absent)
 set -euo pipefail
 
 INFRA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,26 +29,25 @@ Usage:
 
 Composants:
   redis         Redis Docker (cache :6379 + BullMQ :6380), secrets + ACL
-  stunnel       Stunnel TLS Mode A (:6381 / :6382)
+  stunnel       Stunnel TLS Mode A-lite (:6381 / :6382) — défaut prod, sans Cloud NAT
   monitoring    Prometheus + Grafana + redis_exporter
   permissions   Corrige ACL/data (UID 999) sans regénérer les secrets
   all           redis + permissions + monitoring (pas stunnel)
 
-Stunnel — deux modes (voir docs) :
-  sudo GCP_EGRESS_IP=x.x.x.x $0 stunnel     # strict (Cloud NAT, ~30–45 €/mois)
-  sudo STUNNEL_AUTH_ONLY=1 $0 stunnel       # auth-only, sans IP statique (~0 €)
+Stunnel :
+  sudo $0 stunnel                           # A-lite (prod, ~0 €)
+  sudo GCP_EGRESS_IP=x.x.x.x $0 stunnel     # A-strict (Cloud NAT, optionnel)
 
 Exemples:
   sudo $0 redis
+  sudo $0 stunnel
   sudo GCP_EGRESS_IP=203.0.113.50 $0 stunnel
-  sudo STUNNEL_AUTH_ONLY=1 $0 stunnel
   sudo $0 redis monitoring
   sudo $0 all
 
 Env:
   WISE_EAT_ROOT=${WISE_EAT_ROOT:-$INFRA_ROOT}
-  GCP_EGRESS_IP=<ip>        stunnel strict (Cloud NAT)
-  STUNNEL_AUTH_ONLY=1       stunnel sans filtre IP (~0 €)
+  GCP_EGRESS_IP=<ip>   A-strict optionnel (Cloud NAT)
 
 Docs: README.md · docs/REDIS_VPS_PRODUCTION.md (monorepo AfrikaMeals)
 EOF

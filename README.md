@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Stunnel (Mode A), monitoring Prometheus/Grafana.
+Infra VPS Wise Eat : Redis, Stunnel (Mode A-lite), monitoring Prometheus/Grafana.
 
 **Remote :** `https://github.com/AfrikanMeals/africa-meals-infra.git`
 
@@ -9,13 +9,13 @@ Infra VPS Wise Eat : Redis, Stunnel (Mode A), monitoring Prometheus/Grafana.
 ```
 install.sh              → point d'entrée unique
 scripts/
-  lib/common.sh         → chemins, helpers
+  lib/common.sh
   install-redis.sh
-  install-stunnel.sh
+  install-stunnel.sh      → A-lite par défaut
   install-monitoring.sh
   fix-redis-permissions.sh
-redis/                  → Docker Compose + configs Stunnel
-monitoring/             → Prometheus + Grafana
+redis/
+monitoring/
 ```
 
 ## Installation (VPS)
@@ -23,49 +23,34 @@ monitoring/             → Prometheus + Grafana
 ```bash
 git clone https://github.com/AfrikanMeals/africa-meals-infra.git /opt/wise-eat
 cd /opt/wise-eat
-chmod +x install.sh scripts/*.sh scripts/lib/*.sh
+chmod +x install.sh scripts/*.sh
 
-sudo ./install.sh redis              # Redis + secrets + ACL
-sudo ./install.sh permissions        # si ACL Permission denied
-sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel   # strict (Cloud NAT)
-sudo STUNNEL_AUTH_ONLY=1 ./install.sh stunnel     # sans IP statique (~0 €)
-sudo ./install.sh monitoring         # Prometheus + Grafana
-sudo ./install.sh all                # redis + permissions + monitoring
+sudo ./install.sh redis
+sudo ./install.sh stunnel          # A-lite prod (sans Cloud NAT)
+sudo ./install.sh monitoring
+sudo ./install.sh all              # redis + permissions + monitoring
 ```
 
-```bash
-./install.sh --help
-```
+Optionnel — A-strict avec Cloud NAT : `sudo GCP_EGRESS_IP=x.x.x.x ./install.sh stunnel`
 
 | Composant | Rôle |
 |-----------|------|
-| `redis` | Docker cache `:6379` + BullMQ `:6380`, génère `.env.redis` + ACL |
-| `stunnel` | TLS `:6381` / `:6382` — `GCP_EGRESS_IP` (strict) ou `STUNNEL_AUTH_ONLY=1` (~0 €) |
-| `monitoring` | redis_exporter + Prometheus + Grafana |
-| `permissions` | `chown 999:999` ACL + data (fix Restarting) |
-| `all` | `redis` + `permissions` + `monitoring` |
+| `redis` | Docker cache `:6379` + BullMQ `:6380` |
+| `stunnel` | TLS `:6381` / `:6382` pour Cloud Functions (**A-lite** par défaut) |
+| `monitoring` | Prometheus + Grafana |
+| `permissions` | Fix ACL `chown 999:999` |
+| `all` | redis + permissions + monitoring |
 
-Variables :
-
-- `WISE_EAT_ROOT` — racine déploiement (défaut : racine du clone, ex. `/opt/wise-eat`)
-- `GCP_EGRESS_IP` — IP egress statique GCP (obligatoire pour `stunnel`)
-
-Runbooks détaillés : monorepo AfrikaMeals → `docs/REDIS_VPS_PRODUCTION.md`, `docs/REDIS_MONITORING.md`.
+Runbooks : `docs/REDIS_VPS_PRODUCTION.md`, `docs/REDIS_MONITORING.md` (monorepo AfrikaMeals).
 
 ## Mise à jour
 
 ```bash
-cd /opt/wise-eat
-git pull origin main
-sudo ./install.sh redis          # recopie compose si WISE_EAT_ROOT ≠ clone
-sudo ./install.sh monitoring
+cd /opt/wise-eat && git pull origin main
+sudo ./install.sh stunnel    # réapplique UFW + Stunnel A-lite
 ```
 
-Fichiers runtime ignorés par Git : `redis/.env.redis`, `redis/data-*`, `*.acl`, `monitoring/.env.monitoring`.
-
 ## Git — unrelated histories
-
-Si `git pull` échoue avec *refusing to merge unrelated histories* :
 
 ```bash
 mkdir -p /root/wise-eat-backup
