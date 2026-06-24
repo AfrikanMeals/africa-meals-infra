@@ -42,6 +42,9 @@ fi
 
 cp "${STUNNEL_CONF_SRC}/redis-cache.conf" /etc/stunnel/conf.d/
 cp "${STUNNEL_CONF_SRC}/redis-bullmq.conf" /etc/stunnel/conf.d/
+if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
+  cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
+fi
 
 if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then
   cat >> /etc/stunnel/stunnel.conf <<'EOF'
@@ -62,20 +65,23 @@ if command -v ufw >/dev/null 2>&1; then
     log "Mode A-strict — UFW autorise ${GCP_EGRESS_IP} uniquement"
     ufw deny 6381/tcp 2>/dev/null || true
     ufw deny 6382/tcp 2>/dev/null || true
+    ufw deny "${MEMCACHED_TLS_PORT}"/tcp 2>/dev/null || true
     ufw allow from "${GCP_EGRESS_IP}" to any port 6381 proto tcp comment 'GCP CF Redis cache'
     ufw allow from "${GCP_EGRESS_IP}" to any port 6382 proto tcp comment 'GCP CF Redis BullMQ'
+    ufw allow from "${GCP_EGRESS_IP}" to any port "${MEMCACHED_TLS_PORT}" proto tcp comment 'GCP CF Memcached TLS'
   else
     log "Mode A-lite (prod) — TLS Let's Encrypt + ACL Redis"
     ufw allow 6381/tcp comment 'Stunnel Redis cache TLS'
     ufw allow 6382/tcp comment 'Stunnel Redis bull TLS'
+    ufw allow "${MEMCACHED_TLS_PORT}"/tcp comment 'Stunnel Memcached TLS'
   fi
   ufw reload
 else
   warn "ufw absent — configurer le pare-feu manuellement"
 fi
 
-log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381"
-ss -tlnp | grep -E '6381|6382' || warn "Ports Stunnel non visibles"
+log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
+ss -tlnp | grep -E '6381|6382|'"${MEMCACHED_TLS_PORT}" || warn "Ports Stunnel non visibles"
 systemctl status stunnel4 --no-pager || true
 
 # Vérification TLS (si openssl dispo)

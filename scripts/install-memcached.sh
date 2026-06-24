@@ -37,7 +37,11 @@ fi
 cat <<EOF
 
 API / africa-meals-api (.env) :
+  # VPS local
   MEMCACHED_SERVERS=127.0.0.1:${MEMCACHED_PORT:-11211}
+  # Remote TLS (Stunnel sur ${REDIS_TLS_DOMAIN})
+  # MEMCACHED_SERVERS=${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}
+  # MEMCACHED_TLS=true
 
 Memcached installé dans ${MEMCACHED_DIR}
 EOF

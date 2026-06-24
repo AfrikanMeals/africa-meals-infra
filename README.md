@@ -61,7 +61,7 @@ sudo ./install.sh verify-tls
 | Hostname | Port | Usage | Cloudflare |
 |----------|------|-------|------------|
 | `wise-eat.cloud` | 80 / 443 | WS nginx | proxy OK |
-| `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) | Stunnel | **6381/6382 en DNS only** (pas de proxy orange) |
+| `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) + **11212** (Memcached TLS) | Stunnel | **6381/6382/11212 en DNS only** (pas de proxy orange) |
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 
@@ -107,8 +107,18 @@ sudo ./install.sh memcached
 | Port | Service |
 |------|---------|
 | `11211` | Memcached (localhost) |
+| `11212` | Memcached TLS (Stunnel → :11211) |
 
-Variables API : `MEMCACHED_SERVERS=127.0.0.1:11211`
+Variables API local : `MEMCACHED_SERVERS=127.0.0.1:11211`
+
+Remote TLS (Cloud Functions / Mac → VPS) :
+
+```env
+MEMCACHED_SERVERS=cache.wise-eat.com:11212
+MEMCACHED_TLS=true
+```
+
+Après `./install.sh stunnel` (cert LE sur `cache.wise-eat.com` requis).
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
 
