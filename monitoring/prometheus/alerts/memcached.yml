@@ -1,0 +1,40 @@
+groups:
+  - name: wise-eat-memcached
+    rules:
+      - alert: MemcachedDown
+        expr: memcached_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Memcached indisponible'
+          description: 'memcached_exporter ne joint plus Memcached (port {{ $labels.memcached_port }}).'
+
+      - alert: MemcachedMemoryHigh
+        expr: |
+          memcached_current_bytes / memcached_limit_bytes > 0.85
+          and memcached_limit_bytes > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Memcached — mémoire > 85 %'
+          description: 'Utilisation mémoire élevée sur Memcached.'
+
+      - alert: MemcachedConnectionsHigh
+        expr: memcached_current_connections > 900
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Memcached — connexions élevées'
+          description: 'Plus de 900 connexions actives (max_connections souvent 1024).'
+
+      - alert: MemcachedEvictions
+        expr: increase(memcached_items_evicted_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: 'Memcached — évictions'
+          description: 'Des clés ont été évincées (mémoire saturée ou TTL).'

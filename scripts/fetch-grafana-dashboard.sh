@@ -4,22 +4,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
-OUT="${MON_DIR}/grafana/dashboards/redis-prometheus.json"
-mkdir -p "$(dirname "${OUT}")"
+DASH_ROOT="${MON_DIR}/grafana/dashboards"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached"
 
-curl -fsSL "https://grafana.com/api/dashboards/763/revisions/latest/download" -o "${OUT}.tmp"
-
-python3 - <<'PY' "${OUT}.tmp" "${OUT}"
+fetch_redis_dashboard() {
+  local out="${DASH_ROOT}/Redis/redis-prometheus.json"
+  curl -fsSL "https://grafana.com/api/dashboards/763/revisions/latest/download" -o "${out}.tmp"
+  python3 - <<'PY' "${out}.tmp" "${out}"
 import json, sys
 
 src, dst = sys.argv[1], sys.argv[2]
 PROM_UID = "prometheus"
+DS = {"type": "prometheus", "uid": PROM_UID}
 
 with open(src, encoding="utf-8") as f:
     dash = json.load(f)
 
 dash["id"] = None
 dash["uid"] = "wise-eat-redis-763"
+dash["title"] = "Wise Eat — Redis"
 
 for ds in dash.get("__inputs", []):
     if ds.get("type") == "datasource":
@@ -36,21 +39,121 @@ dash = json.loads(repl)
 for key in ("__inputs", "__requires", "__elements"):
     dash.pop(key, None)
 
-for var in dash.get("templating", {}).get("list", []):
-    if var.get("name") == "namespace":
-        var["current"] = {
-            "selected": True,
-            "text": "wise-eat",
-            "value": "wise-eat",
-        }
-    if var.get("name") == "instance":
-        var["includeAll"] = True
-        var["multi"] = True
+dash["templating"] = {
+    "list": [
+        {
+            "name": "job",
+            "type": "query",
+            "datasource": DS,
+            "definition": "label_values(redis_up, job)",
+            "query": "label_values(redis_up, job)",
+            "refresh": 2,
+            "includeAll": True,
+            "multi": True,
+            "hide": 0,
+            "current": {"selected": True, "text": "All", "value": "$__all"},
+        },
+        {
+            "name": "instance",
+            "type": "query",
+            "datasource": DS,
+            "definition": 'label_values(redis_up{job=~"$job"}, instance)',
+            "query": 'label_values(redis_up{job=~"$job"}, instance)',
+            "refresh": 2,
+            "includeAll": True,
+            "multi": True,
+            "hide": 0,
+            "current": {"selected": True, "text": "All", "value": "$__all"},
+        },
+    ]
+}
 
 with open(dst, "w", encoding="utf-8") as f:
     json.dump(dash, f, indent=2)
     f.write("\n")
 PY
+  rm -f "${out}.tmp"
+  log "Dashboard Redis → ${out}"
+}
 
-rm -f "${OUT}.tmp"
-log "Dashboard Grafana → ${OUT}"
+fetch_memcached_dashboard() {
+  local out="${DASH_ROOT}/Memcached/memcached-prometheus.json"
+  curl -fsSL "https://grafana.com/api/dashboards/11527/revisions/latest/download" -o "${out}.tmp"
+  python3 - <<'PY' "${out}.tmp" "${out}"
+import json, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+PROM_UID = "prometheus"
+DS = {"type": "prometheus", "uid": PROM_UID}
+
+with open(src, encoding="utf-8") as f:
+    dash = json.load(f)
+
+dash["id"] = None
+dash["uid"] = "wise-eat-memcached-11527"
+dash["title"] = "Wise Eat — Memcached"
+
+repl = json.dumps(dash)
+repl = repl.replace("${DS_PROMETHEUS}", "Prometheus")
+repl = repl.replace("${DS_PROM}", PROM_UID)
+repl = repl.replace('"datasource": "-- Grafana --"', '"datasource": {"type": "grafana", "uid": "grafana"}')
+dash = json.loads(repl)
+
+for key in ("__inputs", "__requires", "__elements"):
+    dash.pop(key, None)
+
+# Normalise les datasources legacy (string → uid prometheus).
+def fix_ds(obj):
+    if isinstance(obj, dict):
+        if obj.get("datasource") == "Prometheus" or obj.get("datasource") == "${DS_PROMETHEUS}":
+            obj["datasource"] = DS
+        for v in obj.values():
+            fix_ds(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            fix_ds(item)
+
+fix_ds(dash)
+
+dash["templating"] = {
+    "list": [
+        {
+            "name": "job",
+            "type": "query",
+            "datasource": DS,
+            "definition": "label_values(memcached_up, job)",
+            "query": "label_values(memcached_up, job)",
+            "refresh": 2,
+            "includeAll": True,
+            "multi": True,
+            "hide": 0,
+            "current": {"selected": True, "text": "All", "value": "$__all"},
+        },
+        {
+            "name": "instance",
+            "type": "query",
+            "datasource": DS,
+            "definition": 'label_values(memcached_up{job=~"$job"}, instance)',
+            "query": 'label_values(memcached_up{job=~"$job"}, instance)',
+            "refresh": 2,
+            "includeAll": True,
+            "multi": True,
+            "hide": 0,
+            "current": {"selected": True, "text": "All", "value": "$__all"},
+        },
+    ]
+}
+
+with open(dst, "w", encoding="utf-8") as f:
+    json.dump(dash, f, indent=2)
+    f.write("\n")
+PY
+  rm -f "${out}.tmp"
+  log "Dashboard Memcached → ${out}"
+}
+
+fetch_redis_dashboard
+fetch_memcached_dashboard
+
+# Ancien chemin plat (avant foldersFromFilesStructure).
+rm -f "${DASH_ROOT}/redis-prometheus.json"

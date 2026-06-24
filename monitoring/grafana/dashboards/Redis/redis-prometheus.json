@@ -1501,52 +1501,42 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": true,
-          "text": "wise-eat",
-          "value": "wise-eat"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(redis_up, namespace)",
-        "hide": 0,
-        "includeAll": false,
-        "multi": false,
-        "name": "namespace",
-        "options": [],
-        "query": "label_values(redis_up, namespace)",
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
+        "name": "job",
         "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(redis_up{namespace=~\"$namespace\"}, instance)",
-        "hide": 0,
+        "definition": "label_values(redis_up, job)",
+        "query": "label_values(redis_up, job)",
+        "refresh": 2,
         "includeAll": true,
         "multi": true,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
         "name": "instance",
-        "options": [],
-        "query": "label_values(redis_up{namespace=~\"$namespace\"}, instance)",
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
         "type": "query",
-        "useTags": false
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(redis_up{job=~\"$job\"}, instance)",
+        "query": "label_values(redis_up{job=~\"$job\"}, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
       }
     ]
   },
@@ -1580,7 +1570,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Redis Dashboard for Prometheus Redis Exporter 1.x",
+  "title": "Wise Eat \u2014 Redis",
   "uid": "wise-eat-redis-763",
   "version": 2,
   "weekStart": ""

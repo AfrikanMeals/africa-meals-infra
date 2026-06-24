@@ -91,6 +91,8 @@ sudo ./install.sh memcached
 
 Variables API : `MEMCACHED_SERVERS=127.0.0.1:11211`
 
+Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
+
 ## MinIO
 
 Stockage S3-compatible pour médias (`STORAGE_ENGINE=minio`).

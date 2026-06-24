@@ -25,3 +25,10 @@ scrape_configs:
           namespace: wise-eat
           redis_instance: bullmq
           redis_port: '6380'
+
+  - job_name: memcached
+    static_configs:
+      - targets: ['memcached-exporter:9150']
+        labels:
+          namespace: wise-eat
+          memcached_port: '11211'

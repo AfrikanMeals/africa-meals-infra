@@ -16,12 +16,8 @@ fi
 
 if [[ -f "${REDIS_ENV}" ]]; then
   set -a && source "${REDIS_ENV}" && set +a
-  if ! grep -q '^CACHE_REDIS_PASSWORD=.\+' .env.monitoring 2>/dev/null; then
-    sed -i "s|^CACHE_REDIS_PASSWORD=.*|CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD}|" .env.monitoring
-  fi
-  if ! grep -q '^BULL_REDIS_PASSWORD=.\+' .env.monitoring 2>/dev/null; then
-    sed -i "s|^BULL_REDIS_PASSWORD=.*|BULL_REDIS_PASSWORD=${BULL_REDIS_PASSWORD}|" .env.monitoring
-  fi
+  sed -i "s|^CACHE_REDIS_PASSWORD=.*|CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD}|" .env.monitoring
+  sed -i "s|^BULL_REDIS_PASSWORD=.*|BULL_REDIS_PASSWORD=${BULL_REDIS_PASSWORD}|" .env.monitoring
 fi
 
 set -a && source .env.monitoring && set +a
@@ -40,5 +36,19 @@ sleep 5
 
 docker compose --env-file .env.monitoring ps
 echo ""
-log "Métriques : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
+
+if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
+  log "Prometheus config rechargée"
+else
+  warn "Prometheus reload HTTP indisponible — redémarrage conteneur"
+  docker compose --env-file .env.monitoring restart prometheus
+  sleep 3
+fi
+
+bash "${SCRIPT_DIR}/verify-monitoring.sh" || true
+
+echo ""
+log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
+log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
 log "Grafana   : ssh -L 3000:127.0.0.1:3000 root@wise-eat.cloud → http://127.0.0.1:3000"
+log "Dashboards : Redis · Memcached (job=All, instance=All)"

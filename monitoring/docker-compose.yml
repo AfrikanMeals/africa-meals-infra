@@ -1,4 +1,4 @@
-# Wise Eat — monitoring Redis (Prometheus + Grafana + redis_exporter)
+# Wise Eat — monitoring (Prometheus + Grafana + redis_exporter + memcached_exporter)
 # Install : sudo ./install.sh monitoring
 
 services:
@@ -32,6 +32,17 @@ services:
     ports:
       - "127.0.0.1:9122:9121"
 
+  memcached-exporter:
+    image: prom/memcached-exporter:v0.15.3
+    container_name: wise-eat-memcached-exporter
+    restart: unless-stopped
+    command:
+      - '--memcached.address=host.docker.internal:${MEMCACHED_PORT:-11211}'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "127.0.0.1:9150:9150"
+
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: wise-eat-prometheus
@@ -50,6 +61,7 @@ services:
     depends_on:
       - redis-exporter-cache
       - redis-exporter-bullmq
+      - memcached-exporter
 
   grafana:
     image: grafana/grafana:11.2.2
