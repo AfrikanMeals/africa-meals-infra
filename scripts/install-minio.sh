@@ -48,12 +48,13 @@ fi
 
 log "Initialisation bucket MinIO (${MINIO_BUCKET})"
 docker run --rm --network wise-eat-minio \
+  --entrypoint /bin/sh \
   -e MINIO_ROOT_USER \
   -e MINIO_ROOT_PASSWORD \
   -e MINIO_BUCKET \
   -e MINIO_PUBLIC_READ="${MINIO_PUBLIC_READ:-true}" \
   minio/mc:RELEASE.2024-10-08T09-37-26Z \
-  sh -c '
+  -c '
     set -e
     mc alias set local http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
     mc mb --ignore-existing "local/${MINIO_BUCKET}"
