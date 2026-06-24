@@ -14,8 +14,8 @@ chown -R www-data:www-data "${CERTBOT_WEBROOT}" 2>/dev/null || true
 SITE="/etc/nginx/sites-available/${REDIS_TLS_DOMAIN}"
 ENABLED="/etc/nginx/sites-enabled/${REDIS_TLS_DOMAIN}"
 
-REDIS_TLS_DOMAIN CERTBOT_WEBROOT \
-  envsubst '${REDIS_TLS_DOMAIN} ${CERTBOT_WEBROOT}' \
+export REDIS_TLS_DOMAIN CERTBOT_WEBROOT
+envsubst '${REDIS_TLS_DOMAIN} ${CERTBOT_WEBROOT}' \
   < "${NGINX_CONF_SRC}/cache.wise-eat.com.http.conf.template" > "${SITE}"
 
 ln -sf "${SITE}" "${ENABLED}"
