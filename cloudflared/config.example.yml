@@ -3,9 +3,11 @@
 #
 # DNS public (Zero Trust → Tunnels → Public Hostname) ou :
 #   cloudflared tunnel route dns <tunnel-name> console.wise-eat.com
+#   cloudflared tunnel route dns <tunnel-name> logs.wise-eat.com
 #
 # Prérequis : Grafana sur http://127.0.0.1:3000 (stack monitoring Docker)
 #             GRAFANA_ROOT_URL=https://console.wise-eat.com/ dans monitoring/.env.monitoring
+#             Prometheus sur http://127.0.0.1:9090 (local uniquement — auth via nginx sur VPS)
 
 tunnel: <tunnel-id>
 credentials-file: ~/.cloudflared/<tunnel-id>.json
@@ -23,4 +25,7 @@ ingress:
     originRequest:
       connectTimeout: 30s
       noTLSVerify: false
+  # Dev local : préférer le VPS (nginx + basic auth). Tunnel direct = Prometheus sans auth.
+  # - hostname: logs.wise-eat.com
+  #   service: http://localhost:9090
   - service: http_status:404

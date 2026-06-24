@@ -38,12 +38,13 @@ Composants:
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
-  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana console)
+  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana + Prometheus)
   stunnel       Stunnel TLS A-lite (:6381 / :6382)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
   monitoring    Prometheus + Grafana + redis_exporter
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
+  prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
   all           redis + permissions + monitoring + memcached + minio
 
@@ -115,6 +116,9 @@ run_component() {
       ;;
     grafana-console)
       bash "${SCRIPTS}/install-grafana-console.sh"
+      ;;
+    prometheus-logs)
+      bash "${SCRIPTS}/install-prometheus-logs.sh"
       ;;
     permissions)
       bash "${SCRIPTS}/fix-redis-permissions.sh"

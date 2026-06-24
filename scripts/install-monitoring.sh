@@ -28,6 +28,16 @@ if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
   log "Mot de passe Grafana généré → ${MON_DIR}/.env.monitoring"
 fi
 
+if [[ -z "${PROMETHEUS_BASIC_AUTH_PASSWORD:-}" ]]; then
+  PROMETHEUS_BASIC_AUTH_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)
+  if grep -q '^PROMETHEUS_BASIC_AUTH_PASSWORD=' .env.monitoring; then
+    sed -i "s|^PROMETHEUS_BASIC_AUTH_PASSWORD=.*|PROMETHEUS_BASIC_AUTH_PASSWORD=${PROMETHEUS_BASIC_AUTH_PASSWORD}|" .env.monitoring
+  else
+    echo "PROMETHEUS_BASIC_AUTH_PASSWORD=${PROMETHEUS_BASIC_AUTH_PASSWORD}" >> .env.monitoring
+  fi
+  log "Mot de passe Prometheus (nginx basic auth) généré → ${MON_DIR}/.env.monitoring"
+fi
+
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"
 
 docker compose --env-file .env.monitoring pull
@@ -51,4 +61,5 @@ echo ""
 log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
 log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
+log "Prometheus: https://logs.wise-eat.com (basic auth — voir .env.monitoring)"
 log "Dashboards : Redis · Memcached (job=All, instance=All)"

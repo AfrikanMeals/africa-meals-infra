@@ -63,6 +63,7 @@ sudo ./install.sh verify-tls
 | `wise-eat.cloud` | 80 / 443 | WS nginx | proxy OK |
 | `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) | Stunnel | **6381/6382 en DNS only** (pas de proxy orange) |
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
+| `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -77,6 +78,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `WISE_EAT_DOMAIN` | `wise-eat.cloud` | vhost WS + certificat |
 | `REDIS_TLS_DOMAIN` | `cache.wise-eat.com` | certificat Stunnel Redis (:6381/:6382) |
 | `GRAFANA_CONSOLE_DOMAIN` | `console.wise-eat.com` | Grafana public (nginx ou tunnel) |
+| `PROMETHEUS_LOGS_DOMAIN` | `logs.wise-eat.com` | Prometheus public (nginx + basic auth) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
@@ -88,7 +90,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `nginx` | Installe nginx, proxy → WS, webroot Certbot |
 | `apache` | Installe apache2, proxy → WS, webroot Certbot |
 | `web` | `WEB_SERVER=nginx\|apache` |
-| `certbot` | LE : WS + Redis Stunnel + Grafana |
+| `certbot` | LE : WS + Redis Stunnel + Grafana + Prometheus |
 | `stunnel` | Redis TLS :6381/:6382 (cert LE requis en prod) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
@@ -118,6 +120,22 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 | **VPS nginx + TLS** | `sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh grafana-console` |
 
 Dans `monitoring/.env.monitoring` : `GRAFANA_ROOT_URL=https://console.wise-eat.com/` puis `docker compose up -d` (recréer Grafana).
+
+### Prometheus public (`logs.wise-eat.com`)
+
+Prometheus n’a pas d’auth native : protection via **nginx basic auth** + TLS.
+
+| Mode | Commande |
+|------|----------|
+| **VPS nginx + TLS** | `sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh prometheus-logs` |
+
+Le mot de passe basic auth est dans `monitoring/.env.monitoring` (`PROMETHEUS_BASIC_AUTH_USER` / `PROMETHEUS_BASIC_AUTH_PASSWORD`), généré par `./install.sh monitoring` si absent.
+
+Dans `monitoring/.env.monitoring` : `PROMETHEUS_EXTERNAL_URL=https://logs.wise-eat.com/` puis :
+
+```bash
+cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus
+```
 
 ## MinIO
 

@@ -70,12 +70,16 @@ set -euo pipefail
 export WISE_EAT_DOMAIN=${WISE_EAT_DOMAIN}
 export REDIS_TLS_DOMAIN=${REDIS_TLS_DOMAIN}
 export GRAFANA_CONSOLE_DOMAIN=${GRAFANA_CONSOLE_DOMAIN}
+export PROMETHEUS_LOGS_DOMAIN=${PROMETHEUS_LOGS_DOMAIN}
 export INFRA_ROOT=${INFRA_ROOT}
 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
 if systemctl is-active nginx >/dev/null 2>&1; then
   WISE_EAT_DOMAIN=${WISE_EAT_DOMAIN} bash ${INFRA_ROOT}/scripts/enable-nginx-ssl.sh
   if [[ -f "/etc/letsencrypt/live/${GRAFANA_CONSOLE_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-grafana-console-ssl.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${PROMETHEUS_LOGS_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/scripts/enable-prometheus-logs-ssl.sh 2>/dev/null || true
   fi
 fi
 if systemctl is-active apache2 >/dev/null 2>&1; then

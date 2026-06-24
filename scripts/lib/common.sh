@@ -19,6 +19,11 @@ REDIS_TLS_DOMAIN="${REDIS_TLS_DOMAIN:-cache.wise-eat.com}"
 GRAFANA_CONSOLE_DOMAIN="${GRAFANA_CONSOLE_DOMAIN:-console.wise-eat.com}"
 GRAFANA_BACKEND_HOST="${GRAFANA_BACKEND_HOST:-127.0.0.1}"
 GRAFANA_BACKEND_PORT="${GRAFANA_BACKEND_PORT:-3000}"
+PROMETHEUS_LOGS_DOMAIN="${PROMETHEUS_LOGS_DOMAIN:-logs.wise-eat.com}"
+PROMETHEUS_BACKEND_HOST="${PROMETHEUS_BACKEND_HOST:-127.0.0.1}"
+PROMETHEUS_BACKEND_PORT="${PROMETHEUS_BACKEND_PORT:-9090}"
+PROMETHEUS_BASIC_AUTH_USER="${PROMETHEUS_BASIC_AUTH_USER:-prometheus}"
+PROMETHEUS_HTASSWD_FILE="${PROMETHEUS_HTASSWD_FILE:-/etc/nginx/htpasswd/prometheus-logs}"
 # Hostname présenté par Stunnel (:6381/:6382) — doit correspondre aux apps (REDIS_HOST).
 STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-${REDIS_TLS_DOMAIN}}"
 WS_BACKEND_HOST="${WS_BACKEND_HOST:-127.0.0.1}"
@@ -63,6 +68,28 @@ ensure_letsencrypt_nginx_tls_files() {
   if [[ ! -f /etc/letsencrypt/ssl-dhparams.pem ]]; then
     openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048 2>/dev/null || \
       die "Impossible de générer /etc/letsencrypt/ssl-dhparams.pem"
+  fi
+}
+
+# Basic auth nginx pour Prometheus public (logs.wise-eat.com).
+ensure_prometheus_basic_auth_file() {
+  local user="${PROMETHEUS_BASIC_AUTH_USER:-prometheus}"
+  local pass="${PROMETHEUS_BASIC_AUTH_PASSWORD:-}"
+  local file="${PROMETHEUS_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "PROMETHEUS_BASIC_AUTH_PASSWORD requis (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth Prometheus : ${user} → ${file}"
   fi
 }
 
