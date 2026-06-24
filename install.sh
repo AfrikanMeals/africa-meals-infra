@@ -3,6 +3,8 @@
 #
 # Usage:
 #   sudo ./install.sh redis
+#   sudo ./install.sh memcached
+#   sudo ./install.sh minio
 #   sudo STUNNEL_TLS_EMAIL=you@wise-eat.com ./install.sh certbot
 #   sudo ./install.sh stunnel
 #   sudo ./install.sh monitoring
@@ -30,6 +32,8 @@ Usage:
 
 Composants:
   redis         Redis Docker (cache :6379 + BullMQ :6380), secrets + ACL
+  memcached     Memcached Docker (cache applicatif :11211)
+  minio         MinIO Docker (S3-compatible :9000, console :9001)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
@@ -38,7 +42,7 @@ Composants:
   tls           certbot + stunnel (nginx ou apache requis avant pour webroot)
   monitoring    Prometheus + Grafana + redis_exporter
   permissions   Corrige ACL/data (UID 999)
-  all           redis + permissions + monitoring
+  all           redis + permissions + monitoring + memcached + minio
 
 Stack TLS prod (nginx recommandé) :
   sudo $0 nginx
@@ -52,6 +56,8 @@ Apache à la place de nginx :
 
 Exemples:
   sudo $0 redis
+  sudo $0 memcached
+  sudo $0 minio
   sudo $0 stunnel
   sudo GCP_EGRESS_IP=203.0.113.50 $0 stunnel
   sudo $0 redis monitoring
@@ -72,6 +78,12 @@ run_component() {
   case "${name}" in
     redis)
       bash "${SCRIPTS}/install-redis.sh"
+      ;;
+    memcached)
+      bash "${SCRIPTS}/install-memcached.sh"
+      ;;
+    minio)
+      bash "${SCRIPTS}/install-minio.sh"
       ;;
     nginx)
       bash "${SCRIPTS}/install-nginx.sh"
@@ -101,6 +113,8 @@ run_component() {
     all)
       bash "${SCRIPTS}/install-redis.sh"
       bash "${SCRIPTS}/fix-redis-permissions.sh"
+      bash "${SCRIPTS}/install-memcached.sh"
+      bash "${SCRIPTS}/install-minio.sh"
       bash "${SCRIPTS}/install-monitoring.sh"
       ;;
     -h|--help|help)

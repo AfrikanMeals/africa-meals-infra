@@ -1,0 +1,17 @@
+# Wise Eat — Memcached (cache applicatif alternatif à Redis)
+# Install : sudo ./install.sh memcached
+
+services:
+  memcached:
+    image: memcached:1.6-alpine
+    container_name: wise-eat-memcached
+    command:
+      - -m
+      - "${MEMCACHED_MEMORY_MB:-128}"
+      - -I
+      - "${MEMCACHED_MAX_ITEM_MB:-2}m"
+      - -c
+      - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
+    ports:
+      - "127.0.0.1:${MEMCACHED_PORT:-11211}:11211"
+    restart: unless-stopped

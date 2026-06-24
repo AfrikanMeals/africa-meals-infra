@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, nginx/apache, Certbot, Stunnel, monitoring.
+Infra VPS Wise Eat : Redis, Memcached, MinIO, nginx/apache, Certbot, Stunnel, monitoring.
 
 ## Structure
 
@@ -16,6 +16,8 @@ scripts/
 nginx/                  templates site wise-eat.cloud
 apache/
 redis/
+memcached/
+minio/
 monitoring/
 ```
 
@@ -28,6 +30,10 @@ chmod +x install.sh scripts/*.sh
 
 # 1. Redis
 sudo ./install.sh redis
+
+# 1b. Cache & stockage local (dev / VPS)
+sudo ./install.sh memcached
+sudo ./install.sh minio
 
 # 2. Serveur web (un seul — nginx recommandé)
 sudo ./install.sh nginx
@@ -69,4 +75,33 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
 | `certbot` | LE + HTTPS site + certs Stunnel |
 | `stunnel` | Redis TLS :6381/:6382 |
 | `tls` | certbot + stunnel |
-| `redis` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `monitoring` / `permissions` | voir runbooks |
+
+## Memcached
+
+Cache applicatif (alternative à Redis pour `CACHE_STORE=memcached`).
+
+```bash
+sudo ./install.sh memcached
+```
+
+| Port | Service |
+|------|---------|
+| `11211` | Memcached (localhost) |
+
+Variables API : `MEMCACHED_SERVERS=127.0.0.1:11211`
+
+## MinIO
+
+Stockage S3-compatible pour médias (`STORAGE_ENGINE=minio`).
+
+```bash
+sudo ./install.sh minio
+```
+
+| Port | Service |
+|------|---------|
+| `9000` | API S3 |
+| `9001` | Console web |
+
+Secrets générés dans `minio/.env.minio`. Le script crée le bucket `wise-eat` et affiche les variables `MINIO_*` pour l’API.

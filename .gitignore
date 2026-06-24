@@ -7,6 +7,10 @@ redis/data-bullmq/
 
 monitoring/.env.monitoring
 
+memcached/.env.memcached
+minio/.env.minio
+minio/data/
+
 # OS / éditeur
 .DS_Store
 *.swp

@@ -5,8 +5,11 @@ set -euo pipefail
 INFRA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WISE_EAT_ROOT="${WISE_EAT_ROOT:-${INFRA_ROOT}}"
 REDIS_DIR="${REDIS_DIR:-${WISE_EAT_ROOT}/redis}"
+MEMCACHED_DIR="${MEMCACHED_DIR:-${WISE_EAT_ROOT}/memcached}"
+MINIO_DIR="${MINIO_DIR:-${WISE_EAT_ROOT}/minio}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
+MINIO_ENV="${MINIO_ENV:-${MINIO_DIR}/.env.minio}"
 STUNNEL_CONF_SRC="${INFRA_ROOT}/redis/stunnel"
 NGINX_CONF_SRC="${INFRA_ROOT}/nginx"
 APACHE_CONF_SRC="${INFRA_ROOT}/apache"
@@ -58,7 +61,9 @@ sync_component() {
     log "Sync ${name} → ${dst}"
     mkdir -p "${dst}"
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
+      --exclude '.env.memcached' --exclude '.env.minio' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
+      --exclude 'minio/data/' --exclude 'data/' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       "${src}/" "${dst}/"
   fi
