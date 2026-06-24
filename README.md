@@ -40,9 +40,10 @@ sudo ./install.sh nginx
 # ou : sudo ./install.sh apache
 # ou : sudo WEB_SERVER=apache ./install.sh web
 
-# 3. TLS (Certbot + Stunnel Redis + HTTPS site)
-sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot
-sudo ./install.sh stunnel
+# 3. TLS Let's Encrypt (WS + Redis Stunnel + Grafana)
+sudo ./install.sh nginx
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
+sudo ./install.sh verify-tls
 
 # 4. Monitoring
 sudo ./install.sh monitoring
@@ -52,7 +53,20 @@ sudo ./install.sh monitoring
 
 ```bash
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
+sudo ./install.sh verify-tls
 ```
+
+### Prérequis DNS (Certbot HTTP-01)
+
+| Hostname | Port | Usage | Cloudflare |
+|----------|------|-------|------------|
+| `wise-eat.cloud` | 80 / 443 | WS nginx | proxy OK |
+| `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) | Stunnel | **6381/6382 en DNS only** (pas de proxy orange) |
+| `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
+
+Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
+
+Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans TLS.
 
 > **nginx et apache** ne tournent pas ensemble sur le port 80 — l’install de l’un arrête l’autre.
 
@@ -60,7 +74,9 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
 
 | Variable | Défaut | Rôle |
 |----------|--------|------|
-| `WISE_EAT_DOMAIN` | `wise-eat.cloud` | vhost + certificat |
+| `WISE_EAT_DOMAIN` | `wise-eat.cloud` | vhost WS + certificat |
+| `REDIS_TLS_DOMAIN` | `cache.wise-eat.com` | certificat Stunnel Redis (:6381/:6382) |
+| `GRAFANA_CONSOLE_DOMAIN` | `console.wise-eat.com` | Grafana public (nginx ou tunnel) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
@@ -72,9 +88,10 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
 | `nginx` | Installe nginx, proxy → WS, webroot Certbot |
 | `apache` | Installe apache2, proxy → WS, webroot Certbot |
 | `web` | `WEB_SERVER=nginx\|apache` |
-| `certbot` | LE + HTTPS site + certs Stunnel |
-| `stunnel` | Redis TLS :6381/:6382 |
+| `certbot` | LE : WS + Redis Stunnel + Grafana |
+| `stunnel` | Redis TLS :6381/:6382 (cert LE requis en prod) |
 | `tls` | certbot + stunnel |
+| `verify-tls` | Contrôle certs LE + Stunnel |
 | `redis` / `memcached` / `minio` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
@@ -92,6 +109,15 @@ sudo ./install.sh memcached
 Variables API : `MEMCACHED_SERVERS=127.0.0.1:11211`
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
+
+### Grafana public (`console.wise-eat.com`)
+
+| Mode | Commande |
+|------|----------|
+| **Cloudflare Tunnel** (Mac / dev) | Voir `docs/CLOUDFLARED.md` + `cloudflared/config.example.yml` |
+| **VPS nginx + TLS** | `sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh grafana-console` |
+
+Dans `monitoring/.env.monitoring` : `GRAFANA_ROOT_URL=https://console.wise-eat.com/` puis `docker compose up -d` (recréer Grafana).
 
 ## MinIO
 

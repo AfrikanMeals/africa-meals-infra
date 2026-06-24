@@ -50,5 +50,5 @@ bash "${SCRIPT_DIR}/verify-monitoring.sh" || true
 echo ""
 log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
-log "Grafana   : ssh -L 3000:127.0.0.1:3000 root@wise-eat.cloud → http://127.0.0.1:3000"
+log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
 log "Dashboards : Redis · Memcached (job=All, instance=All)"

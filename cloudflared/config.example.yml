@@ -1,0 +1,26 @@
+# Exemple Cloudflare Tunnel — Wise Eat (dev local / Mac)
+# Copier vers ~/.cloudflared/config.yml et ajuster le tunnel + credentials.
+#
+# DNS public (Zero Trust → Tunnels → Public Hostname) ou :
+#   cloudflared tunnel route dns <tunnel-name> console.wise-eat.com
+#
+# Prérequis : Grafana sur http://127.0.0.1:3000 (stack monitoring Docker)
+#             GRAFANA_ROOT_URL=https://console.wise-eat.com/ dans monitoring/.env.monitoring
+
+tunnel: <tunnel-id>
+credentials-file: ~/.cloudflared/<tunnel-id>.json
+
+ingress:
+  - hostname: api-dev.wise-eat.com
+    service: http://localhost:9000
+  - hostname: ws-dev.wise-eat.com
+    service: http://localhost:3001
+    originRequest:
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+  - hostname: console.wise-eat.com
+    service: http://localhost:3000
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: false
+  - service: http_status:404

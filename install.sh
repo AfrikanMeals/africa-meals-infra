@@ -15,7 +15,8 @@
 # Variables:
 #   WISE_EAT_ROOT   Racine déploiement (défaut : répertoire de ce dépôt)
 #   STUNNEL_TLS_EMAIL   Let's Encrypt (certbot)
-#   STUNNEL_TLS_DOMAIN  Défaut wise-eat.cloud
+#   REDIS_TLS_DOMAIN    Hostname Redis TLS (défaut cache.wise-eat.com)
+#   STUNNEL_TLS_DOMAIN  Alias (défaut = REDIS_TLS_DOMAIN)
 #   GCP_EGRESS_IP       A-strict optionnel (Cloud NAT)
 set -euo pipefail
 
@@ -37,10 +38,12 @@ Composants:
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
-  certbot       Let's Encrypt (webroot nginx/apache + Stunnel)
+  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana console)
   stunnel       Stunnel TLS A-lite (:6381 / :6382)
-  tls           certbot + stunnel (nginx ou apache requis avant pour webroot)
+  tls           certbot + stunnel (nginx requis pour webroot)
+  verify-tls    Vérifie certs LE + Stunnel
   monitoring    Prometheus + Grafana + redis_exporter
+  grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   permissions   Corrige ACL/data (UID 999)
   all           redis + permissions + monitoring + memcached + minio
 
@@ -104,8 +107,14 @@ run_component() {
       bash "${SCRIPTS}/install-certbot.sh"
       bash "${SCRIPTS}/install-stunnel.sh"
       ;;
+    verify-tls)
+      bash "${SCRIPTS}/verify-tls.sh"
+      ;;
     monitoring)
       bash "${SCRIPTS}/install-monitoring.sh"
+      ;;
+    grafana-console)
+      bash "${SCRIPTS}/install-grafana-console.sh"
       ;;
     permissions)
       bash "${SCRIPTS}/fix-redis-permissions.sh"

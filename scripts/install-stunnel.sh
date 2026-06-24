@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/lib/common.sh"
 require_root
 GCP_EGRESS_IP="${GCP_EGRESS_IP:-}"
 STUNNEL_AUTH_ONLY="${STUNNEL_AUTH_ONLY:-}"
-STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-wise-eat.cloud}"
 
 if [[ -n "${GCP_EGRESS_IP}" ]]; then
   STUNNEL_MODE="strict"
@@ -23,21 +22,22 @@ apt install -y stunnel4
 
 mkdir -p /etc/stunnel/conf.d /etc/stunnel/certs
 
-# TLS : Let's Encrypt (prod) ou auto-signé (fallback dev)
-if [[ -f "/etc/letsencrypt/live/${STUNNEL_TLS_DOMAIN}/fullchain.pem" ]]; then
+# TLS : Let's Encrypt (prod) ou auto-signé (fallback dev local uniquement)
+if [[ -f "/etc/letsencrypt/live/${REDIS_TLS_DOMAIN}/fullchain.pem" ]]; then
   bash "${SCRIPT_DIR}/sync-stunnel-certs.sh"
 elif [[ -n "${STUNNEL_TLS_EMAIL:-}" ]]; then
   bash "${SCRIPT_DIR}/install-certbot.sh"
-else
-  warn "Pas de cert Let's Encrypt — génération auto-signée (API : REDIS_TLS_REJECT_UNAUTHORIZED=false)"
-  warn "Prod : STUNNEL_TLS_EMAIL=you@wise-eat.com ./install.sh certbot puis ./install.sh stunnel"
+elif [[ "${ALLOW_SELF_SIGNED_STUNNEL:-}" == "1" ]]; then
+  warn "Certificat auto-signé (dev) — prod : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls"
   openssl req -new -x509 -days 825 -nodes \
     -out /etc/stunnel/certs/fullchain.pem \
     -keyout /etc/stunnel/certs/privkey.pem \
-    -subj "/CN=${STUNNEL_TLS_DOMAIN}"
+    -subj "/CN=${REDIS_TLS_DOMAIN}"
   chown root:stunnel4 /etc/stunnel/certs/fullchain.pem /etc/stunnel/certs/privkey.pem
   chmod 644 /etc/stunnel/certs/fullchain.pem
   chmod 640 /etc/stunnel/certs/privkey.pem
+else
+  die "Certificat Let's Encrypt absent pour ${REDIS_TLS_DOMAIN}. Lancer : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls"
 fi
 
 cp "${STUNNEL_CONF_SRC}/redis-cache.conf" /etc/stunnel/conf.d/
@@ -74,12 +74,12 @@ else
   warn "ufw absent — configurer le pare-feu manuellement"
 fi
 
-log "Stunnel ${STUNNEL_MODE} — rediss://${STUNNEL_TLS_DOMAIN}:6381"
+log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381"
 ss -tlnp | grep -E '6381|6382' || warn "Ports Stunnel non visibles"
 systemctl status stunnel4 --no-pager || true
 
 # Vérification TLS (si openssl dispo)
 if command -v openssl >/dev/null 2>&1; then
-  echo | openssl s_client -connect "127.0.0.1:6381" -servername "${STUNNEL_TLS_DOMAIN}" 2>/dev/null \
+  echo | openssl s_client -connect "127.0.0.1:6381" -servername "${REDIS_TLS_DOMAIN}" 2>/dev/null \
     | openssl x509 -noout -subject -issuer 2>/dev/null || true
 fi

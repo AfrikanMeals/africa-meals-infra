@@ -1,0 +1,15 @@
+# HTTP — validation Certbot pour Redis TLS (Stunnel :6381 / :6382)
+# Déployé par : scripts/install-redis-tls-acme.sh
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${REDIS_TLS_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 404;
+    }
+}
