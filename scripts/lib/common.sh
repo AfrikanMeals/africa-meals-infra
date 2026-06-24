@@ -46,6 +46,26 @@ render_template() {
     < "${src}" > "${dst}"
 }
 
+# Fichiers TLS nginx requis par les templates HTTPS (certbot certonly ne les crée pas).
+ensure_letsencrypt_nginx_tls_files() {
+  apt install -y gettext-base certbot openssl 2>/dev/null || true
+  if [[ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]]; then
+    mkdir -p /etc/letsencrypt
+    if [[ -f "${NGINX_CONF_SRC}/options-ssl-nginx.conf" ]]; then
+      cp "${NGINX_CONF_SRC}/options-ssl-nginx.conf" /etc/letsencrypt/options-ssl-nginx.conf
+    else
+      curl -fsSL \
+        https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
+        -o /etc/letsencrypt/options-ssl-nginx.conf || \
+        die "options-ssl-nginx.conf introuvable — lancer certbot install --nginx ou copier le fichier"
+    fi
+  fi
+  if [[ ! -f /etc/letsencrypt/ssl-dhparams.pem ]]; then
+    openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048 2>/dev/null || \
+      die "Impossible de générer /etc/letsencrypt/ssl-dhparams.pem"
+  fi
+}
+
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
     echo "Exécuter en root : sudo $0 $*" >&2

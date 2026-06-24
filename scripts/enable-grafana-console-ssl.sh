@@ -14,6 +14,8 @@ GRAFANA_BACKEND_PORT="${GRAFANA_BACKEND_PORT:-3000}"
 
 command -v nginx >/dev/null 2>&1 || die "nginx non installé"
 
+ensure_letsencrypt_nginx_tls_files
+
 SITE="/etc/nginx/sites-available/${GRAFANA_CONSOLE_DOMAIN}"
 export GRAFANA_CONSOLE_DOMAIN GRAFANA_BACKEND_HOST GRAFANA_BACKEND_PORT CERTBOT_WEBROOT
 envsubst '${GRAFANA_CONSOLE_DOMAIN} ${GRAFANA_BACKEND_HOST} ${GRAFANA_BACKEND_PORT} ${CERTBOT_WEBROOT}' \

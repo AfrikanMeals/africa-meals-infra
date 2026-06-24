@@ -28,6 +28,7 @@ render_grafana_site() {
 }
 
 if [[ -f "/etc/letsencrypt/live/${GRAFANA_CONSOLE_DOMAIN}/fullchain.pem" ]]; then
+  ensure_letsencrypt_nginx_tls_files
   render_grafana_site "${NGINX_CONF_SRC}/console.wise-eat.com.https.conf.template"
   log "Config nginx HTTPS Grafana (${GRAFANA_CONSOLE_DOMAIN})"
 else
