@@ -9,7 +9,7 @@ LE_DIR="/etc/letsencrypt/live/${REDIS_TLS_DOMAIN}"
 DEST="/etc/stunnel/certs"
 
 [[ -f "${LE_DIR}/fullchain.pem" && -f "${LE_DIR}/privkey.pem" ]] || \
-  die "Certificat absent : ${LE_DIR} — lancer : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot"
+  die "Certificat absent : ${LE_DIR} — lancer : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh redis-stunnel-cert"
 
 mkdir -p "${DEST}"
 cp -L "${LE_DIR}/fullchain.pem" "${DEST}/fullchain.pem"

@@ -44,6 +44,7 @@ Composants:
   verify-tls    Vérifie certs LE + Stunnel
   monitoring    Prometheus + Grafana + redis_exporter
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
+  redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
   all           redis + permissions + monitoring + memcached + minio
@@ -116,6 +117,9 @@ run_component() {
       ;;
     grafana-console)
       bash "${SCRIPTS}/install-grafana-console.sh"
+      ;;
+    redis-stunnel-cert)
+      bash "${SCRIPTS}/issue-redis-stunnel-cert.sh"
       ;;
     prometheus-logs)
       bash "${SCRIPTS}/install-prometheus-logs.sh"
