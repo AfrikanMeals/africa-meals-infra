@@ -39,7 +39,7 @@ Composants:
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
   certbot       Let's Encrypt (WS + Redis Stunnel + Grafana + Prometheus)
-  stunnel       Stunnel TLS A-lite (:6381 / :6382)
+  stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
   monitoring    Prometheus + Grafana + redis_exporter

@@ -44,6 +44,9 @@ cp "${STUNNEL_CONF_SRC}/redis-cache.conf" /etc/stunnel/conf.d/
 cp "${STUNNEL_CONF_SRC}/redis-bullmq.conf" /etc/stunnel/conf.d/
 if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
   cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
+  log "Stunnel Memcached : ${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf → conf.d"
+else
+  warn "Config Memcached TLS absente (${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf) — git pull infra puis relancer stunnel"
 fi
 
 if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then
@@ -81,11 +84,24 @@ else
 fi
 
 log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
-ss -tlnp | grep -E '6381|6382|'"${MEMCACHED_TLS_PORT}" || warn "Ports Stunnel non visibles"
+if ss -tlnp | grep -E '6381|6382'; then
+  log "Ports Redis Stunnel actifs"
+else
+  warn "Ports Redis Stunnel (6381/6382) non visibles"
+fi
+if ss -tlnp | grep -q ":${MEMCACHED_TLS_PORT}"; then
+  log "Port Memcached TLS :${MEMCACHED_TLS_PORT} actif"
+else
+  warn "Port Memcached TLS :${MEMCACHED_TLS_PORT} absent — vérifier /etc/stunnel/conf.d/memcached-tls.conf et journalctl -u stunnel4"
+fi
 systemctl status stunnel4 --no-pager || true
 
 # Vérification TLS (si openssl dispo)
 if command -v openssl >/dev/null 2>&1; then
   echo | openssl s_client -connect "127.0.0.1:6381" -servername "${REDIS_TLS_DOMAIN}" 2>/dev/null \
     | openssl x509 -noout -subject -issuer 2>/dev/null || true
+  if ss -tlnp | grep -q ":${MEMCACHED_TLS_PORT}"; then
+    echo | openssl s_client -connect "127.0.0.1:${MEMCACHED_TLS_PORT}" -servername "${REDIS_TLS_DOMAIN}" 2>/dev/null \
+      | openssl x509 -noout -subject -issuer 2>/dev/null || warn "TLS Memcached :${MEMCACHED_TLS_PORT} injoignable en local"
+  fi
 fi
