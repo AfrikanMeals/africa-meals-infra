@@ -24,6 +24,22 @@ services:
     ports:
       - "127.0.0.1:9100:9100"
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: wise-eat-cadvisor
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - wise-eat-infra
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "127.0.0.1:8088:8080"
+
   redis-exporter-cache:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-cache
@@ -169,6 +185,7 @@ services:
       - "127.0.0.1:9090:9090"
     depends_on:
       - node-exporter
+      - cadvisor
       - redis-exporter-cache
       - redis-exporter-bullmq
       - memcached-exporter

@@ -5,7 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 DASH_ROOT="${MON_DIR}/grafana/dashboards"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${DASH_ROOT}/System"
+CORE_SYSTEM_DIR="${DASH_ROOT}/Core System"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -150,7 +151,7 @@ PY
 }
 
 fetch_node_dashboard() {
-  local out="${DASH_ROOT}/System/node-exporter-full.json"
+  local out="${CORE_SYSTEM_DIR}/node-exporter-full.json"
   curl -fsSL "https://grafana.com/api/dashboards/1860/revisions/latest/download" -o "${out}.tmp"
   python3 - <<'PY' "${out}.tmp" "${out}"
 import json, sys
@@ -211,10 +212,22 @@ PY
   log "Dashboard Node Exporter → ${out} (Grafana.com #1860)"
 }
 
+fetch_docker_dashboard() {
+  local out="${CORE_SYSTEM_DIR}/docker-monitoring.json"
+  local tmp="${out}.tmp"
+  curl -fsSL "https://grafana.com/api/dashboards/4271/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-docker-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard Docker → ${out} (Grafana.com #4271)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
+fetch_docker_dashboard
 patch_dashboards
+
+rm -rf "${DASH_ROOT}/System"
 
 # Ancien chemin plat (avant foldersFromFilesStructure).
 rm -f "${DASH_ROOT}/redis-prometheus.json"

@@ -17,6 +17,20 @@ scrape_configs:
         labels:
           namespace: wise-eat
           host_role: vps
+    relabel_configs:
+      - target_label: instance
+        replacement: wise-eat:9100
+
+  # Conteneurs Docker (dashboard Grafana #4271 — avec node_exporter ci-dessus)
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          namespace: wise-eat
+          host_role: vps
+    relabel_configs:
+      - target_label: instance
+        replacement: wise-eat:8080
 
   - job_name: redis-cache
     static_configs:

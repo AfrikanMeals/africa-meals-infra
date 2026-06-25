@@ -28,6 +28,14 @@ else
   fail=1
 fi
 
+log "=== cAdvisor (conteneurs Docker) ==="
+if curl -sf "http://127.0.0.1:8088/metrics" | grep -q '^container_cpu_usage_seconds_total'; then
+  log "OK  cAdvisor (:8088) — métriques conteneurs présentes"
+else
+  warn "FAIL cAdvisor (:8088) — conteneur wise-eat-cadvisor arrêté ?"
+  fail=1
+fi
+
 log "=== Redis exporters (host) ==="
 for pair in "9121:cache" "9122:bullmq"; do
   port="${pair%%:*}"
@@ -68,7 +76,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus','memcached','node'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -92,6 +100,23 @@ else:
 "
 else
   warn "FAIL requête Prometheus redis_up"
+  fail=1
+fi
+
+log "=== requête container_cpu (dashboard Docker #4271) ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=container_cpu_usage_seconds_total' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=container_cpu_usage_seconds_total' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — job cadvisor non scrapé)')
+else:
+    print(f'  {len(r)} série(s) container_cpu_usage_seconds_total')
+"
+else
+  warn "FAIL requête Prometheus container_cpu_usage_seconds_total"
   fail=1
 fi
 
@@ -143,4 +168,4 @@ if [[ "${fail}" -ne 0 ]]; then
   exit 1
 fi
 
-log "Stack monitoring OK — Grafana : System / Redis / Memcached"
+log "Stack monitoring OK — Grafana : Core System / Redis / Memcached"

@@ -122,7 +122,11 @@ Après `./install.sh stunnel` (cert LE sur `cache.wise-eat.com` requis).
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
 
-**System (VPS)** : `node_exporter` Docker sur `127.0.0.1:9100`, job Prometheus `node`, dashboard **Wise Eat — System (Node Exporter)** (Grafana.com #1860, dossier `System/`). Les variables **Job**, **Nodename** et **Instance** restent vides tant que `node_exporter` n’est pas scrapé.
+**Core System (VPS)** : dossier Grafana `Core System/` avec :
+- **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
+- **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
+
+Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
 #### Grafana vide (Redis DOWN / Memcached DOWN / No data)
 
@@ -149,6 +153,7 @@ sudo ./install.sh repair-monitoring
 curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '
 curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '
 curl -s http://127.0.0.1:9100/metrics | grep '^node_cpu_seconds_total' | head -1
+curl -s http://127.0.0.1:8088/metrics | grep '^container_cpu_usage_seconds_total' | head -1
 curl -s 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info'
 ```
 

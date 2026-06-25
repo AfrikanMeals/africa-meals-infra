@@ -66,6 +66,7 @@ if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
   COMPOSE_ARGS+=(--profile cluster-b)
   log "Monitoring réplicas : Redis :9123/:9125/:9124/:9126 Memcached :9151/:9152"
 fi
+log "Core System : node_exporter :9100 + cAdvisor :8088 (dashboards #1860 / #4271)"
 
 docker compose "${COMPOSE_ARGS[@]}" pull
 docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
