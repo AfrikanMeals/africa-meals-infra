@@ -301,20 +301,61 @@ reset_emqx_replica_data_dirs() {
 
 reset_emqx_primary_data_dir() {
   local backup="${EMQX_DIR}/data-emqx-1.bak.$(date +%Y%m%d%H%M%S)"
-  if [[ -d "${EMQX_DIR}/data-emqx-1" ]]; then
+  if [[ -d "${EMQX_DIR}/data-emqx-1" ]] && [[ -n "$(ls -A "${EMQX_DIR}/data-emqx-1" 2>/dev/null || true)" ]]; then
     warn "Sauvegarde primary EMQX → ${backup}"
     mv "${EMQX_DIR}/data-emqx-1" "${backup}"
+  elif [[ -d "${EMQX_DIR}/data-emqx-1" ]]; then
+    rm -rf "${EMQX_DIR}/data-emqx-1"
   fi
   mkdir -p "${EMQX_DIR}/data-emqx-1"
   chown -R 1000:1000 "${EMQX_DIR}/data-emqx-1"
 }
 
+check_emqx_host_ports_free() {
+  local mqtt_port="${EMQX_MQTT_PORT:-1883}"
+  local ws_port="${EMQX_WS_PORT:-8083}"
+  local dash_port="${EMQX_DASHBOARD_PORT:-18083}"
+  local port label
+
+  for port in "${mqtt_port}" "${ws_port}" "${dash_port}"; do
+    if ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE ":${port}$"; then
+      label=":${port}"
+      [[ "${port}" == "${mqtt_port}" ]] && label="MQTT :${port}"
+      [[ "${port}" == "${ws_port}" ]] && label="WS :${port}"
+      [[ "${port}" == "${dash_port}" ]] && label="Dashboard :${port}"
+      warn "Port ${label} déjà utilisé sur le VPS"
+      ss -ltnp 2>/dev/null | grep ":${port} " | sed 's/^/[wise-eat]      /' || true
+    fi
+  done
+}
+
+emqx_api_responds() {
+  local port="${1:-18083}"
+  curl -sf --connect-timeout 2 --max-time 5 "http://127.0.0.1:${port}/api/v5/status" >/dev/null 2>&1 \
+    || curl -sf --connect-timeout 2 --max-time 5 "http://127.0.0.1:${port}/status" >/dev/null 2>&1
+}
+
 wait_for_emqx_api() {
   local port="${1:-18083}"
-  local max="${2:-120}"
-  for _ in $(seq 1 "$max"); do
-    if curl -sf "http://127.0.0.1:${port}/api/v5/status" >/dev/null 2>&1; then
+  local max="${2:-45}"
+  local container="${3:-wise-eat-emqx-1}"
+  local state health i
+
+  log "Attente API EMQX http://127.0.0.1:${port} (max $((max * 2))s, logs toutes les 10s)…"
+  for i in $(seq 1 "$max"); do
+    state="$(docker inspect "${container}" --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+    if [[ "${state}" == "exited" || "${state}" == "dead" || "${state}" == "missing" ]]; then
+      warn "${container} indisponible (${state}) après $((i * 2))s"
+      diagnose_emqx_container "${container}"
+      return 1
+    fi
+    if emqx_api_responds "${port}"; then
+      log "OK  EMQX API prête (~$((i * 2))s)"
       return 0
+    fi
+    if (( i % 5 == 0 )); then
+      health="$(docker inspect "${container}" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' 2>/dev/null || echo '?')"
+      log "… attente ${i}/${max} — status=${state} health=${health}"
     fi
     sleep 2
   done
