@@ -315,12 +315,12 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-worker
 
 | Port / URL | Service |
 |------------|---------|
-| `mqtt://127.0.0.1:1883` | MQTT local (PM2 API/WS sur le VPS) |
-| `ws://127.0.0.1:8083/mqtt` | WebSocket local |
+| `mqtt://127.0.0.1:1883` | MQTT local (debug / repair scripts sur le VPS uniquement) |
+| `ws://127.0.0.1:8083/mqtt` | WebSocket local (debug) |
 | `http://127.0.0.1:18083` | Dashboard EMQX local (admin — voir `.env.emqx`) |
 | `https://worker.wise-eat.com` | Dashboard EMQX public (basic auth nginx + login EMQX) |
-| `mqtts://broker.wise-eat.com:8883` | MQTT TLS public (nginx → primary) |
-| `wss://broker.wise-eat.com:8884/mqtt` | WebSocket TLS public |
+| `mqtts://broker.wise-eat.com:8883` | MQTT TLS public (nginx → primary) — **dev + prod** |
+| `wss://broker.wise-eat.com:8884/mqtt` | WebSocket TLS public — **dev + prod** |
 
 **Utilisateurs MQTT** (créés par `bootstrap-emqx-auth.sh`) :
 
@@ -331,20 +331,7 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-worker
 
 Secrets dans `emqx/.env.emqx` (générés à l’install).
 
-**VPS local** (`africa-meals-api` / `africa-meals-ws` sur PM2) :
-
-```env
-MQTT_BROKER_HOST=127.0.0.1
-MQTT_BROKER_PORT=1883
-MQTT_BROKER_PROTOCOL=mqtt
-MQTT_BROKER_URL=mqtt://127.0.0.1:1883
-MQTT_BROKER_WS_URL=ws://127.0.0.1:8083/mqtt
-MQTT_BROKER_USERNAME=wise-eat-mqtt   # WS
-# API publisher : wise-eat-admin + MQTT_ADMIN_PASSWORD
-MQTT_TOPIC_PREFIX=wiseeat/internal/ws
-```
-
-**Remote (Cloud Functions / Mac → VPS)** :
+**Dev + prod (Mac local, PM2 VPS, Cloud Functions)** — toujours via le **domaine**, pas l’IP :
 
 ```env
 MQTT_BROKER_HOST=broker.wise-eat.com
@@ -353,8 +340,21 @@ MQTT_BROKER_WS_PORT=8884
 MQTT_BROKER_PROTOCOL=mqtts
 MQTT_BROKER_URL=mqtts://broker.wise-eat.com:8883
 MQTT_BROKER_WS_URL=wss://broker.wise-eat.com:8884/mqtt
-MQTT_BROKER_USERNAME=wise-eat-admin
-MQTT_BROKER_PASSWORD=<MQTT_ADMIN_PASSWORD depuis .env.emqx>
+MQTT_TOPIC_PREFIX=wiseeat/internal/ws
+```
+
+| App | Fichier env | `MQTT_BROKER_USERNAME` | Mot de passe |
+|-----|-------------|------------------------|--------------|
+| API (publisher) | `.env` / `.env.develop` | `wise-eat-admin` | `MQTT_ADMIN_PASSWORD` |
+| WS (subscriber) | `.env` / `.env.develop` | `wise-eat-mqtt` | `MQTT_BROKER_PASSWORD` |
+
+Après modification sur le VPS : `pm2 restart all --update-env` (ou les processus API/WS concernés).
+
+**PM2 sur le VPS (hairpin NAT)** : depuis la machine elle-même, `broker.wise-eat.com` peut résoudre vers l’IP publique sans route retour. Les apps gardent le domaine dans `.env`, mais ajoutez une entrée loopback :
+
+```bash
+sudo ./scripts/repair-vps-mqtt-broker-hosts.sh
+# équivalent manuel : echo "127.0.0.1 broker.wise-eat.com # wise-eat-emqx-broker-local" | sudo tee -a /etc/hosts
 ```
 
 DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
