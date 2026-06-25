@@ -517,8 +517,26 @@ emqx_cluster_b_enabled() {
   env_truthy "${raw}"
 }
 
+ensure_nginx_stream_module() {
+  command -v nginx >/dev/null 2>&1 || return 0
+  if nginx -V 2>&1 | grep -q 'with-stream'; then
+    return 0
+  fi
+  if [[ -f /etc/nginx/modules-enabled/50-mod-stream.conf ]] \
+    || [[ -L /etc/nginx/modules-enabled/50-mod-stream.conf ]]; then
+    return 0
+  fi
+  log "Installation module nginx stream (libnginx-mod-stream)…"
+  apt install -y libnginx-mod-stream 2>/dev/null || apt install -y nginx-full 2>/dev/null || true
+  if [[ -f /etc/nginx/modules-available/50-mod-stream.conf ]] \
+    && [[ ! -e /etc/nginx/modules-enabled/50-mod-stream.conf ]]; then
+    ln -sf /etc/nginx/modules-available/50-mod-stream.conf /etc/nginx/modules-enabled/50-mod-stream.conf
+  fi
+}
+
 ensure_nginx_stream_include() {
   command -v nginx >/dev/null 2>&1 || return 0
+  ensure_nginx_stream_module
   mkdir -p /etc/nginx/stream.d
   if ! grep -qF '/etc/nginx/stream.d/' /etc/nginx/nginx.conf 2>/dev/null; then
     log "Activation module stream nginx (/etc/nginx/stream.d/)"
@@ -529,6 +547,23 @@ stream {
 }
 EOF
   fi
+}
+
+nginx_test_and_reload() {
+  ensure_nginx_stream_module
+  if ! nginx -t 2>&1; then
+    if grep -qF '/etc/nginx/stream.d/' /etc/nginx/nginx.conf 2>/dev/null; then
+      warn "nginx -t échoue — tentative repair stream (sudo ./install.sh repair-nginx-stream)"
+      if [[ -x "${INFRA_ROOT}/scripts/repair-nginx-stream.sh" ]]; then
+        bash "${INFRA_ROOT}/scripts/repair-nginx-stream.sh" || die "nginx invalide — lancer : sudo ./install.sh repair-nginx-stream"
+      else
+        die "nginx invalide — installer libnginx-mod-stream : sudo apt install -y libnginx-mod-stream"
+      fi
+    else
+      die "nginx -t échoué"
+    fi
+  fi
+  systemctl reload nginx
 }
 
 # Anciens exporters réplicas (1 seul conteneur / suffixe -b) — bloquent :9123/:9124/:9151.

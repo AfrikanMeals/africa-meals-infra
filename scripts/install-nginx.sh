@@ -8,7 +8,7 @@ require_root
 stop_conflicting_webserver nginx
 
 apt update
-apt install -y nginx gettext-base
+apt install -y nginx gettext-base libnginx-mod-stream
 
 mkdir -p "${CERTBOT_WEBROOT}/.well-known/acme-challenge"
 chown -R www-data:www-data "${CERTBOT_WEBROOT}"

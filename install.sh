@@ -43,6 +43,7 @@ Composants:
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
   repair-emqx-prometheus   Répare scrape Prometheus → EMQX (Grafana No data)
   repair-emqx-cluster      Force 3 nœuds EMQX (primary + 2 réplicas)
+  repair-nginx-stream      Module nginx stream (fix « unknown directive stream »)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   minio-replication  MinIO + 2 réplicas site replication (:9002, :9004)
   minio-replica-storage  nginx + TLS LE pour dr1/dr2-storage.wise-eat.com
@@ -126,6 +127,9 @@ run_component() {
       ;;
     repair-emqx-cluster)
       bash "${SCRIPTS}/repair-emqx-cluster.sh"
+      ;;
+    repair-nginx-stream)
+      bash "${SCRIPTS}/repair-nginx-stream.sh"
       ;;
     minio-backup)
       bash "${SCRIPTS}/install-minio-backup.sh"
