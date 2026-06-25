@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/emqx-api.sh
+source "${SCRIPT_DIR}/lib/emqx-api.sh"
 
 require_root
 
@@ -22,15 +24,13 @@ MQTT_PUB_USER="${MQTT_PUB_USERNAME:-wise-eat-admin}"
 MQTT_SUB_PASS="${MQTT_BROKER_PASSWORD:?MQTT_BROKER_PASSWORD requis dans .env.emqx}"
 MQTT_PUB_PASS="${MQTT_ADMIN_PASSWORD:?MQTT_ADMIN_PASSWORD requis dans .env.emqx}"
 
-emqx_api() {
-  curl -fsS -u "${EMQX_DASHBOARD_USERNAME}:${EMQX_DASHBOARD_PASSWORD}" "$@"
-}
-
 log "=== Repair EMQX MQTT auth ==="
 
 if ! nc -z 127.0.0.1 "${EMQX_DASHBOARD_PORT}" 2>/dev/null; then
   die "Dashboard EMQX injoignable sur 127.0.0.1:${EMQX_DASHBOARD_PORT}"
 fi
+
+wait_for_emqx_api_login || die "Login API EMQX échoué — vérifier admin / EMQX_DASHBOARD_PASSWORD"
 
 log "Chaînes d'authentification :"
 emqx_api "${EMQX_API}/authentication" 2>/dev/null \
@@ -38,7 +38,7 @@ emqx_api "${EMQX_API}/authentication" 2>/dev/null \
 
 log "Utilisateurs avant repair :"
 emqx_api "${EMQX_API}/authentication/${AUTH_ID_ENC}/users?limit=100" 2>/dev/null \
-  | python3 -m json.tool 2>/dev/null | sed 's/^/[wise-eat]      /' || warn "Aucun user listé (chaîne absente ?)"
+  | python3 -m json.tool 2>/dev/null | sed 's/^/[wise-eat]      /' || warn "Aucun user listé"
 
 ensure_authz_allow_user() {
   local user="$1"
@@ -77,9 +77,9 @@ apt install -y mosquitto-clients 2>/dev/null || true
 
 test_mqtt_auth() {
   local user="$1" pass="$2"
-  local err rc=0
+  local err
   err="$(timeout 4 mosquitto_sub -h 127.0.0.1 -p 1883 -u "${user}" -P "${pass}" \
-    -t 'wiseeat/repair-test' -C 1 2>&1)" || rc=$?
+    -t 'wiseeat/repair-test' -C 1 2>&1)" || true
   if echo "${err}" | grep -qiE 'not authorised|bad user name|bad password|connection refused'; then
     warn "FAIL ${user} @ 127.0.0.1:1883 — ${err}"
     return 1
@@ -91,6 +91,22 @@ test_mqtt_auth() {
 test_mqtt_auth "${MQTT_PUB_USER}" "${MQTT_PUB_PASS}" || \
   warn "Voir : docker logs --tail=40 wise-eat-emqx-1 | grep -i auth"
 test_mqtt_auth "${MQTT_SUB_USER}" "${MQTT_SUB_PASS}" || true
+
+log "Test MQTTS public…"
+test_mqtt_auth_tls() {
+  local user="$1" pass="$2"
+  local err
+  err="$(timeout 5 mosquitto_sub -h broker.wise-eat.com -p 8883 --capath /etc/ssl/certs \
+    -u "${user}" -P "${pass}" -t 'wiseeat/repair-test' -C 1 2>&1)" || true
+  if echo "${err}" | grep -qiE 'not authorised|bad user name|bad password|connection refused|error'; then
+    warn "FAIL ${user} @ mqtts://broker.wise-eat.com:8883 — ${err}"
+    return 1
+  fi
+  log "OK  ${user} @ mqtts://broker.wise-eat.com:8883"
+  return 0
+}
+
+test_mqtt_auth_tls "${MQTT_PUB_USER}" "${MQTT_PUB_PASS}" || true
 
 cat <<EOF
 
@@ -116,6 +132,5 @@ africa-meals-ws/.env :
   MQTT_BROKER_USERNAME=${MQTT_SUB_USER}
   MQTT_BROKER_PASSWORD=${MQTT_SUB_PASS}
 
-Prérequis TLS : sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-broker
 Puis : pm2 restart africa-meals-api africa-meals-ws
 EOF
