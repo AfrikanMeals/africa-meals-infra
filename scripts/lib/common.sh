@@ -118,9 +118,13 @@ sync_component() {
       --exclude '.env.memcached' --exclude '.env.minio' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
       --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
+      --exclude 'data-cache-replica-1/' --exclude 'data-cache-replica-2/' \
+      --exclude 'data-bullmq-replica-1/' --exclude 'data-bullmq-replica-2/' \
       --exclude 'minio/data/' --exclude 'data/' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
+      --exclude 'cache-replica-1.generated.conf' --exclude 'cache-replica-2.generated.conf' \
+      --exclude 'bull-replica-1.generated.conf' --exclude 'bull-replica-2.generated.conf' \
       "${src}/" "${dst}/"
   fi
 }

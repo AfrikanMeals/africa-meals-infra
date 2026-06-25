@@ -24,15 +24,16 @@ chown -R 999:999 data-cache data-bullmq
 log "OK data-cache data-bullmq → 999:999"
 
 if redis_cluster_b_enabled; then
-  for f in cache-replica.generated.conf bull-replica.generated.conf; do
+  for f in cache-replica-1.generated.conf cache-replica-2.generated.conf \
+    bull-replica-1.generated.conf bull-replica-2.generated.conf; do
     if [[ -f "${f}" ]]; then
       chown 999:999 "${f}"
       chmod 600 "${f}"
     fi
   done
-  mkdir -p data-cache-replica data-bullmq-replica
-  chown -R 999:999 data-cache-replica data-bullmq-replica
-  log "OK data-cache-replica data-bullmq-replica → 999:999"
+  mkdir -p data-cache-replica-1 data-cache-replica-2 data-bullmq-replica-1 data-bullmq-replica-2
+  chown -R 999:999 data-cache-replica-1 data-cache-replica-2 data-bullmq-replica-1 data-bullmq-replica-2
+  log "OK réplicas data-* → 999:999"
 fi
 
 if command -v docker >/dev/null 2>&1 && [[ -f docker-compose.yml ]]; then

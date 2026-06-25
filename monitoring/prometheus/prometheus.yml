@@ -15,7 +15,7 @@ scrape_configs:
       - targets: ['redis-exporter-cache:9121']
         labels:
           namespace: wise-eat
-          redis_cluster: a
+          redis_role: primary
           redis_instance: cache
           redis_port: '6379'
 
@@ -24,7 +24,7 @@ scrape_configs:
       - targets: ['redis-exporter-bullmq:9121']
         labels:
           namespace: wise-eat
-          redis_cluster: a
+          redis_role: primary
           redis_instance: bullmq
           redis_port: '6380'
 
@@ -33,31 +33,63 @@ scrape_configs:
       - targets: ['memcached-exporter:9150']
         labels:
           namespace: wise-eat
-          memcached_cluster: a
+          memcached_role: primary
           memcached_port: '11211'
 
-  - job_name: redis-cache-replica
+  - job_name: redis-cache-replica-1
     static_configs:
-      - targets: ['redis-exporter-cache-replica:9121']
+      - targets: ['redis-exporter-cache-replica-1:9121']
         labels:
           namespace: wise-eat
-          redis_cluster: b
-          redis_instance: cache-replica
+          redis_role: replica
+          redis_replica: '1'
+          redis_instance: cache
           redis_port: '6371'
 
-  - job_name: redis-bullmq-replica
+  - job_name: redis-cache-replica-2
     static_configs:
-      - targets: ['redis-exporter-bullmq-replica:9121']
+      - targets: ['redis-exporter-cache-replica-2:9121']
         labels:
           namespace: wise-eat
-          redis_cluster: b
-          redis_instance: bullmq-replica
+          redis_role: replica
+          redis_replica: '2'
+          redis_instance: cache
+          redis_port: '6372'
+
+  - job_name: redis-bullmq-replica-1
+    static_configs:
+      - targets: ['redis-exporter-bullmq-replica-1:9121']
+        labels:
+          namespace: wise-eat
+          redis_role: replica
+          redis_replica: '1'
+          redis_instance: bullmq
           redis_port: '6390'
 
-  - job_name: memcached-b
+  - job_name: redis-bullmq-replica-2
     static_configs:
-      - targets: ['memcached-exporter-b:9150']
+      - targets: ['redis-exporter-bullmq-replica-2:9121']
         labels:
           namespace: wise-eat
-          memcached_cluster: b
+          redis_role: replica
+          redis_replica: '2'
+          redis_instance: bullmq
+          redis_port: '6391'
+
+  - job_name: memcached-replica-1
+    static_configs:
+      - targets: ['memcached-exporter-replica-1:9150']
+        labels:
+          namespace: wise-eat
+          memcached_role: replica
+          memcached_replica: '1'
           memcached_port: '11213'
+
+  - job_name: memcached-replica-2
+    static_configs:
+      - targets: ['memcached-exporter-replica-2:9150']
+        labels:
+          namespace: wise-eat
+          memcached_role: replica
+          memcached_replica: '2'
+          memcached_port: '11214'

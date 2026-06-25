@@ -62,7 +62,7 @@ bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"
 COMPOSE_ARGS=(--env-file .env.monitoring)
 if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
   COMPOSE_ARGS+=(--profile cluster-b)
-  log "Monitoring cluster B : exporters :9123 :9124 :9151"
+  log "Monitoring réplicas : Redis :9123/:9125/:9124/:9126 Memcached :9151/:9152"
 fi
 
 docker compose "${COMPOSE_ARGS[@]}" pull

@@ -19,14 +19,21 @@ if [[ ! -f .env.redis ]]; then
 CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD}
 BULL_REDIS_PASSWORD=${BULL_REDIS_PASSWORD}
 REDIS_CLUSTER_B_ENABLED=true
-CACHE_REDIS_REPLICA_PORT=6371
-BULL_REDIS_REPLICA_PORT=6390
+CACHE_REDIS_REPLICA_1_PORT=6371
+CACHE_REDIS_REPLICA_2_PORT=6372
+BULL_REDIS_REPLICA_1_PORT=6390
+BULL_REDIS_REPLICA_2_PORT=6391
 EOF
   chmod 600 .env.redis
   log "Mots de passe enregistrés dans ${REDIS_DIR}/.env.redis"
 fi
 
 set -a && source .env.redis && set +a
+
+CACHE_REDIS_REPLICA_1_PORT="${CACHE_REDIS_REPLICA_1_PORT:-${CACHE_REDIS_REPLICA_PORT:-6371}}"
+CACHE_REDIS_REPLICA_2_PORT="${CACHE_REDIS_REPLICA_2_PORT:-6372}"
+BULL_REDIS_REPLICA_1_PORT="${BULL_REDIS_REPLICA_1_PORT:-${BULL_REDIS_REPLICA_PORT:-6390}}"
+BULL_REDIS_REPLICA_2_PORT="${BULL_REDIS_REPLICA_2_PORT:-6391}"
 
 regenerate_acl() {
   local file="$1" user="$2" pass="$3"
@@ -62,60 +69,58 @@ chown 999:999 cache-users.acl bull-users.acl
 chmod 600 cache-users.acl bull-users.acl
 
 COMPOSE_ARGS=(--env-file .env.redis)
-PROFILE="$(wise_eat_compose_profiles || true)"
 if redis_cluster_b_enabled; then
-  log "Cluster B Redis : réplicas cache :${CACHE_REDIS_REPLICA_PORT:-6371} bull :${BULL_REDIS_REPLICA_PORT:-6390}"
-  mkdir -p data-cache-replica data-bullmq-replica
-  chown -R 999:999 data-cache-replica data-bullmq-replica
-  write_replica_conf cache-replica.generated.conf wise-eat-redis-cache 6379 wise-eat-cache "${CACHE_REDIS_PASSWORD}" 1024mb allkeys-lru
-  write_replica_conf bull-replica.generated.conf wise-eat-redis-bullmq 6379 wise-eat-bull "${BULL_REDIS_PASSWORD}" 512mb noeviction
-  chown 999:999 cache-replica.generated.conf bull-replica.generated.conf
+  log "Redis : 1 primary + 2 réplicas (cache :${CACHE_REDIS_REPLICA_1_PORT}/:${CACHE_REDIS_REPLICA_2_PORT}, bull :${BULL_REDIS_REPLICA_1_PORT}/:${BULL_REDIS_REPLICA_2_PORT})"
+  mkdir -p data-cache-replica-1 data-cache-replica-2 data-bullmq-replica-1 data-bullmq-replica-2
+  chown -R 999:999 data-cache-replica-1 data-cache-replica-2 data-bullmq-replica-1 data-bullmq-replica-2
+  write_replica_conf cache-replica-1.generated.conf wise-eat-redis-cache 6379 wise-eat-cache "${CACHE_REDIS_PASSWORD}" 1024mb allkeys-lru
+  write_replica_conf cache-replica-2.generated.conf wise-eat-redis-cache 6379 wise-eat-cache "${CACHE_REDIS_PASSWORD}" 1024mb allkeys-lru
+  write_replica_conf bull-replica-1.generated.conf wise-eat-redis-bullmq 6379 wise-eat-bull "${BULL_REDIS_PASSWORD}" 512mb noeviction
+  write_replica_conf bull-replica-2.generated.conf wise-eat-redis-bullmq 6379 wise-eat-bull "${BULL_REDIS_PASSWORD}" 512mb noeviction
+  chown 999:999 cache-replica-1.generated.conf cache-replica-2.generated.conf \
+    bull-replica-1.generated.conf bull-replica-2.generated.conf
   COMPOSE_ARGS+=(--profile cluster-b)
+  # Anciens conteneurs mono-réplica (migration)
+  for old in wise-eat-redis-cache-replica wise-eat-redis-bullmq-replica; do
+    docker rm -f "${old}" 2>/dev/null || true
+  done
 else
-  log "Cluster B Redis désactivé (REDIS_CLUSTER_B_ENABLED=false)"
+  log "Réplicas Redis désactivés (REDIS_CLUSTER_B_ENABLED=false)"
 fi
 
 log "Démarrage Redis Docker"
 docker compose "${COMPOSE_ARGS[@]}" up -d
-sleep 4
+sleep 5
 docker compose "${COMPOSE_ARGS[@]}" ps
 
-if docker exec wise-eat-redis-cache redis-cli --user wise-eat-cache --pass "${CACHE_REDIS_PASSWORD}" ping | grep -q PONG; then
-  log "redis-cache (cluster A) : PONG :6379"
-else
-  warn "redis-cache ping échoué — voir docker logs wise-eat-redis-cache"
-fi
-if docker exec wise-eat-redis-bullmq redis-cli --user wise-eat-bull --pass "${BULL_REDIS_PASSWORD}" ping | grep -q PONG; then
-  log "redis-bullmq (cluster A) : PONG :6380"
-else
-  warn "redis-bullmq ping échoué — voir docker logs wise-eat-redis-bullmq"
-fi
+ping_redis() {
+  local container="$1" user="$2" pass="$3" label="$4"
+  if docker exec "${container}" redis-cli --user "${user}" --pass "${pass}" ping 2>/dev/null | grep -q PONG; then
+    log "OK  ${label}"
+  else
+    warn "FAIL ${label} — docker logs ${container}"
+  fi
+}
+
+ping_redis wise-eat-redis-cache wise-eat-cache "${CACHE_REDIS_PASSWORD}" "redis-cache primary :6379"
+ping_redis wise-eat-redis-bullmq wise-eat-bull "${BULL_REDIS_PASSWORD}" "redis-bullmq primary :6380"
 
 if redis_cluster_b_enabled; then
-  if docker exec wise-eat-redis-cache-replica redis-cli --user wise-eat-cache --pass "${CACHE_REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG; then
-    log "redis-cache-replica (cluster B) : PONG :${CACHE_REDIS_REPLICA_PORT:-6371}"
-  else
-    warn "redis-cache-replica injoignable — docker logs wise-eat-redis-cache-replica"
-  fi
-  if docker exec wise-eat-redis-bullmq-replica redis-cli --user wise-eat-bull --pass "${BULL_REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG; then
-    log "redis-bullmq-replica (cluster B) : PONG :${BULL_REDIS_REPLICA_PORT:-6390}"
-  else
-    warn "redis-bullmq-replica injoignable — docker logs wise-eat-redis-bullmq-replica"
-  fi
+  ping_redis wise-eat-redis-cache-replica-1 wise-eat-cache "${CACHE_REDIS_PASSWORD}" "redis-cache replica-1 :${CACHE_REDIS_REPLICA_1_PORT}"
+  ping_redis wise-eat-redis-cache-replica-2 wise-eat-cache "${CACHE_REDIS_PASSWORD}" "redis-cache replica-2 :${CACHE_REDIS_REPLICA_2_PORT}"
+  ping_redis wise-eat-redis-bullmq-replica-1 wise-eat-bull "${BULL_REDIS_PASSWORD}" "redis-bullmq replica-1 :${BULL_REDIS_REPLICA_1_PORT}"
+  ping_redis wise-eat-redis-bullmq-replica-2 wise-eat-bull "${BULL_REDIS_PASSWORD}" "redis-bullmq replica-2 :${BULL_REDIS_REPLICA_2_PORT}"
 fi
 
 cat <<EOF
 
-Cluster A (primary — apps par défaut) :
-  Cache   127.0.0.1:6379  user wise-eat-cache
-  BullMQ  127.0.0.1:6380  user wise-eat-bull
+Primary (apps par défaut) :
+  Cache   127.0.0.1:6379
+  BullMQ  127.0.0.1:6380
 
-Cluster B (réplicas lecture — bascule manuelle si primary down) :
-  Cache   127.0.0.1:${CACHE_REDIS_REPLICA_PORT:-6371}
-  BullMQ  127.0.0.1:${BULL_REDIS_REPLICA_PORT:-6390}
-
-Failover manuel API/WS : pointer REDIS_PORT / BULLMQ_REDIS_PORT vers cluster B.
-Pas de bascule automatique sur un seul VPS.
+Réplicas (lecture / failover manuel) :
+  Cache   127.0.0.1:${CACHE_REDIS_REPLICA_1_PORT}  127.0.0.1:${CACHE_REDIS_REPLICA_2_PORT}
+  BullMQ  127.0.0.1:${BULL_REDIS_REPLICA_1_PORT}  127.0.0.1:${BULL_REDIS_REPLICA_2_PORT}
 
 Redis installé dans ${REDIS_DIR}
 EOF

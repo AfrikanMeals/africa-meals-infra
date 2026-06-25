@@ -32,8 +32,8 @@ Usage:
   sudo $0 all
 
 Composants:
-  redis         Redis Docker cluster A (:6379/:6380) + cluster B réplicas (:6371/:6390)
-  memcached     Memcached cluster A (:11211) + cluster B (:11213)
+  redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
+  memcached     Memcached 1 primary (:11211) + 2 réplicas
   minio         MinIO Docker (S3-compatible :9000, console :9001)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot

@@ -4,8 +4,16 @@ redis/cache-users.acl
 redis/bull-users.acl
 redis/data-cache/
 redis/data-bullmq/
+redis/data-cache-replica-1/
+redis/data-cache-replica-2/
+redis/data-bullmq-replica-1/
+redis/data-bullmq-replica-2/
 redis/data-cache-replica/
 redis/data-bullmq-replica/
+redis/cache-replica-1.generated.conf
+redis/cache-replica-2.generated.conf
+redis/bull-replica-1.generated.conf
+redis/bull-replica-2.generated.conf
 redis/cache-replica.generated.conf
 redis/bull-replica.generated.conf
 

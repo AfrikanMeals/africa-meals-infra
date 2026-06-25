@@ -1,6 +1,5 @@
-# Wise Eat — Memcached (cluster A + cluster B optionnel)
-# Cluster B : MEMCACHED_CLUSTER_B_ENABLED=true dans .env.memcached
-# Apps multi-pool : MEMCACHED_SERVERS=127.0.0.1:11211,127.0.0.1:11213
+# Wise Eat — Memcached : 1 primary + 2 réplicas (pools standby, profile cluster-b)
+# MEMCACHED_CLUSTER_B_ENABLED=true dans .env.memcached
 
 networks:
   wise-eat-infra:
@@ -24,19 +23,36 @@ services:
       - "127.0.0.1:${MEMCACHED_PORT:-11211}:11211"
     restart: unless-stopped
 
-  memcached-b:
+  memcached-replica-1:
     profiles: ["cluster-b"]
     image: memcached:1.6-alpine
-    container_name: wise-eat-memcached-b
+    container_name: wise-eat-memcached-replica-1
     networks:
       - wise-eat-infra
     command:
       - -m
-      - "${MEMCACHED_B_MEMORY_MB:-128}"
+      - "${MEMCACHED_REPLICA_MEMORY_MB:-128}"
       - -I
       - "${MEMCACHED_MAX_ITEM_MB:-2}m"
       - -c
       - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
     ports:
-      - "127.0.0.1:${MEMCACHED_B_PORT:-11213}:11211"
+      - "127.0.0.1:${MEMCACHED_REPLICA_1_PORT:-11213}:11211"
+    restart: unless-stopped
+
+  memcached-replica-2:
+    profiles: ["cluster-b"]
+    image: memcached:1.6-alpine
+    container_name: wise-eat-memcached-replica-2
+    networks:
+      - wise-eat-infra
+    command:
+      - -m
+      - "${MEMCACHED_REPLICA_MEMORY_MB:-128}"
+      - -I
+      - "${MEMCACHED_MAX_ITEM_MB:-2}m"
+      - -c
+      - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
+    ports:
+      - "127.0.0.1:${MEMCACHED_REPLICA_2_PORT:-11214}:11211"
     restart: unless-stopped

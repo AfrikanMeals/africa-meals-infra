@@ -151,15 +151,13 @@ curl -s 'http://127.0.0.1:9090/api/v1/query?query=redis_up'
 
 Attendu : `redis_up 1` et `memcached_up 1`. Si `redis_up 0`, aligner `CACHE_REDIS_PASSWORD` / `BULL_REDIS_PASSWORD` entre `redis/.env.redis` et `monitoring/.env.monitoring`, puis relancer `repair-monitoring`.
 
-## Multi-clusters (même VPS)
+## Multi-clusters (même VPS) — 1 primary + 2 réplicas
 
-Deux clusters logiques **A (primary)** et **B (réplicas / 2e pool)** sur la même machine.
-
-| Service | Cluster A | Cluster B |
-|---------|-----------|-----------|
-| Redis cache | `:6379` | `:6371` réplica |
-| Redis BullMQ | `:6380` | `:6390` réplica |
-| Memcached | `:11211` | `:11213` pool séparé |
+| Service | Primary | Réplica 1 | Réplica 2 |
+|---------|---------|-----------|-----------|
+| Redis cache | `:6379` | `:6371` | `:6372` |
+| Redis BullMQ | `:6380` | `:6390` | `:6391` |
+| Memcached | `:11211` | `:11213` | `:11214` |
 
 ```bash
 cd /opt/wise-eat
@@ -169,23 +167,19 @@ sudo ./install.sh memcached
 sudo ./install.sh repair-monitoring
 ```
 
-- `redis/.env.redis` : `REDIS_CLUSTER_B_ENABLED=true` (défaut)
-- `memcached/.env.memcached` : `MEMCACHED_CLUSTER_B_ENABLED=true` (défaut)
+- `redis/.env.redis` : `REDIS_CLUSTER_B_ENABLED=true`
+- `memcached/.env.memcached` : `MEMCACHED_CLUSTER_B_ENABLED=true`
 
-**Bascule manuelle Redis** (si primary down) :
+**Redis** : les 2 réplicas répliquent le primary (async). Failover manuel :
 
 ```env
 REDIS_PORT=6371
 BULLMQ_REDIS_PORT=6390
 ```
 
-**Memcached deux pools** (sharding, pas réplication) :
+**Memcached** : pas de réplication native — les 2 réplicas sont des **pools standby** (bascule manuelle vers `:11213` ou `:11214`). Ne pas lister les 3 pools en même temps sauf sharding voulu.
 
-```env
-MEMCACHED_SERVERS=127.0.0.1:11211,127.0.0.1:11213
-```
-
-> Un seul VPS = pas de HA réelle si la machine tombe. Cluster B sert au **failover manuel** et à la **séparation des pools**.
+> 1 VPS = pas de HA si la machine tombe entièrement.
 
 ### Grafana public (`console.wise-eat.com`)
 

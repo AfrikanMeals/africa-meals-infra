@@ -18,12 +18,16 @@ fi
 
 set -a && source .env.memcached && set +a
 
+MEMCACHED_REPLICA_1_PORT="${MEMCACHED_REPLICA_1_PORT:-${MEMCACHED_B_PORT:-11213}}"
+MEMCACHED_REPLICA_2_PORT="${MEMCACHED_REPLICA_2_PORT:-11214}"
+
 COMPOSE_ARGS=(--env-file .env.memcached)
 if memcached_cluster_b_enabled; then
-  log "Cluster B Memcached : port ${MEMCACHED_B_PORT:-11213}"
+  log "Memcached : 1 primary + 2 réplicas (:${MEMCACHED_REPLICA_1_PORT}, :${MEMCACHED_REPLICA_2_PORT})"
   COMPOSE_ARGS+=(--profile cluster-b)
+  docker rm -f wise-eat-memcached-b 2>/dev/null || true
 else
-  log "Cluster B Memcached désactivé (MEMCACHED_CLUSTER_B_ENABLED=false)"
+  log "Réplicas Memcached désactivés (MEMCACHED_CLUSTER_B_ENABLED=false)"
 fi
 
 log "Démarrage Memcached Docker"
@@ -33,27 +37,29 @@ sleep 2
 docker compose "${COMPOSE_ARGS[@]}" ps
 
 if command -v nc >/dev/null 2>&1; then
-  if nc -z 127.0.0.1 "${MEMCACHED_PORT:-11211}" 2>/dev/null; then
-    log "memcached (cluster A) : port ${MEMCACHED_PORT:-11211}"
-  else
-    warn "memcached cluster A : port ${MEMCACHED_PORT:-11211} inaccessible"
-  fi
-  if memcached_cluster_b_enabled; then
-    if nc -z 127.0.0.1 "${MEMCACHED_B_PORT:-11213}" 2>/dev/null; then
-      log "memcached-b (cluster B) : port ${MEMCACHED_B_PORT:-11213}"
-    else
-      warn "memcached-b : port ${MEMCACHED_B_PORT:-11213} inaccessible"
+  for spec in "${MEMCACHED_PORT:-11211}:primary" "${MEMCACHED_REPLICA_1_PORT}:replica-1" "${MEMCACHED_REPLICA_2_PORT}:replica-2"; do
+    port="${spec%%:*}"
+    name="${spec##*:}"
+    if [[ "${name}" != "primary" ]] && ! memcached_cluster_b_enabled; then
+      continue
     fi
-  fi
+    if nc -z 127.0.0.1 "${port}" 2>/dev/null; then
+      log "OK  memcached ${name} :${port}"
+    else
+      warn "FAIL memcached ${name} :${port}"
+    fi
+  done
 fi
 
 cat <<EOF
 
-API / africa-meals-api (.env) :
-  # Cluster A seul
-  MEMCACHED_SERVERS=127.0.0.1:${MEMCACHED_PORT:-11211}
-  # Clusters A + B (sharding client — pas réplication)
-  # MEMCACHED_SERVERS=127.0.0.1:${MEMCACHED_PORT:-11211},127.0.0.1:${MEMCACHED_B_PORT:-11213}
+Primary : 127.0.0.1:${MEMCACHED_PORT:-11211}
+Réplicas (pools standby — bascule manuelle, pas sync auto) :
+  127.0.0.1:${MEMCACHED_REPLICA_1_PORT}
+  127.0.0.1:${MEMCACHED_REPLICA_2_PORT}
+
+API : MEMCACHED_SERVERS=127.0.0.1:${MEMCACHED_PORT:-11211}
+Failover : MEMCACHED_SERVERS=127.0.0.1:${MEMCACHED_REPLICA_1_PORT}
 
 Memcached installé dans ${MEMCACHED_DIR}
 EOF
