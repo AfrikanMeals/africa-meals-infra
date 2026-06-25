@@ -93,6 +93,10 @@ ensure_letsencrypt_nginx_tls_files() {
     openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048 2>/dev/null || \
       die "Impossible de générer /etc/letsencrypt/ssl-dhparams.pem"
   fi
+  if [[ -f "${NGINX_CONF_SRC}/options-ssl-nginx-stream.conf" ]] \
+    && [[ ! -f /etc/letsencrypt/options-ssl-nginx-stream.conf ]]; then
+    cp "${NGINX_CONF_SRC}/options-ssl-nginx-stream.conf" /etc/letsencrypt/options-ssl-nginx-stream.conf
+  fi
 }
 
 # Basic auth nginx pour Prometheus public (logs.wise-eat.com).

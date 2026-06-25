@@ -38,6 +38,5 @@ envsubst '${EMQX_BROKER_DOMAIN} ${EMQX_BACKEND_HOST} ${EMQX_MQTT_PORT} ${EMQX_MQ
 
 ln -sf "${SITE}" "/etc/nginx/sites-enabled/${EMQX_BROKER_DOMAIN}"
 
-nginx -t
-systemctl reload nginx
+nginx_test_and_reload
 log "nginx MQTTS/WSS activé — mqtts://${EMQX_BROKER_DOMAIN}:${EMQX_MQTTS_PORT}"

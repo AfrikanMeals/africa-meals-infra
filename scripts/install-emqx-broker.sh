@@ -64,8 +64,7 @@ else
 fi
 
 ln -sf "${SITE}" "${ENABLED}"
-nginx -t
-systemctl reload nginx
+nginx_test_and_reload
 
 if [[ -n "${STUNNEL_TLS_EMAIL}" ]] && [[ ! -f "/etc/letsencrypt/live/${EMQX_BROKER_DOMAIN}/fullchain.pem" ]]; then
   log "Certbot pour ${EMQX_BROKER_DOMAIN}…"
