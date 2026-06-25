@@ -74,6 +74,7 @@ export PROMETHEUS_LOGS_DOMAIN=${PROMETHEUS_LOGS_DOMAIN}
 export MINIO_STORAGE_DOMAIN=${MINIO_STORAGE_DOMAIN}
 export MINIO_CONSOLE_DOMAIN=${MINIO_CONSOLE_DOMAIN}
 export EMQX_BROKER_DOMAIN=${EMQX_BROKER_DOMAIN}
+export EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 export INFRA_ROOT=${INFRA_ROOT}
 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
 if systemctl is-active nginx >/dev/null 2>&1; then
@@ -108,6 +109,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ -f "/etc/letsencrypt/live/${EMQX_BROKER_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-emqx-broker-ssl.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${EMQX_WORKER_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/scripts/enable-emqx-worker-ssl.sh 2>/dev/null || true
   fi
 fi
 if systemctl is-active apache2 >/dev/null 2>&1; then

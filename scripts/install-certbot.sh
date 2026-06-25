@@ -15,6 +15,7 @@ INSTALL_PROMETHEUS_CERT="${INSTALL_PROMETHEUS_CERT:-1}"
 INSTALL_MINIO_STORAGE_CERT="${INSTALL_MINIO_STORAGE_CERT:-1}"
 INSTALL_MINIO_CONSOLE_CERT="${INSTALL_MINIO_CONSOLE_CERT:-1}"
 INSTALL_EMQX_BROKER_CERT="${INSTALL_EMQX_BROKER_CERT:-1}"
+INSTALL_EMQX_WORKER_CERT="${INSTALL_EMQX_WORKER_CERT:-1}"
 
 [[ -n "${STUNNEL_TLS_EMAIL}" ]] || \
   die "STUNNEL_TLS_EMAIL requis — ex. STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot"
@@ -51,6 +52,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ "${INSTALL_EMQX_BROKER_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-emqx-broker.sh" 2>/dev/null || true
+  fi
+  if [[ "${INSTALL_EMQX_WORKER_CERT}" == "1" ]]; then
+    bash "${SCRIPT_DIR}/install-emqx-worker.sh" 2>/dev/null || true
   fi
 fi
 
@@ -102,6 +106,11 @@ if [[ "${INSTALL_EMQX_BROKER_CERT}" == "1" ]]; then
   issue_le_cert "${EMQX_BROKER_DOMAIN}"
 fi
 
+if [[ "${INSTALL_EMQX_WORKER_CERT}" == "1" ]]; then
+  log "=== Certificat EMQX Dashboard (${EMQX_WORKER_DOMAIN}) ==="
+  issue_le_cert "${EMQX_WORKER_DOMAIN}"
+fi
+
 install_certbot_renewal_hook
 
 if systemctl is-active nginx >/dev/null 2>&1; then
@@ -130,6 +139,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${EMQX_BROKER_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-emqx-broker-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${EMQX_WORKER_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-emqx-worker-ssl.sh" 2>/dev/null || true
   fi
 elif systemctl is-active apache2 >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/enable-apache-ssl.sh"

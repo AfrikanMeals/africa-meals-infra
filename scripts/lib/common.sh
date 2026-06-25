@@ -16,6 +16,11 @@ EMQX_BROKER_DOMAIN="${EMQX_BROKER_DOMAIN:-broker.wise-eat.com}"
 EMQX_BACKEND_HOST="${EMQX_BACKEND_HOST:-127.0.0.1}"
 EMQX_MQTTS_PORT="${EMQX_MQTTS_PORT:-8883}"
 EMQX_WSS_PORT="${EMQX_WSS_PORT:-8884}"
+EMQX_WORKER_DOMAIN="${EMQX_WORKER_DOMAIN:-worker.wise-eat.com}"
+EMQX_DASHBOARD_BACKEND_HOST="${EMQX_DASHBOARD_BACKEND_HOST:-127.0.0.1}"
+EMQX_DASHBOARD_BACKEND_PORT="${EMQX_DASHBOARD_BACKEND_PORT:-18083}"
+EMQX_WORKER_BASIC_AUTH_USER="${EMQX_WORKER_BASIC_AUTH_USER:-emqx-worker}"
+EMQX_WORKER_HTASSWD_FILE="${EMQX_WORKER_HTASSWD_FILE:-/etc/nginx/htpasswd/emqx-worker}"
 STUNNEL_CONF_SRC="${INFRA_ROOT}/redis/stunnel"
 MEMCACHED_STUNNEL_CONF_SRC="${INFRA_ROOT}/memcached/stunnel"
 NGINX_CONF_SRC="${INFRA_ROOT}/nginx"
@@ -137,6 +142,34 @@ ensure_minio_console_basic_auth_file() {
     log "Basic auth MinIO Console : ${user} → ${file} (mot de passe resynchronisé depuis .env.minio)"
   elif [[ -f "${file}" ]]; then
     log "Basic auth MinIO Console : ${file} (inchangé — définir MINIO_CONSOLE_BASIC_AUTH_PASSWORD pour forcer)"
+  fi
+}
+
+# Basic auth nginx pour EMQX Dashboard public (worker.wise-eat.com).
+ensure_emqx_worker_basic_auth_file() {
+  local user="${EMQX_WORKER_BASIC_AUTH_USER:-emqx-worker}"
+  local pass="${EMQX_WORKER_BASIC_AUTH_PASSWORD:-}"
+  local file="${EMQX_WORKER_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${EMQX_ENV}" ]]; then
+    pass="$(read_env_var_from_file "${EMQX_ENV}" EMQX_WORKER_BASIC_AUTH_PASSWORD || true)"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "EMQX_WORKER_BASIC_AUTH_PASSWORD requis dans ${EMQX_ENV} (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth EMQX Dashboard : ${user} → ${file} (mot de passe resynchronisé depuis .env.emqx)"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth EMQX Dashboard : ${file} (inchangé — définir EMQX_WORKER_BASIC_AUTH_PASSWORD pour forcer)"
   fi
 }
 

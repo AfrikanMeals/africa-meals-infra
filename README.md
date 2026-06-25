@@ -69,6 +69,7 @@ sudo ./install.sh verify-tls
 | `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
 | `cdn.wise-eat.com` | 80 / 443 | MinIO Console (basic auth nginx) | proxy OK |
 | `broker.wise-eat.com` | **80** (ACME) + **8883** (MQTTS) + **8884** (WSS) | EMQX MQTT | **8883/8884 en DNS only** (pas de proxy orange) |
+| `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -91,6 +92,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `EMQX_BROKER_DOMAIN` | `broker.wise-eat.com` | MQTT public (nginx TLS) |
 | `EMQX_MQTTS_PORT` | `8883` | MQTTS (nginx stream → EMQX :1883) |
 | `EMQX_WSS_PORT` | `8884` | WSS (nginx → EMQX :8083/mqtt) |
+| `EMQX_WORKER_DOMAIN` | `worker.wise-eat.com` | Dashboard EMQX public (nginx + basic auth) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
@@ -107,7 +109,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `stunnel` | Redis TLS :6381–6386 (primary + réplicas cluster-b, cert LE requis) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
-| `redis` / `memcached` / `minio` / `emqx` / `emqx-broker` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `emqx` / `emqx-broker` / `emqx-worker` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
 
@@ -308,13 +310,15 @@ Broker MQTT self-hosted (remplace EMQX Cloud / Mosquitto) — cluster **1 primar
 ```bash
 sudo ./install.sh emqx
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-broker
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-worker
 ```
 
 | Port / URL | Service |
 |------------|---------|
 | `mqtt://127.0.0.1:1883` | MQTT local (PM2 API/WS sur le VPS) |
 | `ws://127.0.0.1:8083/mqtt` | WebSocket local |
-| `http://127.0.0.1:18083` | Dashboard EMQX (admin — voir `.env.emqx`) |
+| `http://127.0.0.1:18083` | Dashboard EMQX local (admin — voir `.env.emqx`) |
+| `https://worker.wise-eat.com` | Dashboard EMQX public (basic auth nginx + login EMQX) |
 | `mqtts://broker.wise-eat.com:8883` | MQTT TLS public (nginx → primary) |
 | `wss://broker.wise-eat.com:8884/mqtt` | WebSocket TLS public |
 
@@ -354,6 +358,10 @@ MQTT_BROKER_PASSWORD=<MQTT_ADMIN_PASSWORD depuis .env.emqx>
 ```
 
 DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
+
+DNS A `worker.wise-eat.com` → VPS (proxy Cloudflare OK pour le dashboard HTTPS).
+
+**Accès dashboard public** : double authentification — basic auth nginx (`EMQX_WORKER_BASIC_AUTH_PASSWORD`, user `emqx-worker`) puis login EMQX (`admin` / `EMQX_DASHBOARD_PASSWORD` dans `.env.emqx`).
 
 Cluster : **3 conteneurs toujours déployés** (`wise-eat-emqx-1` primary + `wise-eat-emqx-2/3` réplicas). Sessions/topics répliqués ; seul le primary expose `:1883/:8083/:18083` en local.
 

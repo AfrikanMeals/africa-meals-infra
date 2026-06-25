@@ -37,6 +37,7 @@ Composants:
   minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
+  emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
@@ -107,6 +108,9 @@ run_component() {
       ;;
     emqx-broker)
       bash "${SCRIPTS}/install-emqx-broker.sh"
+      ;;
+    emqx-worker)
+      bash "${SCRIPTS}/install-emqx-worker.sh"
       ;;
     minio-storage)
       bash "${SCRIPTS}/install-minio-storage.sh"

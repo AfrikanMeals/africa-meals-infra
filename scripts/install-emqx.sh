@@ -18,6 +18,7 @@ if [[ ! -f .env.emqx ]]; then
   EMQX_DASHBOARD_PASSWORD="$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
   MQTT_BROKER_PASSWORD="$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
   MQTT_ADMIN_PASSWORD="$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
+  EMQX_WORKER_BASIC_AUTH_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
   cat > .env.emqx <<EOF
 EMQX_CLUSTER_B_ENABLED=true
 EMQX_ERLANG_COOKIE=${EMQX_ERLANG_COOKIE}
@@ -29,8 +30,10 @@ EMQX_MQTT_PORT=1883
 EMQX_WS_PORT=8083
 EMQX_DASHBOARD_PORT=18083
 EMQX_BROKER_DOMAIN=${EMQX_BROKER_DOMAIN}
+EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 EMQX_MQTTS_PORT=8883
 EMQX_WSS_PORT=8884
+EMQX_WORKER_BASIC_AUTH_PASSWORD=${EMQX_WORKER_BASIC_AUTH_PASSWORD}
 EMQX_CLUSTER_STATIC_SEEDS=${EMQX_CLUSTER_STATIC_SEEDS}
 EOF
   chmod 600 .env.emqx
@@ -46,6 +49,14 @@ else
     sed -i "s|^EMQX_CLUSTER_STATIC_SEEDS=.*|EMQX_CLUSTER_STATIC_SEEDS=${EMQX_CLUSTER_STATIC_SEEDS}|" .env.emqx
   else
     echo "EMQX_CLUSTER_STATIC_SEEDS=${EMQX_CLUSTER_STATIC_SEEDS}" >> .env.emqx
+  fi
+  if ! grep -q '^EMQX_WORKER_DOMAIN=' .env.emqx; then
+    echo "EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}" >> .env.emqx
+  fi
+  if ! grep -q '^EMQX_WORKER_BASIC_AUTH_PASSWORD=' .env.emqx; then
+    EMQX_WORKER_BASIC_AUTH_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
+    echo "EMQX_WORKER_BASIC_AUTH_PASSWORD=${EMQX_WORKER_BASIC_AUTH_PASSWORD}" >> .env.emqx
+    log "EMQX_WORKER_BASIC_AUTH_PASSWORD ajouté à .env.emqx (nginx basic auth worker)"
   fi
 fi
 
@@ -110,6 +121,7 @@ Cluster (3 conteneurs) :
   Réplica 2 wise-eat-emqx-3  → cluster interne (wise-eat-infra)
 
   Dashboard  http://127.0.0.1:${EMQX_DASHBOARD_PORT:-18083}  (admin / voir .env.emqx)
+  Public     https://${EMQX_WORKER_DOMAIN:-worker.wise-eat.com}  (après ./install.sh emqx-worker + certbot)
 
 Remote TLS (après ./install.sh emqx-broker + certbot) :
   MQTTS      mqtts://${EMQX_BROKER_DOMAIN:-broker.wise-eat.com}:${EMQX_MQTTS_PORT:-8883}

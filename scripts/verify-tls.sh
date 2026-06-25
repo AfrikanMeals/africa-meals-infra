@@ -26,6 +26,7 @@ check_le_file "WS nginx" "${WISE_EAT_DOMAIN}"
 check_le_file "Redis Stunnel" "${REDIS_TLS_DOMAIN}"
 check_le_file "Grafana console" "${GRAFANA_CONSOLE_DOMAIN}"
 check_le_file "EMQX broker" "${EMQX_BROKER_DOMAIN}"
+check_le_file "EMQX dashboard" "${EMQX_WORKER_DOMAIN}"
 
 if command -v openssl >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
   if nc -z 127.0.0.1 "${EMQX_MQTTS_PORT}" 2>/dev/null; then
