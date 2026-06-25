@@ -25,9 +25,32 @@ if command -v ufw >/dev/null 2>&1; then
   ufw reload
 fi
 
+log "Sync configs Stunnel (listeners IPv6 :::6381-6386, :::11212)…"
+for replica_conf in \
+  redis-cache.conf \
+  redis-bullmq.conf \
+  redis-cache-replica-1.conf \
+  redis-cache-replica-2.conf \
+  redis-bullmq-replica-1.conf \
+  redis-bullmq-replica-2.conf; do
+  if [[ -f "${STUNNEL_CONF_SRC}/${replica_conf}" ]]; then
+    cp "${STUNNEL_CONF_SRC}/${replica_conf}" /etc/stunnel/conf.d/
+  fi
+done
+if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
+  cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
+fi
+if systemctl is-active stunnel4 >/dev/null 2>&1; then
+  systemctl restart stunnel4
+  log "stunnel4 redémarré"
+else
+  warn "stunnel4 inactif — lancer : sudo ./install.sh stunnel"
+fi
+
 bash "${SCRIPT_DIR}/repair-vps-mqtt-broker-hosts.sh"
 
 log "Vérification écoute dual-stack (extrait) :"
-ss -tlnp 2>/dev/null | grep -E '638[1-6]|:8883|:8884|\[::\]:8883|\[::\]:8884' | sed 's/^/[wise-eat]   /' || warn "Ports non visibles — relancer stunnel / emqx-broker"
+ss -tlnp 2>/dev/null | grep -E '638[1-6]|:8883|:8884|\[::\]:638[1-6]|\[::\]:8883|\[::\]:8884|\[::\]:11212' | sed 's/^/[wise-eat]   /' \
+  || warn "Ports non visibles — relancer stunnel / emqx-broker"
 
 log "Terminé. Depuis un client IPv6 : ./scripts/verify-ipv6-endpoints.sh"

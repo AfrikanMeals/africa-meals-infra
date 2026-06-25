@@ -58,8 +58,13 @@ check_tls_sni() {
     return
   fi
   local issuer
-  issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
-    | openssl x509 -noout -issuer 2>/dev/null || true)"
+  if command -v perl >/dev/null 2>&1; then
+    issuer="$(echo | perl -e 'alarm shift; exec @ARGV' 5 openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
+      | openssl x509 -noout -issuer 2>/dev/null || true)"
+  else
+    issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
+      | openssl x509 -noout -issuer 2>/dev/null || true)"
+  fi
   if [[ -n "${issuer}" ]] && [[ "${issuer}" == *"Let's Encrypt"* ]]; then
     log "OK  TLS ${label} ${host}:${port} — Let's Encrypt"
   elif [[ -n "${issuer}" ]]; then
