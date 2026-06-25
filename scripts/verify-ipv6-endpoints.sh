@@ -74,7 +74,7 @@ check_tls_sni() {
 log "=== Vérification IPv6 / dual-stack Wise Eat ==="
 log "IPv6 VPS documenté : ${VPS_IPV6}"
 
-for host in "${REDIS_TLS_DOMAIN}" "${EMQX_BROKER_DOMAIN}" storage.wise-eat.com; do
+for host in "${REDIS_TLS_DOMAIN}" "${EMQX_BROKER_DOMAIN}" "${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}"; do
   check_aaaa "${host}"
 done
 
@@ -87,10 +87,10 @@ check_tls_sni "${REDIS_TLS_DOMAIN}" 6381 "Redis"
 check_tls_sni "${EMQX_BROKER_DOMAIN}" "${EMQX_MQTTS_PORT}" "MQTTS"
 
 if [[ "${fail}" -eq 0 ]]; then
-  log "Tous les tests sont OK — les apps peuvent garder les hostnames dans .env (résolution dual-stack)."
+  log "Tous les tests OK - les apps gardent les hostnames dans .env"
 else
-  warn "Échecs détectés — sur le VPS : sudo ./install.sh repair-ipv6-ufw"
-  warn "Vérifier aussi Hostinger : IPv6 activé sur l’interface + pas de blocage IPv4-only côté FAI."
+  warn "Echecs detectes - sur le VPS : sudo ./install.sh repair-ipv6-ufw"
+  warn "Verifier Hostinger : IPv6 active sur l interface reseau du VPS"
 fi
 
 exit "${fail}"
