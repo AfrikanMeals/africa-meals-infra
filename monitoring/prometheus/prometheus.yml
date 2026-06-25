@@ -116,13 +116,13 @@ scrape_configs:
           memcached_replica: '2'
           memcached_port: '11214'
 
-  # MinIO cluster (dashboard Grafana #20826 / Prometheus #25202)
-  # host.docker.internal → 127.0.0.1:9000 sur l'hôte (MinIO bind localhost)
+  # MinIO — scrape via réseau Docker (NE PAS utiliser host.docker.internal:9000 :
+  # l'API Nest écoute sur 0.0.0.0:9000 et répond 404 à /minio/v2/metrics/cluster).
   - job_name: minio
     metrics_path: /minio/v2/metrics/cluster
     scheme: http
     static_configs:
-      - targets: ['host.docker.internal:9000']
+      - targets: ['wise-eat-minio:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
@@ -130,12 +130,11 @@ scrape_configs:
       - target_label: instance
         replacement: wise-eat-minio:9000
 
-  # Métriques nœud (minio_node_*, CPU, mémoire, FDs — panneaux dashboard)
   - job_name: minio
     metrics_path: /minio/v2/metrics/node
     scheme: http
     static_configs:
-      - targets: ['host.docker.internal:9000']
+      - targets: ['wise-eat-minio:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio

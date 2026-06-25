@@ -269,3 +269,5 @@ MINIO_FORCE_PATH_STYLE=true
 ```
 
 Sur le **même VPS** que MinIO, l’API peut aussi utiliser `MINIO_ENDPOINT=http://127.0.0.1:9000` (sans TLS interne).
+
+> **Port 9000** : l’API Nest (`NODE_PORT=9000`) écoute sur `0.0.0.0:9000` ; MinIO sur `127.0.0.1:9000` uniquement. Prometheus scrape **wise-eat-minio:9000** via le réseau Docker — jamais `host:9000` (sinon 404 sur l’API).

@@ -22,6 +22,14 @@ if ! docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.
   docker network connect wise-eat-infra wise-eat-minio 2>/dev/null || true
 fi
 
+# Recréer MinIO si le réseau wise-eat-infra a été ajouté après le premier démarrage.
+if [[ -f "${MINIO_ENV}" ]]; then
+  log "Recréation MinIO (réseaux Docker à jour)"
+  cd "${MINIO_DIR}"
+  docker compose --env-file .env.minio up -d --force-recreate minio
+  sleep 3
+fi
+
 sync_component monitoring
 cd "${MON_DIR}"
 
@@ -29,28 +37,30 @@ if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-prometheus$'; then
   bash "${SCRIPT_DIR}/install-monitoring.sh"
 fi
 
-log "Recréation Prometheus (host.docker.internal:host-gateway pour scrape :9000)"
-docker compose --env-file .env.monitoring up -d --force-recreate prometheus
-sleep 5
+docker compose --env-file .env.monitoring up -d prometheus
+sleep 3
 
 if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
   log "Prometheus config rechargée"
 else
-  warn "Reload HTTP échoué — conteneur redémarré via compose"
+  docker compose --env-file .env.monitoring restart prometheus
+  sleep 5
 fi
 
-log "Test scrape depuis le conteneur Prometheus"
+log "Test scrape depuis Prometheus → wise-eat-minio:9000 (pas host:9000 = API Nest)"
 if docker exec wise-eat-prometheus wget -qO- \
-  'http://host.docker.internal:9000/minio/v2/metrics/cluster' 2>/dev/null \
-  | head -3 | grep -q minio_; then
-  log "OK  Prometheus → host.docker.internal:9000 (métriques cluster)"
+  'http://wise-eat-minio:9000/minio/v2/metrics/cluster' 2>/dev/null \
+  | head -5 | grep -q minio_; then
+  log "OK  Prometheus → wise-eat-minio:9000"
 else
-  warn "FAIL scrape interne — vérifier MinIO sur 127.0.0.1:9000"
+  warn "FAIL scrape wise-eat-minio:9000"
+  warn "      docker network inspect wise-eat-infra"
+  warn "      docker inspect wise-eat-minio --format '{{json .NetworkSettings.Networks}}'"
   docker exec wise-eat-prometheus wget -S -O- \
-    'http://host.docker.internal:9000/minio/health/live' 2>&1 | tail -5 || true
+    'http://wise-eat-minio:9000/minio/health/live' 2>&1 | tail -8 || true
 fi
 
-sleep 3
+sleep 5
 log "Requête Prometheus up{job=\"minio\"}"
 curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
   --data-urlencode 'query=up{job="minio"}' \
@@ -61,7 +71,7 @@ if d.get('status')!='success':
     print('  ERREUR', d); raise SystemExit(1)
 r=d.get('data',{}).get('result',[])
 if not r:
-    print('  (vide — attendre 15s et réessayer, ou Targets dans Prometheus UI)')
+    print('  (vide — voir http://127.0.0.1:9090/targets job=minio)')
 else:
     for s in r:
         m=s.get('metric',{})
@@ -80,4 +90,4 @@ print(f'  minio_cluster_health_status: {len(r)} série(s)')
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 
-log "Terminé — Grafana : MinIO / Wise Eat — MinIO Storage (variable scrape_jobs=minio)"
+log "Terminé — ne pas scraper host:9000 (conflit API Nest NODE_PORT=9000)"
