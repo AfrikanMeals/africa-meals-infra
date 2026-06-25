@@ -49,8 +49,16 @@ check_tls_sni() {
     warn "openssl absent — skip TLS ${label}"
     return 0
   fi
+  local target_ip
+  target_ip="$(dig +short AAAA "${host}" 2>/dev/null | head -n 1 || true)"
+  [[ -n "${target_ip}" ]] || target_ip="$(dig +short A "${host}" 2>/dev/null | head -n 1 || true)"
+  if [[ -z "${target_ip}" ]] || ! nc -z -G 2 -w 2 "${target_ip}" "${port}" 2>/dev/null; then
+    warn "SKIP TLS ${label} ${host}:${port} — port fermé"
+    fail=1
+    return
+  fi
   local issuer
-  issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" -brief 2>/dev/null \
+  issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
     | openssl x509 -noout -issuer 2>/dev/null || true)"
   if [[ -n "${issuer}" ]] && [[ "${issuer}" == *"Let's Encrypt"* ]]; then
     log "OK  TLS ${label} ${host}:${port} — Let's Encrypt"
