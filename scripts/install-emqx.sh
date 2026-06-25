@@ -40,17 +40,21 @@ set -a && source .env.emqx && set +a
 if emqx_cluster_b_enabled; then
   EMQX_CLUSTER_STATIC_SEEDS='["emqx@wise-eat-emqx-1","emqx@wise-eat-emqx-2","emqx@wise-eat-emqx-3"]'
   log "EMQX : 1 primary + 2 réplicas (cluster static)"
-  mkdir -p data-emqx-1 data-emqx-2 data-emqx-3
+  EMQX_DATA_DIRS=(data-emqx-1 data-emqx-2 data-emqx-3)
   COMPOSE_ARGS=(--env-file .env.emqx --profile cluster-b)
 else
   EMQX_CLUSTER_STATIC_SEEDS='["emqx@wise-eat-emqx-1"]'
   log "EMQX : nœud unique (EMQX_CLUSTER_B_ENABLED=false)"
-  mkdir -p data-emqx-1
+  EMQX_DATA_DIRS=(data-emqx-1)
   COMPOSE_ARGS=(--env-file .env.emqx)
   for old in wise-eat-emqx-2 wise-eat-emqx-3; do
     docker rm -f "${old}" 2>/dev/null || true
   done
 fi
+
+mkdir -p "${EMQX_DATA_DIRS[@]}"
+chown -R 1000:1000 "${EMQX_DATA_DIRS[@]}"
+log "OK ${EMQX_DATA_DIRS[*]} → 1000:1000 (user emqx dans le conteneur)"
 
 export EMQX_CLUSTER_STATIC_SEEDS
 
