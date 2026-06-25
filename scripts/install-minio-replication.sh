@@ -70,15 +70,9 @@ MINIO_REPLICA_1_SERVER_URL="${MINIO_REPLICA_1_SERVER_URL:-https://${MINIO_REPLIC
 MINIO_REPLICA_2_SERVER_URL="${MINIO_REPLICA_2_SERVER_URL:-https://${MINIO_REPLICA_2_STORAGE_DOMAIN}}"
 
 if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
-  log "nginx reverse-proxy réplicas MinIO (${MINIO_REPLICA_1_STORAGE_DOMAIN}, ${MINIO_REPLICA_2_STORAGE_DOMAIN})"
-  MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_1_STORAGE_DOMAIN}" \
-    MINIO_BACKEND_PORT="${MINIO_REPLICA_1_API_PORT}" \
-    bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || \
-    warn "nginx ${MINIO_REPLICA_1_STORAGE_DOMAIN} non configuré — DNS A + sudo STUNNEL_TLS_EMAIL=... ./install.sh minio-replication"
-  MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_2_STORAGE_DOMAIN}" \
-    MINIO_BACKEND_PORT="${MINIO_REPLICA_2_API_PORT}" \
-    bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || \
-    warn "nginx ${MINIO_REPLICA_2_STORAGE_DOMAIN} non configuré"
+  STUNNEL_TLS_EMAIL="${STUNNEL_TLS_EMAIL:-}" \
+    bash "${SCRIPT_DIR}/install-minio-replica-storage.sh" 2>/dev/null || \
+    warn "nginx/TLS réplicas non configurés — sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-replica-storage"
 fi
 
 API_PORT="${MINIO_API_PORT:-9000}"

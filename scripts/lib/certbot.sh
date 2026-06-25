@@ -89,6 +89,22 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   if [[ -f "/etc/letsencrypt/live/${MINIO_CONSOLE_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-minio-console-ssl.sh 2>/dev/null || true
   fi
+  MINIO_ENV="${INFRA_ROOT}/minio/.env.minio"
+  if [[ -f "\${MINIO_ENV}" ]]; then
+    set -a && source "\${MINIO_ENV}" && set +a
+    R1="\${MINIO_REPLICA_1_STORAGE_DOMAIN:-dr1-storage.wise-eat.com}"
+    R2="\${MINIO_REPLICA_2_STORAGE_DOMAIN:-dr2-storage.wise-eat.com}"
+    P1="\${MINIO_REPLICA_1_API_PORT:-9002}"
+    P2="\${MINIO_REPLICA_2_API_PORT:-9004}"
+    if [[ -f "/etc/letsencrypt/live/\${R1}/fullchain.pem" ]]; then
+      MINIO_STORAGE_DOMAIN="\${R1}" MINIO_BACKEND_PORT="\${P1}" \
+        bash ${INFRA_ROOT}/scripts/enable-minio-storage-ssl.sh 2>/dev/null || true
+    fi
+    if [[ -f "/etc/letsencrypt/live/\${R2}/fullchain.pem" ]]; then
+      MINIO_STORAGE_DOMAIN="\${R2}" MINIO_BACKEND_PORT="\${P2}" \
+        bash ${INFRA_ROOT}/scripts/enable-minio-storage-ssl.sh 2>/dev/null || true
+    fi
+  fi
 fi
 if systemctl is-active apache2 >/dev/null 2>&1; then
   WISE_EAT_DOMAIN=${WISE_EAT_DOMAIN} bash ${INFRA_ROOT}/scripts/enable-apache-ssl.sh

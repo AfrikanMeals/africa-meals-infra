@@ -271,6 +271,11 @@ MINIO_REPLICA_ENDPOINTS=https://dr1-storage.wise-eat.com,https://dr2-storage.wis
 MINIO_FORCE_PATH_STYLE=true
 ```
 
-DNS A (ou CNAME) requis pour `dr1-storage.wise-eat.com` et `dr2-storage.wise-eat.com` → même VPS. `install.sh minio-replication` configure nginx + TLS (Certbot si `STUNNEL_TLS_EMAIL` défini).
+DNS A (ou CNAME) requis pour `dr1-storage.wise-eat.com` et `dr2-storage.wise-eat.com` → même VPS.
+
+TLS réplicas (certificats LE dédiés — requis pour `MINIO_REPLICA_ENDPOINTS` HTTPS) :
+```bash
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-replica-storage
+```
 
 > **Port 9000** : l’API Nest (`NODE_PORT=9000`) écoute sur `0.0.0.0:9000` ; MinIO sur `127.0.0.1:9000` uniquement. Prometheus scrape **wise-eat-minio:9000** via le réseau Docker — jamais `host:9000` (sinon 404 sur l’API).

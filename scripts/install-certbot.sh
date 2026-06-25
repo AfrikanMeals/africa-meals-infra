@@ -43,6 +43,7 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || true
+    bash "${SCRIPT_DIR}/install-minio-replica-storage.sh" 2>/dev/null || true
   fi
   if [[ "${INSTALL_MINIO_CONSOLE_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-minio-console.sh" 2>/dev/null || true
@@ -71,6 +72,22 @@ if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
   issue_le_cert "${MINIO_STORAGE_DOMAIN}"
 fi
 
+if [[ -f "${MINIO_ENV}" ]]; then
+  set -a && source "${MINIO_ENV}" && set +a
+fi
+MINIO_REPLICA_1_STORAGE_DOMAIN="${MINIO_REPLICA_1_STORAGE_DOMAIN:-dr1-storage.wise-eat.com}"
+MINIO_REPLICA_2_STORAGE_DOMAIN="${MINIO_REPLICA_2_STORAGE_DOMAIN:-dr2-storage.wise-eat.com}"
+if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
+  if cert_exists "${MINIO_REPLICA_1_STORAGE_DOMAIN}" || [[ -f "/etc/nginx/sites-enabled/${MINIO_REPLICA_1_STORAGE_DOMAIN}" ]]; then
+    log "=== Certificat MinIO réplica 1 (${MINIO_REPLICA_1_STORAGE_DOMAIN}) ==="
+    issue_le_cert "${MINIO_REPLICA_1_STORAGE_DOMAIN}"
+  fi
+  if cert_exists "${MINIO_REPLICA_2_STORAGE_DOMAIN}" || [[ -f "/etc/nginx/sites-enabled/${MINIO_REPLICA_2_STORAGE_DOMAIN}" ]]; then
+    log "=== Certificat MinIO réplica 2 (${MINIO_REPLICA_2_STORAGE_DOMAIN}) ==="
+    issue_le_cert "${MINIO_REPLICA_2_STORAGE_DOMAIN}"
+  fi
+fi
+
 if [[ "${INSTALL_MINIO_CONSOLE_CERT}" == "1" ]]; then
   log "=== Certificat MinIO Console (${MINIO_CONSOLE_DOMAIN}) ==="
   issue_le_cert "${MINIO_CONSOLE_DOMAIN}"
@@ -88,6 +105,16 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${MINIO_STORAGE_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-minio-storage-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${MINIO_REPLICA_1_STORAGE_DOMAIN}"; then
+    MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_1_STORAGE_DOMAIN}" \
+      MINIO_BACKEND_PORT="${MINIO_REPLICA_1_API_PORT:-9002}" \
+      bash "${SCRIPT_DIR}/enable-minio-storage-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${MINIO_REPLICA_2_STORAGE_DOMAIN}"; then
+    MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_2_STORAGE_DOMAIN}" \
+      MINIO_BACKEND_PORT="${MINIO_REPLICA_2_API_PORT:-9004}" \
+      bash "${SCRIPT_DIR}/enable-minio-storage-ssl.sh" 2>/dev/null || true
   fi
   if cert_exists "${MINIO_CONSOLE_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-minio-console-ssl.sh" 2>/dev/null || true

@@ -40,6 +40,7 @@ Composants:
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   minio-replication  MinIO + 2 réplicas site replication (:9002, :9004)
+  minio-replica-storage  nginx + TLS LE pour dr1/dr2-storage.wise-eat.com
   repair-minio-replication  Répare site replication (buckets réplicas + mc)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
@@ -111,6 +112,9 @@ run_component() {
       ;;
     minio-replication)
       bash "${SCRIPTS}/install-minio-replication.sh"
+      ;;
+    minio-replica-storage)
+      bash "${SCRIPTS}/install-minio-replica-storage.sh"
       ;;
     repair-minio-replication)
       bash "${SCRIPTS}/repair-minio-replication.sh"
