@@ -72,10 +72,11 @@ configure_minio_site_replication_mc() {
         done
       }
 
-      apply_replicate_update() {
-        mc admin replicate update primary \
-          --replicate "existing-objects,delete,delete-marker,metadata-sync" \
-          || mc admin replicate update primary --replicate "existing-objects" \
+      apply_replicate_backfill() {
+        # --replicate n existe pas sur mc RELEASE.2024-10-08 ; resync propage les objets existants.
+        echo "Resync objets existants vers les réplicas (best-effort)..."
+        mc admin replicate resync start primary 2>/dev/null \
+          || mc admin replicate resync status primary 2>/dev/null \
           || true
       }
 
@@ -87,7 +88,7 @@ configure_minio_site_replication_mc() {
         echo "MinIO exige de lister tous les sites du pool lors de l ajout"
         strip_replica_buckets replica2
         mc admin replicate add primary replica1 replica2
-        apply_replicate_update
+        apply_replicate_backfill
         echo "Site replication activée (3 sites)"
         replication_info
       elif replication_not_enabled; then
@@ -95,7 +96,7 @@ configure_minio_site_replication_mc() {
         strip_replica_buckets replica1
         strip_replica_buckets replica2
         mc admin replicate add primary replica1 replica2
-        apply_replicate_update
+        apply_replicate_backfill
         if replication_not_enabled; then
           echo "ERREUR: SiteReplication inactive après mc admin replicate add"
           replication_info
