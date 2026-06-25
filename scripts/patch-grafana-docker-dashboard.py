@@ -62,6 +62,13 @@ def apply_metric_renames(expr: str) -> str:
 def patch_expr(expr: str) -> str:
     expr = apply_metric_renames(expr)
 
+    # #4271 : rate() sur container_last_seen (gauge) → N/A ; compter les séries directement.
+    expr = re.sub(
+        r"count\s*\(\s*rate\s*\(\s*container_last_seen[^)]*\)\s*\)",
+        f'count(container_last_seen{{instance="{CADVISOR_INSTANCE}", {CONTAINER_FILTER}, image!=""}})',
+        expr,
+    )
+
     expr = expr.replace(
         "container_label_namespace",
         "container_label_com_docker_compose_project",

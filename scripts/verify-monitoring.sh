@@ -170,6 +170,25 @@ else
   fail=1
 fi
 
+log "=== requête count conteneurs (dashboard Docker #4271 — panel Containers) ==="
+CONTAINER_COUNT_Q='count(container_last_seen{instance="wise-eat:8080",name=~".*wise-eat.*",image!=""})'
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — panel Containers afficherait N/A)')
+    sys.exit(1)
+v=r[0].get('value',[None,'?'])[1]
+print(f'  conteneurs wise-eat : {v}')
+"
+else
+  warn "FAIL requête Prometheus container_last_seen count"
+  fail=1
+fi
+
 log "=== requête node_uname_info (dashboard #1860) ==="
 if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info' | grep -q '"status":"success"'; then
   curl -sf 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info' \

@@ -189,7 +189,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(rate(container_last_seen{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}[3m]))",
+          "expr": "count(container_last_seen{instance=\"wise-eat:8080\",name=~\".*wise-eat.*\",image!=\"\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
