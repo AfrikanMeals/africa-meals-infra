@@ -27,6 +27,15 @@ if ! wait_for_minio_local "${MINIO_API_PORT:-9000}"; then
   die "MinIO ne répond pas sur 127.0.0.1:${MINIO_API_PORT:-9000} — docker logs wise-eat-minio"
 fi
 
+log "Attente métriques MinIO (endpoint /minio/v2/metrics/cluster)…"
+for _ in $(seq 1 20); do
+  if curl -sf "http://127.0.0.1:${MINIO_API_PORT:-9000}/minio/v2/metrics/cluster" \
+    | grep -qE '(^|\n)minio_cluster_health_status'; then
+    break
+  fi
+  sleep 1
+done
+
 ensure_minio_on_wise_eat_infra || die "wise-eat-minio injoignable sur wise-eat-infra"
 
 log "Réseaux MinIO : $(docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
@@ -58,10 +67,16 @@ log "Test réseau wise-eat-infra → wise-eat-minio:9000"
 if probe_minio_from_infra_network; then
   log "OK  wise-eat-infra → wise-eat-minio:9000 (métriques cluster)"
 else
-  warn "FAIL curl depuis wise-eat-infra"
-  docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
-  docker inspect wise-eat-minio --format '{{json .NetworkSettings.Networks}}' || true
-  die "MinIO injoignable depuis wise-eat-infra — vérifier docker compose minio"
+  warn "Probe curl sidecar échoué"
+  diagnose_minio_infra_probe
+  log "Attente scrape Prometheus (15s) avant verdict…"
+  sleep 15
+  if prometheus_minio_scrape_up; then
+    warn "Prometheus scrape minio UP — probe sidecar ignoré (réseau OK pour Prometheus)"
+  else
+    docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
+    die "MinIO injoignable depuis wise-eat-infra — voir diagnostic ci-dessus"
+  fi
 fi
 
 log "Attente scrape Prometheus (20s)…"

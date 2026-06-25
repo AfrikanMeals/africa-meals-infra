@@ -237,10 +237,75 @@ ensure_minio_on_wise_eat_infra() {
   docker network connect wise-eat-infra wise-eat-minio
 }
 
-probe_minio_from_infra_network() {
+_infra_minio_curl() {
+  local url="$1"
+  shift
   docker run --rm --network wise-eat-infra curlimages/curl:8.5.0 \
-    -sf --max-time 10 'http://wise-eat-minio:9000/minio/v2/metrics/cluster' 2>/dev/null \
-    | head -5 | grep -q 'minio_'
+    "$@" --max-time 15 "${url}" 2>/dev/null
+}
+
+_minio_infra_ip() {
+  docker inspect -f \
+    '{{range $k,$v := .NetworkSettings.Networks}}{{if eq $k "wise-eat-infra"}}{{$v.IPAddress}}{{end}}{{end}}' \
+    wise-eat-minio 2>/dev/null || true
+}
+
+probe_minio_from_infra_network() {
+  local url body ip
+
+  for url in \
+    'http://wise-eat-minio:9000/minio/health/live' \
+    'http://minio:9000/minio/health/live'; do
+    if _infra_minio_curl "${url}" -sf >/dev/null; then
+      break
+    fi
+    url=""
+  done
+  if [[ -z "${url}" ]]; then
+    ip="$(_minio_infra_ip)"
+    [[ -n "${ip}" ]] || return 1
+    _infra_minio_curl "http://${ip}:9000/minio/health/live" -sf >/dev/null || return 1
+  fi
+
+  body="$(_infra_minio_curl 'http://wise-eat-minio:9000/minio/v2/metrics/cluster' -sf || true)"
+  if [[ -z "${body}" ]]; then
+    ip="$(_minio_infra_ip)"
+    [[ -n "${ip}" ]] || return 1
+    body="$(_infra_minio_curl "http://${ip}:9000/minio/v2/metrics/cluster" -sf || true)"
+  fi
+  [[ -n "${body}" ]] && printf '%s\n' "${body}" | grep -qE '(^|\n)minio_'
+}
+
+diagnose_minio_infra_probe() {
+  local url code ip
+  warn "Diagnostic réseau wise-eat-infra → MinIO :"
+  for url in \
+    'http://wise-eat-minio:9000/minio/health/live' \
+    'http://minio:9000/minio/health/live' \
+    'http://wise-eat-minio:9000/minio/v2/metrics/cluster'; do
+    code="$(_infra_minio_curl "${url}" -s -o /dev/null -w '%{http_code}' || echo err)"
+    warn "  curl ${url} → HTTP ${code}"
+  done
+  ip="$(_minio_infra_ip)"
+  if [[ -n "${ip}" ]]; then
+    code="$(_infra_minio_curl "http://${ip}:9000/minio/v2/metrics/cluster" -s -o /dev/null -w '%{http_code}' || echo err)"
+    warn "  curl http://${ip}:9000/minio/v2/metrics/cluster → HTTP ${code}"
+  fi
+  if wait_for_container_running wise-eat-prometheus 3; then
+    if docker exec wise-eat-prometheus wget -qO- -T 8 \
+      'http://wise-eat-minio:9000/minio/health/live' >/dev/null 2>&1; then
+      warn "  wise-eat-prometheus → wise-eat-minio:9000 health/live : OK"
+    else
+      warn "  wise-eat-prometheus → wise-eat-minio:9000 health/live : FAIL"
+    fi
+  fi
+}
+
+prometheus_minio_scrape_up() {
+  local out
+  out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=up{job="minio"}' 2>/dev/null || true)"
+  [[ -n "${out}" ]] && printf '%s' "${out}" | grep -qE '"value"\s*:\s*\[[^]]+,\s*"1"\]'
 }
 
 env_truthy() {
