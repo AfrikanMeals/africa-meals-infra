@@ -34,11 +34,13 @@ Usage:
 Composants:
   redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
   memcached     Memcached 1 primary (:11211) + 2 réplicas
-  minio         MinIO Docker (S3-compatible :9000, console :9001)
+  minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
+  minio-storage nginx reverse-proxy → MinIO (storage.wise-eat.com)
+  minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
-  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana + Prometheus)
+  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana + Prometheus + MinIO)
   stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
@@ -90,6 +92,12 @@ run_component() {
       ;;
     minio)
       bash "${SCRIPTS}/install-minio.sh"
+      ;;
+    minio-storage)
+      bash "${SCRIPTS}/install-minio-storage.sh"
+      ;;
+    minio-backup)
+      bash "${SCRIPTS}/install-minio-backup.sh"
       ;;
     nginx)
       bash "${SCRIPTS}/install-nginx.sh"

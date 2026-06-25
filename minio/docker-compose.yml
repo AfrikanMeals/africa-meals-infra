@@ -1,6 +1,6 @@
 # Wise Eat — MinIO (stockage S3-compatible pour médias)
 # Install : sudo ./install.sh minio
-# API : http://127.0.0.1:9000 · Console : http://127.0.0.1:9001
+# API locale : http://127.0.0.1:9000 · Public : https://storage.wise-eat.com
 
 services:
   minio:
@@ -10,13 +10,14 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+      MINIO_SERVER_URL: ${MINIO_SERVER_URL:-https://storage.wise-eat.com}
       # Métriques Prometheus (réseau Docker wise-eat-infra uniquement)
       MINIO_PROMETHEUS_AUTH_TYPE: public
     ports:
       - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
-      - ./data:/data
+      - ${MINIO_DATA_DIR:-./data}:/data
     restart: unless-stopped
     networks:
       - wise-eat-minio

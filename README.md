@@ -64,6 +64,7 @@ sudo ./install.sh verify-tls
 | `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) + **11212** (Memcached TLS) | Stunnel | **6381/6382/11212 en DNS only** (pas de proxy orange) |
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
+| `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -79,6 +80,10 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `REDIS_TLS_DOMAIN` | `cache.wise-eat.com` | certificat Stunnel Redis (:6381/:6382) |
 | `GRAFANA_CONSOLE_DOMAIN` | `console.wise-eat.com` | Grafana public (nginx ou tunnel) |
 | `PROMETHEUS_LOGS_DOMAIN` | `logs.wise-eat.com` | Prometheus public (nginx + basic auth) |
+| `MINIO_STORAGE_DOMAIN` | `storage.wise-eat.com` | MinIO S3 public (nginx + TLS) |
+| `MINIO_STORAGE_GB` | `25` | Taille volume données MinIO (loop ext4) |
+| `MINIO_DATA_DIR` | `/var/lib/wise-eat/minio` | Montage objets S3 |
+| `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
@@ -94,7 +99,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `stunnel` | Redis TLS :6381/:6382 (cert LE requis en prod) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
-| `redis` / `memcached` / `minio` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `minio-storage` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
 
@@ -222,18 +227,37 @@ Stockage S3-compatible pour médias (`STORAGE_ENGINE=minio`).
 
 ```bash
 sudo ./install.sh minio
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-storage
 ```
 
-| Port | Service |
-|------|---------|
-| `9000` | API S3 |
-| `9001` | Console web |
+| Port / URL | Service |
+|------------|---------|
+| `https://storage.wise-eat.com` | API S3 publique (nginx + TLS) |
+| `127.0.0.1:9000` | API locale (PM2 sur le VPS) |
+| `127.0.0.1:9001` | Console web (localhost uniquement) |
+
+**Volume 25 Go** : loop ext4 `/var/lib/wise-eat/minio-data.img` monté sur `/var/lib/wise-eat/minio` (ou `MINIO_DATA_DEVICE` pour un disque dédié).
+
+**Sauvegardes incrémentales** :
+- Mirror quotidien (`mc mirror`) → `/var/backups/wise-eat-minio/latest/`
+- Snapshot hebdomadaire (hardlinks rsync, dimanche)
+- Rétention 30 jours (`MINIO_BACKUP_RETENTION_DAYS`)
+- Cron : `03:00` — logs `/var/log/wise-eat-minio-backup.log`
+
+```bash
+sudo ./install.sh minio-backup    # installer / réinstaller le cron
+sudo ./scripts/backup-minio.sh    # test manuel
+```
 
 Secrets générés dans `minio/.env.minio`. Le script crée le bucket `wise-eat` et affiche les variables `MINIO_*` pour l’API.
 
-MinIO rejoint le réseau Docker `wise-eat-infra` pour le scrape Prometheus (`job: minio`). Grafana : dossier **MinIO** → dashboard **Wise Eat — MinIO Storage** (équivalent Prometheus du [#20826](https://grafana.com/grafana/dashboards/20826) InfluxDB).
+MinIO rejoint le réseau Docker `wise-eat-infra` pour le scrape Prometheus (`job: minio`). Grafana : dossier **MinIO** → dashboard **Wise Eat — MinIO Storage**.
 
-```bash
-sudo ./install.sh minio
-sudo ./install.sh repair-monitoring   # recharge dashboards + Prometheus
+**API prod** (`africa-meals-api/.env`) :
+```env
+MINIO_ENDPOINT=https://storage.wise-eat.com
+MINIO_PUBLIC_BASE_URL=https://storage.wise-eat.com/wise-eat
+MINIO_FORCE_PATH_STYLE=true
 ```
+
+Sur le **même VPS** que MinIO, l’API peut aussi utiliser `MINIO_ENDPOINT=http://127.0.0.1:9000` (sans TLS interne).
