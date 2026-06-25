@@ -141,6 +141,8 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 
 **MinIO** : dossier Grafana `MinIO/` avec **Wise Eat — MinIO Storage** (équivalent Prometheus du #20826) — scrape `minio-cluster` + `minio-node`.
 
+**EMQX** : dossier Grafana `EMQX/` avec **Wise Eat — EMQX** (base Grafana.com #17446) — scrape `job=emqx` sur `/api/v5/prometheus/stats` (primary + réplicas).
+
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
 #### Grafana vide (Redis DOWN / Memcached DOWN / No data)
@@ -358,3 +360,5 @@ Cluster : `EMQX_CLUSTER_B_ENABLED=true` dans `emqx/.env.emqx` (défaut). Les 3 n
 ```bash
 docker exec wise-eat-emqx-1 emqx ctl cluster status
 ```
+
+**Grafana** : dossier **EMQX** → **Wise Eat — EMQX** (connexions, messages, packets, cluster, VM Erlang). Prérequis : EMQX installé + `sudo ./install.sh repair-monitoring` (scrape Prometheus `job=emqx`).

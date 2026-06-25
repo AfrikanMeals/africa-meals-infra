@@ -63,6 +63,13 @@ else
   bash "${SCRIPT_DIR}/install-minio.sh"
 fi
 
+if docker ps --format '{{.Names}}' | grep -q '^wise-eat-emqx-1$'; then
+  log "EMQX : OK"
+else
+  warn "EMQX absent — installation EMQX (métriques Grafana)"
+  bash "${SCRIPT_DIR}/install-emqx.sh"
+fi
+
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
 cd "${MON_DIR}"

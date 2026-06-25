@@ -103,6 +103,24 @@ else
   fail=1
 fi
 
+log "=== EMQX (métriques Prometheus) ==="
+EMQX_DASH_PORT="${EMQX_DASHBOARD_PORT:-18083}"
+if curl -sf "http://127.0.0.1:${EMQX_DASH_PORT}/api/v5/prometheus/stats" | grep -q '^emqx_'; then
+  log "OK  EMQX primary (:${EMQX_DASH_PORT}) — métriques emqx_* exposées"
+else
+  warn "FAIL EMQX (:${EMQX_DASH_PORT}) — conteneur wise-eat-emqx-1 arrêté ou Prometheus désactivé ?"
+  warn "      sudo ./install.sh emqx"
+  fail=1
+fi
+if docker ps --format '{{.Names}}' | grep -q '^wise-eat-emqx-1$'; then
+  if ! docker inspect wise-eat-emqx-1 --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null \
+    | grep -q 'wise-eat-infra'; then
+    warn "FAIL EMQX — conteneur absent du réseau wise-eat-infra (Prometheus ne peut pas scraper)"
+    warn "      sudo ./install.sh emqx"
+    fail=1
+  fi
+fi
+
 log "=== Prometheus targets ==="
 if curl -sf 'http://127.0.0.1:9090/api/v1/targets' | grep -q '"health":"up"'; then
   curl -sf 'http://127.0.0.1:9090/api/v1/targets' \
@@ -111,7 +129,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio', 'minio-cluster', 'minio-node'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -311,6 +329,48 @@ else
   fail=1
 fi
 
+log "=== requête emqx_connections_count (dashboard EMQX #17446) ==="
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=emqx_connections_count{job="emqx"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=emqx_connections_count{job="emqx"}' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — job emqx DOWN ou EMQX non installé)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  instance={m.get('instance')} connections={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus emqx_connections_count"
+  fail=1
+fi
+
+log "=== requête up{job=\"emqx\"} ==="
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=up{job="emqx"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=up{job="emqx"}' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — target emqx non scrapée)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus up{job=\"emqx\"}"
+  fail=1
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   echo ""
   warn "Correctifs fréquents :"
@@ -318,10 +378,11 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  2. Memcached : sudo ./install.sh memcached puis vérifier curl :11211"
   echo "  3. MinIO Prometheus : sudo ./install.sh repair-minio-prometheus"
   echo "  4. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
-  echo "  4. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
-  echo "  5. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
-  echo "  6. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
+  echo "  5. EMQX : sudo ./install.sh emqx (réseau wise-eat-infra + EMQX_PROMETHEUS__ENABLE=true)"
+  echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
+  echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
+  echo "  8. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
   exit 1
 fi
 
-log "Stack monitoring OK — Grafana : Core System / Redis / Memcached / MinIO"
+log "Stack monitoring OK — Grafana : Core System / Redis / Memcached / MinIO / EMQX"

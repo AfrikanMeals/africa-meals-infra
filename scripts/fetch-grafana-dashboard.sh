@@ -7,7 +7,8 @@ source "${SCRIPT_DIR}/lib/common.sh"
 DASH_ROOT="${MON_DIR}/grafana/dashboards"
 CORE_SYSTEM_DIR="${DASH_ROOT}/Core System"
 MINIO_DIR_DASH="${DASH_ROOT}/MinIO"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}"
+EMQX_DIR_DASH="${DASH_ROOT}/EMQX"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}" "${EMQX_DIR_DASH}"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -179,11 +180,21 @@ fetch_minio_dashboard() {
   log "Dashboard MinIO → ${out} (Grafana.com #25202, équivalent Prometheus de #20826)"
 }
 
+fetch_emqx_dashboard() {
+  local out="${EMQX_DIR_DASH}/emqx-mqtt.json"
+  local tmp="${out}.tmp"
+  curl -fsSL "https://grafana.com/api/dashboards/17446/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-emqx-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard EMQX → ${out} (Grafana.com #17446 — EMQX 5)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
 fetch_docker_dashboard
 fetch_minio_dashboard
+fetch_emqx_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"
