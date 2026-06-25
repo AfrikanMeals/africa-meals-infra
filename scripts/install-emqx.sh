@@ -61,8 +61,6 @@ COMPOSE_ARGS=(--env-file .env.emqx)
 
 prepare_emqx_compose_stack .env.emqx
 
-COMPOSE_ARGS=(--env-file .env.emqx)
-
 log "Démarrage EMQX Docker (primary puis réplicas)"
 docker compose "${COMPOSE_ARGS[@]}" up -d --no-deps emqx-1
 if ! wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 120; then
