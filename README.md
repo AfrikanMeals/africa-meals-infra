@@ -109,7 +109,7 @@ chmod +x scripts/verify-ipv6-endpoints.sh
 
 Détails techniques :
 - nginx écoute déjà en dual-stack (`listen [::]:443`, `[::]:8883`, …).
-- Stunnel écoute en **v4 + v6** : sections `accept = PORT` (0.0.0.0) + `accept = :::PORT` ([::]) dans `redis/stunnel/*.conf`.
+- Stunnel écoute en **v4 + v6** : `accept = PORT` (0.0.0.0) + `accept = [::]:PORT` dans `redis/stunnel/*.conf`.
 - UFW doit avoir `IPV6=yes` (`/etc/default/ufw`) — activé par `repair-ipv6-ufw`.
 - Variable optionnelle : `VPS_IPV6_ADDR=2a02:4780:75:447e::1` (défaut dans `scripts/lib/common.sh`).
 
