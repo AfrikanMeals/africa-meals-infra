@@ -37,6 +37,7 @@ Composants:
   minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
+  repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
@@ -99,6 +100,9 @@ run_component() {
       ;;
     minio-console)
       bash "${SCRIPTS}/install-minio-console.sh"
+      ;;
+    repair-minio-prometheus)
+      bash "${SCRIPTS}/repair-minio-prometheus.sh"
       ;;
     minio-backup)
       bash "${SCRIPTS}/install-minio-backup.sh"

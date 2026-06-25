@@ -227,8 +227,8 @@ else
 fi
 
 log "=== requête minio_cluster_health_status (dashboard MinIO #20826) ==="
-if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_cluster_health_status' | grep -q '"status":"success"'; then
-  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_cluster_health_status' \
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=minio_cluster_health_status{job="minio"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=minio_cluster_health_status{job="minio"}' \
     | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
@@ -246,8 +246,8 @@ else
 fi
 
 log "=== requête up{job=\"minio\"} ==="
-if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22minio%22%7D' | grep -q '"status":"success"'; then
-  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22minio%22%7D' \
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=up{job="minio"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=up{job="minio"}' \
     | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
@@ -286,7 +286,8 @@ if [[ "${fail}" -ne 0 ]]; then
   warn "Correctifs fréquents :"
   echo "  1. Redis : aligner mots de passe dans monitoring/.env.monitoring"
   echo "  2. Memcached : sudo ./install.sh memcached puis vérifier curl :11211"
-  echo "  3. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
+  echo "  3. MinIO Prometheus : sudo ./install.sh repair-minio-prometheus"
+  echo "  4. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
   echo "  4. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
   echo "  5. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
   echo "  6. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"

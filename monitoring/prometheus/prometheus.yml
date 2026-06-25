@@ -117,11 +117,12 @@ scrape_configs:
           memcached_port: '11214'
 
   # MinIO cluster (dashboard Grafana #20826 / Prometheus #25202)
+  # host.docker.internal → 127.0.0.1:9000 sur l'hôte (MinIO bind localhost)
   - job_name: minio
     metrics_path: /minio/v2/metrics/cluster
     scheme: http
     static_configs:
-      - targets: ['wise-eat-minio:9000']
+      - targets: ['host.docker.internal:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
@@ -134,7 +135,7 @@ scrape_configs:
     metrics_path: /minio/v2/metrics/node
     scheme: http
     static_configs:
-      - targets: ['wise-eat-minio:9000']
+      - targets: ['host.docker.internal:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
