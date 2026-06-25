@@ -40,21 +40,6 @@ log "Utilisateurs avant repair :"
 emqx_api "${EMQX_API}/authentication/${AUTH_ID_ENC}/users?limit=100" 2>/dev/null \
   | python3 -m json.tool 2>/dev/null | sed 's/^/[wise-eat]      /' || warn "Aucun user listé (chaîne absente ?)"
 
-upsert_mqtt_user() {
-  local user="$1" pass="$2"
-  if emqx_api "${EMQX_API}/authentication/${AUTH_ID_ENC}/users/${user}" >/dev/null 2>&1; then
-    emqx_api -X PUT "${EMQX_API}/authentication/${AUTH_ID_ENC}/users/${user}" \
-      -H 'Content-Type: application/json' \
-      -d "{\"password\":\"${pass}\",\"is_superuser\":true}" >/dev/null
-    log "User mis à jour : ${user}"
-  else
-    emqx_api -X POST "${EMQX_API}/authentication/${AUTH_ID_ENC}/users" \
-      -H 'Content-Type: application/json' \
-      -d "{\"user_id\":\"${user}\",\"password\":\"${pass}\",\"is_superuser\":true}" >/dev/null
-    log "User créé : ${user}"
-  fi
-}
-
 ensure_authz_allow_user() {
   local user="$1"
   local payload
@@ -82,9 +67,6 @@ PY
 }
 
 bash "${SCRIPT_DIR}/bootstrap-emqx-auth.sh"
-
-upsert_mqtt_user "${MQTT_SUB_USER}" "${MQTT_SUB_PASS}"
-upsert_mqtt_user "${MQTT_PUB_USER}" "${MQTT_PUB_PASS}"
 ensure_authz_allow_user "${MQTT_SUB_USER}"
 ensure_authz_allow_user "${MQTT_PUB_USER}"
 
