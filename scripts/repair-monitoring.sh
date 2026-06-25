@@ -8,6 +8,21 @@ source "${SCRIPT_DIR}/lib/common.sh"
 require_root
 log "=== Réparation stack monitoring ==="
 
+# Évite conflits git sur dashboards régénérés par fetch-grafana-dashboard.sh
+if git -C "${INFRA_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if ! git -C "${INFRA_ROOT}" diff --quiet -- \
+    "monitoring/grafana/dashboards/Core System/docker-monitoring.json" 2>/dev/null; then
+    warn "docker-monitoring.json modifié localement — reset pour aligner sur le dépôt"
+    git -C "${INFRA_ROOT}" checkout -- \
+      "monitoring/grafana/dashboards/Core System/docker-monitoring.json" 2>/dev/null || true
+  fi
+  if git -C "${INFRA_ROOT}" pull --ff-only 2>/dev/null; then
+    log "git pull OK (${INFRA_ROOT})"
+  else
+    warn "git pull échoué — ex. cd ${INFRA_ROOT} && git checkout -- monitoring/... && git pull"
+  fi
+fi
+
 ensure_docker
 ensure_wise_eat_infra_network
 
@@ -50,7 +65,9 @@ fi
 
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
-bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
+if ! bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"; then
+  warn "fetch-grafana-dashboard partiellement échoué — vérifier python3 / curl"
+fi
 
 log "Attente démarrage Prometheus (15s max)…"
 for _ in $(seq 1 15); do
