@@ -517,21 +517,66 @@ emqx_cluster_b_enabled() {
   env_truthy "${raw}"
 }
 
+remove_broken_nginx_module_symlinks() {
+  local f
+  shopt -s nullglob
+  for f in /etc/nginx/modules-enabled/*; do
+    if [[ -L "${f}" ]] && [[ ! -e "${f}" ]]; then
+      warn "Symlink nginx cassé supprimé : ${f}"
+      rm -f "${f}"
+    fi
+  done
+  shopt -u nullglob
+}
+
+nginx_stream_is_static() {
+  nginx -V 2>&1 | grep -q 'with-stream' && ! nginx -V 2>&1 | grep -q 'with-stream=dynamic'
+}
+
+nginx_stream_needs_load_module() {
+  nginx -V 2>&1 | grep -q 'with-stream=dynamic'
+}
+
+enable_nginx_stream_module_conf() {
+  local candidate base
+  for candidate in \
+    /etc/nginx/modules-available/mod-stream.conf \
+    /etc/nginx/modules-available/50-mod-stream.conf; do
+    if [[ -f "${candidate}" ]]; then
+      base="$(basename "${candidate}")"
+      if [[ ! -e "/etc/nginx/modules-enabled/${base}" ]]; then
+        ln -sf "${candidate}" "/etc/nginx/modules-enabled/${base}"
+        log "Module stream activé : ${base}"
+      fi
+      return 0
+    fi
+  done
+  return 1
+}
+
 ensure_nginx_stream_module() {
   command -v nginx >/dev/null 2>&1 || return 0
-  if nginx -V 2>&1 | grep -q 'with-stream'; then
+
+  remove_broken_nginx_module_symlinks
+
+  if nginx_stream_is_static; then
     return 0
   fi
-  if [[ -f /etc/nginx/modules-enabled/50-mod-stream.conf ]] \
-    || [[ -L /etc/nginx/modules-enabled/50-mod-stream.conf ]]; then
+
+  if nginx_stream_needs_load_module; then
+    if enable_nginx_stream_module_conf; then
+      return 0
+    fi
+    log "Installation module nginx stream (libnginx-mod-stream)…"
+    apt install -y libnginx-mod-stream 2>/dev/null || apt install -y nginx-full 2>/dev/null || true
+    enable_nginx_stream_module_conf || \
+      warn "mod-stream.conf introuvable — vérifier : dpkg -L libnginx-mod-stream"
     return 0
   fi
+
   log "Installation module nginx stream (libnginx-mod-stream)…"
   apt install -y libnginx-mod-stream 2>/dev/null || apt install -y nginx-full 2>/dev/null || true
-  if [[ -f /etc/nginx/modules-available/50-mod-stream.conf ]] \
-    && [[ ! -e /etc/nginx/modules-enabled/50-mod-stream.conf ]]; then
-    ln -sf /etc/nginx/modules-available/50-mod-stream.conf /etc/nginx/modules-enabled/50-mod-stream.conf
-  fi
+  enable_nginx_stream_module_conf || true
 }
 
 ensure_nginx_stream_include() {
