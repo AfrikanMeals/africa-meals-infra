@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Memcached, MinIO, nginx/apache, Certbot, Stunnel, monitoring.
+Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, nginx/apache, Certbot, Stunnel, monitoring.
 
 ## Structure
 
@@ -18,6 +18,7 @@ apache/
 redis/
 memcached/
 minio/
+emqx/
 monitoring/
 ```
 
@@ -34,6 +35,7 @@ sudo ./install.sh redis
 # 1b. Cache & stockage local (dev / VPS)
 sudo ./install.sh memcached
 sudo ./install.sh minio
+sudo ./install.sh emqx
 
 # 2. Serveur web (un seul — nginx recommandé)
 sudo ./install.sh nginx
@@ -66,6 +68,7 @@ sudo ./install.sh verify-tls
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 | `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
 | `cdn.wise-eat.com` | 80 / 443 | MinIO Console (basic auth nginx) | proxy OK |
+| `broker.wise-eat.com` | **80** (ACME) + **8883** (MQTTS) + **8884** (WSS) | EMQX MQTT | **8883/8884 en DNS only** (pas de proxy orange) |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -85,6 +88,9 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `MINIO_CONSOLE_DOMAIN` | `cdn.wise-eat.com` | MinIO Console public (nginx + basic auth) |
 | `MINIO_STORAGE_GB` | `25` | Taille volume données MinIO (loop ext4) |
 | `MINIO_DATA_DIR` | `/var/lib/wise-eat/minio` | Montage objets S3 |
+| `EMQX_BROKER_DOMAIN` | `broker.wise-eat.com` | MQTT public (nginx TLS) |
+| `EMQX_MQTTS_PORT` | `8883` | MQTTS (nginx stream → EMQX :1883) |
+| `EMQX_WSS_PORT` | `8884` | WSS (nginx → EMQX :8083/mqtt) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
@@ -101,7 +107,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `stunnel` | Redis TLS :6381–6386 (primary + réplicas cluster-b, cert LE requis) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
-| `redis` / `memcached` / `minio` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `emqx` / `emqx-broker` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
 
@@ -292,3 +298,63 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-replica-storage
 ```
 
 > **Port 9000** : l’API Nest (`NODE_PORT=9000`) écoute sur `0.0.0.0:9000` ; MinIO sur `127.0.0.1:9000` uniquement. Prometheus scrape **wise-eat-minio:9000** via le réseau Docker — jamais `host:9000` (sinon 404 sur l’API).
+
+## EMQX (MQTT)
+
+Broker MQTT self-hosted (remplace EMQX Cloud / Mosquitto) — cluster **1 primary + 2 réplicas** sur le VPS.
+
+```bash
+sudo ./install.sh emqx
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh emqx-broker
+```
+
+| Port / URL | Service |
+|------------|---------|
+| `mqtt://127.0.0.1:1883` | MQTT local (PM2 API/WS sur le VPS) |
+| `ws://127.0.0.1:8083/mqtt` | WebSocket local |
+| `http://127.0.0.1:18083` | Dashboard EMQX (admin — voir `.env.emqx`) |
+| `mqtts://broker.wise-eat.com:8883` | MQTT TLS public (nginx → primary) |
+| `wss://broker.wise-eat.com:8884/mqtt` | WebSocket TLS public |
+
+**Utilisateurs MQTT** (créés par `bootstrap-emqx-auth.sh`) :
+
+| User | Rôle | Variable mot de passe |
+|------|------|------------------------|
+| `wise-eat-mqtt` | WS subscriber | `MQTT_BROKER_PASSWORD` |
+| `wise-eat-admin` | API publisher | `MQTT_ADMIN_PASSWORD` |
+
+Secrets dans `emqx/.env.emqx` (générés à l’install).
+
+**VPS local** (`africa-meals-api` / `africa-meals-ws` sur PM2) :
+
+```env
+MQTT_BROKER_HOST=127.0.0.1
+MQTT_BROKER_PORT=1883
+MQTT_BROKER_PROTOCOL=mqtt
+MQTT_BROKER_URL=mqtt://127.0.0.1:1883
+MQTT_BROKER_WS_URL=ws://127.0.0.1:8083/mqtt
+MQTT_BROKER_USERNAME=wise-eat-mqtt   # WS
+# API publisher : wise-eat-admin + MQTT_ADMIN_PASSWORD
+MQTT_TOPIC_PREFIX=wiseeat/internal/ws
+```
+
+**Remote (Cloud Functions / Mac → VPS)** :
+
+```env
+MQTT_BROKER_HOST=broker.wise-eat.com
+MQTT_BROKER_PORT=8883
+MQTT_BROKER_WS_PORT=8884
+MQTT_BROKER_PROTOCOL=mqtts
+MQTT_BROKER_URL=mqtts://broker.wise-eat.com:8883
+MQTT_BROKER_WS_URL=wss://broker.wise-eat.com:8884/mqtt
+MQTT_BROKER_USERNAME=wise-eat-admin
+MQTT_BROKER_PASSWORD=<MQTT_ADMIN_PASSWORD depuis .env.emqx>
+```
+
+DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
+
+Cluster : `EMQX_CLUSTER_B_ENABLED=true` dans `emqx/.env.emqx` (défaut). Les 3 nœuds partagent sessions/topics ; seul le primary expose les ports locaux.
+
+```bash
+docker exec wise-eat-emqx-1 emqx ctl cluster status
+```

@@ -35,6 +35,8 @@ Composants:
   redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
   memcached     Memcached 1 primary (:11211) + 2 réplicas
   minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
+  emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
+  emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
@@ -55,7 +57,7 @@ Composants:
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
-  all           redis + permissions + monitoring + memcached + minio
+  all           redis + permissions + monitoring + memcached + minio + emqx
 
 Stack TLS prod (nginx recommandé) :
   sudo $0 nginx
@@ -97,6 +99,12 @@ run_component() {
       ;;
     minio)
       bash "${SCRIPTS}/install-minio.sh"
+      ;;
+    emqx)
+      bash "${SCRIPTS}/install-emqx.sh"
+      ;;
+    emqx-broker)
+      bash "${SCRIPTS}/install-emqx-broker.sh"
       ;;
     minio-storage)
       bash "${SCRIPTS}/install-minio-storage.sh"
@@ -164,6 +172,7 @@ run_component() {
       bash "${SCRIPTS}/fix-redis-permissions.sh"
       bash "${SCRIPTS}/install-memcached.sh"
       bash "${SCRIPTS}/install-minio.sh"
+      bash "${SCRIPTS}/install-emqx.sh"
       bash "${SCRIPTS}/install-monitoring.sh"
       ;;
     -h|--help|help)

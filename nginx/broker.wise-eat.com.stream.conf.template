@@ -1,0 +1,17 @@
+# MQTTS — termination TLS nginx → EMQX primary (plain MQTT)
+upstream emqx_mqtt_primary {
+    server ${EMQX_BACKEND_HOST}:${EMQX_MQTT_PORT};
+}
+
+server {
+    listen ${EMQX_MQTTS_PORT} ssl;
+    listen [::]:${EMQX_MQTTS_PORT} ssl;
+    ssl_certificate /etc/letsencrypt/live/${EMQX_BROKER_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${EMQX_BROKER_DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    proxy_pass emqx_mqtt_primary;
+    proxy_connect_timeout 10s;
+    proxy_timeout 86400s;
+}

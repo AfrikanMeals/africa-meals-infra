@@ -23,6 +23,11 @@ memcached/.env.memcached
 minio/.env.minio
 minio/data/
 
+emqx/.env.emqx
+emqx/data-emqx-1/
+emqx/data-emqx-2/
+emqx/data-emqx-3/
+
 # OS / éditeur
 .DS_Store
 *.swp

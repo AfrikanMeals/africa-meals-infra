@@ -7,9 +7,15 @@ WISE_EAT_ROOT="${WISE_EAT_ROOT:-${INFRA_ROOT}}"
 REDIS_DIR="${REDIS_DIR:-${WISE_EAT_ROOT}/redis}"
 MEMCACHED_DIR="${MEMCACHED_DIR:-${WISE_EAT_ROOT}/memcached}"
 MINIO_DIR="${MINIO_DIR:-${WISE_EAT_ROOT}/minio}"
+EMQX_DIR="${EMQX_DIR:-${WISE_EAT_ROOT}/emqx}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
 MINIO_ENV="${MINIO_ENV:-${MINIO_DIR}/.env.minio}"
+EMQX_ENV="${EMQX_ENV:-${EMQX_DIR}/.env.emqx}"
+EMQX_BROKER_DOMAIN="${EMQX_BROKER_DOMAIN:-broker.wise-eat.com}"
+EMQX_BACKEND_HOST="${EMQX_BACKEND_HOST:-127.0.0.1}"
+EMQX_MQTTS_PORT="${EMQX_MQTTS_PORT:-8883}"
+EMQX_WSS_PORT="${EMQX_WSS_PORT:-8884}"
 STUNNEL_CONF_SRC="${INFRA_ROOT}/redis/stunnel"
 MEMCACHED_STUNNEL_CONF_SRC="${INFRA_ROOT}/memcached/stunnel"
 NGINX_CONF_SRC="${INFRA_ROOT}/nginx"
@@ -154,12 +160,12 @@ sync_component() {
     log "Sync ${name} → ${dst}"
     mkdir -p "${dst}"
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
-      --exclude '.env.memcached' --exclude '.env.minio' \
+      --exclude '.env.memcached' --exclude '.env.minio' --exclude '.env.emqx' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
       --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
       --exclude 'data-cache-replica-1/' --exclude 'data-cache-replica-2/' \
       --exclude 'data-bullmq-replica-1/' --exclude 'data-bullmq-replica-2/' \
-      --exclude 'minio/data/' --exclude 'data/' \
+      --exclude 'data-emqx-1/' --exclude 'data-emqx-2/' --exclude 'data-emqx-3/' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
       --exclude 'cache-replica-1.generated.conf' --exclude 'cache-replica-2.generated.conf' \
@@ -338,6 +344,27 @@ memcached_cluster_b_enabled() {
   raw="$(read_env_var_from_file "${file}" MEMCACHED_CLUSTER_B_ENABLED || true)"
   [[ -z "${raw}" ]] && raw="true"
   env_truthy "${raw}"
+}
+
+emqx_cluster_b_enabled() {
+  local raw
+  raw="$(read_env_var_from_file "${EMQX_ENV}" EMQX_CLUSTER_B_ENABLED || true)"
+  [[ -z "${raw}" ]] && raw="true"
+  env_truthy "${raw}"
+}
+
+ensure_nginx_stream_include() {
+  command -v nginx >/dev/null 2>&1 || return 0
+  mkdir -p /etc/nginx/stream.d
+  if ! grep -qF '/etc/nginx/stream.d/' /etc/nginx/nginx.conf 2>/dev/null; then
+    log "Activation module stream nginx (/etc/nginx/stream.d/)"
+    cat >> /etc/nginx/nginx.conf <<'EOF'
+
+stream {
+    include /etc/nginx/stream.d/*.conf;
+}
+EOF
+  fi
 }
 
 # Anciens exporters réplicas (1 seul conteneur / suffixe -b) — bloquent :9123/:9124/:9151.

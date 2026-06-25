@@ -25,6 +25,22 @@ check_le_file() {
 check_le_file "WS nginx" "${WISE_EAT_DOMAIN}"
 check_le_file "Redis Stunnel" "${REDIS_TLS_DOMAIN}"
 check_le_file "Grafana console" "${GRAFANA_CONSOLE_DOMAIN}"
+check_le_file "EMQX broker" "${EMQX_BROKER_DOMAIN}"
+
+if command -v openssl >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
+  if nc -z 127.0.0.1 "${EMQX_MQTTS_PORT}" 2>/dev/null; then
+    emqx_issuer="$(echo | openssl s_client -connect "127.0.0.1:${EMQX_MQTTS_PORT}" -servername "${EMQX_BROKER_DOMAIN}" 2>/dev/null \
+      | openssl x509 -noout -issuer 2>/dev/null || true)"
+    if [[ -n "${emqx_issuer}" ]] && [[ "${emqx_issuer}" == *"Let's Encrypt"* ]]; then
+      log "OK  nginx MQTTS :${EMQX_MQTTS_PORT} — Let's Encrypt"
+    else
+      warn "nginx MQTTS :${EMQX_MQTTS_PORT} — certificat non-LE ou injoignable"
+      fail=1
+    fi
+  else
+    warn "Port MQTTS :${EMQX_MQTTS_PORT} fermé — lancer : sudo ./install.sh emqx-broker"
+  fi
+fi
 
 if command -v openssl >/dev/null 2>&1 && systemctl is-active stunnel4 >/dev/null 2>&1; then
   log "Stunnel local :11212 Memcached TLS (SNI ${REDIS_TLS_DOMAIN})"

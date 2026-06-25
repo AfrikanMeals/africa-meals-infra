@@ -1,0 +1,15 @@
+# HTTP — Certbot webroot (broker.wise-eat.com) avant TLS MQTT/WSS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${EMQX_BROKER_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 200 'EMQX broker — TLS on :${EMQX_MQTTS_PORT} / :${EMQX_WSS_PORT}\n';
+        add_header Content-Type text/plain;
+    }
+}

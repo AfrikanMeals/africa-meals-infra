@@ -1,0 +1,99 @@
+# Wise Eat — EMQX : 1 nœud primary + 2 réplicas (profile cluster-b)
+# Install : sudo ./install.sh emqx
+# EMQX_CLUSTER_B_ENABLED=true dans .env.emqx
+
+networks:
+  wise-eat-infra:
+    name: wise-eat-infra
+    external: true
+
+x-emqx-env: &emqx-env
+  EMQX_NODE__COOKIE: ${EMQX_ERLANG_COOKIE:?EMQX_ERLANG_COOKIE requis}
+  EMQX_CLUSTER__DISCOVERY_STRATEGY: static
+  EMQX_CLUSTER__STATIC__SEEDS: ${EMQX_CLUSTER_STATIC_SEEDS:?EMQX_CLUSTER_STATIC_SEEDS requis}
+  EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
+  EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?EMQX_DASHBOARD_PASSWORD requis}
+  EMQX_AUTHENTICATION__1__MECHANISM: password_based
+  EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+  EMQX_AUTHENTICATION__1__ENABLE: "true"
+  EMQX_AUTHENTICATION__1__USER_ID_TYPE: username
+  EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME: sha256
+  EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION: suffix
+  EMQX_LOG__CONSOLE__LEVEL: warning
+  EMQX_PROMETHEUS__ENABLE: "true"
+
+services:
+  emqx-1:
+    image: emqx/emqx:5.8.6
+    container_name: wise-eat-emqx-1
+    hostname: wise-eat-emqx-1
+    networks:
+      wise-eat-infra:
+        aliases:
+          - wise-eat-emqx-1
+    environment:
+      <<: *emqx-env
+      EMQX_NODE__NAME: emqx@wise-eat-emqx-1
+    ports:
+      - "127.0.0.1:${EMQX_MQTT_PORT:-1883}:1883"
+      - "127.0.0.1:${EMQX_WS_PORT:-8083}:8083"
+      - "127.0.0.1:${EMQX_DASHBOARD_PORT:-18083}:18083"
+    volumes:
+      - ./data-emqx-1:/opt/emqx/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 45s
+
+  emqx-2:
+    profiles: ["cluster-b"]
+    image: emqx/emqx:5.8.6
+    container_name: wise-eat-emqx-2
+    hostname: wise-eat-emqx-2
+    networks:
+      wise-eat-infra:
+        aliases:
+          - wise-eat-emqx-2
+    depends_on:
+      emqx-1:
+        condition: service_healthy
+    environment:
+      <<: *emqx-env
+      EMQX_NODE__NAME: emqx@wise-eat-emqx-2
+    volumes:
+      - ./data-emqx-2:/opt/emqx/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
+
+  emqx-3:
+    profiles: ["cluster-b"]
+    image: emqx/emqx:5.8.6
+    container_name: wise-eat-emqx-3
+    hostname: wise-eat-emqx-3
+    networks:
+      wise-eat-infra:
+        aliases:
+          - wise-eat-emqx-3
+    depends_on:
+      emqx-1:
+        condition: service_healthy
+    environment:
+      <<: *emqx-env
+      EMQX_NODE__NAME: emqx@wise-eat-emqx-3
+    volumes:
+      - ./data-emqx-3:/opt/emqx/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
