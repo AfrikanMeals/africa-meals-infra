@@ -7,6 +7,8 @@ configure_minio_site_replication_mc() {
   : "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}"
   : "${MINIO_BUCKET:=wise-eat}"
 
+  local mc_image="${MINIO_MC_IMAGE:-minio/mc:RELEASE.2024-10-08T09-37-26Z}"
+
   log "Configuration site replication (mc admin replicate)"
   docker run --rm --network wise-eat-minio \
     --entrypoint /bin/sh \
@@ -14,7 +16,7 @@ configure_minio_site_replication_mc() {
     -e MINIO_ROOT_PASSWORD \
     -e MINIO_BUCKET \
     -e MINIO_PUBLIC_READ="${MINIO_PUBLIC_READ:-true}" \
-    minio/mc:RELEASE.2024-11-07T00-52-20Z \
+    "${mc_image}" \
     -c '
       set -e
 
