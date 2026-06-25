@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Redis Dashboard for Prometheus Redis Exporter 1.x",
+  "description": "Redis cache + BullMQ \u2014 primary et r\u00e9plicas (labels redis_role, redis_instance, redis_port). Filtres en haut : R\u00f4le = primary | replica, Cluster = cache | bullmq.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 763,
@@ -24,6 +24,85 @@
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9001,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "redis_up{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}",
+          "legendFormat": "{{redis_role}} {{redis_instance}} :{{redis_port}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Redis \u2014 \u00e9tat primary / r\u00e9plicas",
+      "type": "stat"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -69,7 +148,7 @@
         "h": 7,
         "w": 3,
         "x": 0,
-        "y": 0
+        "y": 4
       },
       "id": 9,
       "links": [],
@@ -97,7 +176,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(max_over_time(redis_uptime_in_seconds{instance=~\"$instance\"}[$__interval]))",
+          "expr": "max(max_over_time(redis_uptime_in_seconds{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[$__interval]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -155,7 +234,7 @@
         "h": 7,
         "w": 2,
         "x": 3,
-        "y": 0
+        "y": 4
       },
       "hideTimeOverride": true,
       "id": 12,
@@ -184,7 +263,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(redis_connected_clients{instance=~\"$instance\"})",
+          "expr": "sum(redis_connected_clients{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -247,7 +326,7 @@
         "h": 7,
         "w": 3,
         "x": 5,
-        "y": 0
+        "y": 4
       },
       "hideTimeOverride": true,
       "id": 11,
@@ -275,7 +354,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(100 * (redis_memory_used_bytes{instance=~\"$instance\"}  / redis_memory_max_bytes{instance=~\"$instance\"}))",
+          "expr": "sum(100 * (redis_memory_used_bytes{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}  / redis_memory_max_bytes{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -354,7 +433,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 0
+        "y": 4
       },
       "id": 18,
       "links": [],
@@ -377,11 +456,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(redis_commands_total{instance=~\"$instance\"} [1m])) by (cmd)",
+          "expr": "sum(rate(redis_commands_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"} [1m])) by (cmd, redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ cmd }}",
+          "legendFormat": "{{redis_role}} {{redis_instance}}:{{redis_port}} \u2014 {{cmd}}",
           "metric": "redis_command_calls_total",
           "refId": "A",
           "step": 240
@@ -457,7 +536,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 0
+        "y": 4
       },
       "id": 1,
       "links": [],
@@ -480,12 +559,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "irate(redis_keyspace_hits_total{instance=~\"$instance\"}[5m])",
+          "expr": "irate(redis_keyspace_hits_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m])",
           "format": "time_series",
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "hits, {{ instance }}",
+          "legendFormat": "hits, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "metric": "",
           "refId": "A",
           "step": 240,
@@ -496,12 +575,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "irate(redis_keyspace_misses_total{instance=~\"$instance\"}[5m])",
+          "expr": "irate(redis_keyspace_misses_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m])",
           "format": "time_series",
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "misses, {{ instance }}",
+          "legendFormat": "misses, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "metric": "",
           "refId": "B",
           "step": 240,
@@ -594,7 +673,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 7
+        "y": 11
       },
       "id": 7,
       "links": [],
@@ -617,10 +696,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "redis_memory_used_bytes{instance=~\"$instance\"}",
+          "expr": "redis_memory_used_bytes{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "used, {{ instance }}",
+          "legendFormat": "used, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "metric": "",
           "refId": "A",
           "step": 240,
@@ -631,11 +710,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "redis_memory_max_bytes{instance=~\"$instance\"}",
+          "expr": "redis_memory_max_bytes{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "max, {{ instance }}",
+          "legendFormat": "max, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "B",
           "step": 240
         }
@@ -709,7 +788,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 7
+        "y": 11
       },
       "id": 10,
       "links": [],
@@ -732,10 +811,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(redis_net_input_bytes_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(redis_net_input_bytes_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "{{ input }}",
+          "legendFormat": "net in, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "A",
           "step": 240
         },
@@ -744,11 +823,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(redis_net_output_bytes_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(redis_net_output_bytes_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ output }}",
+          "legendFormat": "net out, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "B",
           "step": 240
         }
@@ -843,7 +922,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 18
       },
       "id": 5,
       "links": [],
@@ -868,11 +947,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum (redis_db_keys{instance=~\"$instance\"}) by (db, instance)",
+          "expr": "sum (redis_db_keys{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}) by (db, redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ db }}, {{ instance }}",
+          "legendFormat": "{{ db }}, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "A",
           "step": 240,
           "target": ""
@@ -947,7 +1026,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 18
       },
       "id": 13,
       "links": [],
@@ -970,11 +1049,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum (redis_db_keys{instance=~\"$instance\"}) by (instance) - sum (redis_db_keys_expiring{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum (redis_db_keys{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}) by (redis_role, redis_instance, redis_port) - sum (redis_db_keys_expiring{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}) by (redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "not expiring, {{ instance }}",
+          "legendFormat": "not expiring, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "A",
           "step": 240,
           "target": ""
@@ -984,11 +1063,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum (redis_db_keys_expiring{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum (redis_db_keys_expiring{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}) by (redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "expiring, {{ instance }}",
+          "legendFormat": "expiring, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "metric": "",
           "refId": "B",
           "step": 240
@@ -1108,7 +1187,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "id": 8,
       "links": [],
@@ -1131,12 +1210,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(redis_expired_keys_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(rate(redis_expired_keys_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m])) by (redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "expired, {{ instance }}",
+          "legendFormat": "expired, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "metric": "",
           "refId": "A",
           "step": 240,
@@ -1147,11 +1226,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(redis_evicted_keys_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(rate(redis_evicted_keys_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[5m])) by (redis_role, redis_instance, redis_port)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "evicted, {{ instance }}",
+          "legendFormat": "evicted, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "B",
           "step": 240
         }
@@ -1224,7 +1303,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 25
       },
       "id": 16,
       "links": [],
@@ -1247,10 +1326,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(redis_connected_clients{instance=~\"$instance\"})",
+          "expr": "sum(redis_connected_clients{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "connected",
+          "legendFormat": "connected, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "A"
         },
         {
@@ -1258,10 +1337,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(redis_blocked_clients{instance=~\"$instance\"})",
+          "expr": "sum(redis_blocked_clients{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "blocked",
+          "legendFormat": "blocked, {{redis_role}} {{redis_instance}}:{{redis_port}}",
           "refId": "B"
         }
       ],
@@ -1354,7 +1433,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 28
+        "y": 32
       },
       "id": 20,
       "links": [],
@@ -1377,11 +1456,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(irate(redis_commands_duration_seconds_total{instance =~ \"$instance\"}[1m])) by (cmd)\n  /\nsum(irate(redis_commands_total{instance =~ \"$instance\"}[1m])) by (cmd)\n",
+          "expr": "sum(irate(redis_commands_duration_seconds_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\",instance =~ \"$instance\"}[1m])) by (cmd, redis_role, redis_instance, redis_port)\n  /\nsum(irate(redis_commands_total{instance =~ \"$instance\"}[1m])) by (cmd, redis_role, redis_instance, redis_port)\n",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ cmd }}",
+          "legendFormat": "{{redis_role}} {{redis_instance}}:{{redis_port}} \u2014 {{cmd}}",
           "metric": "redis_command_calls_total",
           "refId": "A",
           "step": 240
@@ -1455,7 +1534,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 28
+        "y": 32
       },
       "id": 14,
       "links": [],
@@ -1478,11 +1557,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(irate(redis_commands_duration_seconds_total{instance=~\"$instance\"}[1m])) by (cmd) != 0",
+          "expr": "sum(irate(redis_commands_duration_seconds_total{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\", instance=~\"$instance\"}[1m])) by (cmd, redis_role, redis_instance, redis_port) != 0",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ cmd }}",
+          "legendFormat": "{{redis_role}} {{redis_instance}}:{{redis_port}} \u2014 {{cmd}}",
           "metric": "redis_command_calls_total",
           "refId": "A",
           "step": 240
@@ -1502,6 +1581,7 @@
     "list": [
       {
         "name": "job",
+        "label": "Job Prometheus",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -1520,14 +1600,55 @@
         }
       },
       {
-        "name": "instance",
+        "name": "redis_role",
+        "label": "R\u00f4le",
         "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(redis_up{job=~\"$job\"}, instance)",
-        "query": "label_values(redis_up{job=~\"$job\"}, instance)",
+        "definition": "label_values(redis_up{job=~\"$job\"}, redis_role)",
+        "query": "label_values(redis_up{job=~\"$job\"}, redis_role)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "redis_instance",
+        "label": "Cluster Redis",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(redis_up{job=~\"$job\", redis_role=~\"$redis_role\"}, redis_instance)",
+        "query": "label_values(redis_up{job=~\"$job\", redis_role=~\"$redis_role\"}, redis_instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "instance",
+        "label": "Exporter",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(redis_up{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\"}, instance)",
+        "query": "label_values(redis_up{job=~\"$job\", redis_role=~\"$redis_role\", redis_instance=~\"$redis_instance\"}, instance)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,

@@ -53,18 +53,6 @@ dash["templating"] = {
             "hide": 0,
             "current": {"selected": True, "text": "All", "value": "$__all"},
         },
-        {
-            "name": "instance",
-            "type": "query",
-            "datasource": DS,
-            "definition": 'label_values(redis_up{job=~"$job"}, instance)',
-            "query": 'label_values(redis_up{job=~"$job"}, instance)',
-            "refresh": 2,
-            "includeAll": True,
-            "multi": True,
-            "hide": 0,
-            "current": {"selected": True, "text": "All", "value": "$__all"},
-        },
     ]
 }
 
@@ -73,7 +61,14 @@ with open(dst, "w", encoding="utf-8") as f:
     f.write("\n")
 PY
   rm -f "${out}.tmp"
-  log "Dashboard Redis → ${out}"
+  log "Dashboard Redis → ${out} (base Grafana.com)"
+}
+
+patch_dashboards() {
+  python3 "${SCRIPT_DIR}/patch-grafana-dashboards.py" \
+    "${DASH_ROOT}/Redis/redis-prometheus.json" \
+    "${DASH_ROOT}/Memcached/memcached-prometheus.json"
+  log "Dashboards patchés (primary / réplicas)"
 }
 
 fetch_memcached_dashboard() {
@@ -143,18 +138,6 @@ dash["templating"] = {
             "hide": 0,
             "current": {"selected": True, "text": "All", "value": "$__all"},
         },
-        {
-            "name": "instance",
-            "type": "query",
-            "datasource": DS,
-            "definition": 'label_values(memcached_up{job=~"$job"}, instance)',
-            "query": 'label_values(memcached_up{job=~"$job"}, instance)',
-            "refresh": 2,
-            "includeAll": True,
-            "multi": True,
-            "hide": 0,
-            "current": {"selected": True, "text": "All", "value": "$__all"},
-        },
     ]
 }
 
@@ -163,11 +146,12 @@ with open(dst, "w", encoding="utf-8") as f:
     f.write("\n")
 PY
   rm -f "${out}.tmp"
-  log "Dashboard Memcached → ${out}"
+  log "Dashboard Memcached → ${out} (base Grafana.com)"
 }
 
 fetch_redis_dashboard
 fetch_memcached_dashboard
+patch_dashboards
 
 # Ancien chemin plat (avant foldersFromFilesStructure).
 rm -f "${DASH_ROOT}/redis-prometheus.json"

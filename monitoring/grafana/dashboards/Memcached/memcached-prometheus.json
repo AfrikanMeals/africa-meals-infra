@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Memcached dashboard for grafana 6.5.1 or above.\r\nDataSource: Prometheus\r\nCollector: Memcached official exporter : https://github.com/prometheus/memcached_exporter/releases \r\n",
+  "description": "Memcached primary + pools standby (labels memcached_role, memcached_port). R\u00f4le = primary | replica \u2014 ne pas agr\u00e9ger les 3 pools sauf comparaison.",
   "editable": true,
   "gnetId": 11527,
   "graphTooltip": 0,
@@ -23,6 +23,85 @@
   "iteration": 1578488377369,
   "links": [],
   "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9001,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "memcached_up{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Memcached \u2014 \u00e9tat primary / pools standby",
+      "type": "stat"
+    },
     {
       "cacheTimeout": null,
       "colorBackground": true,
@@ -48,7 +127,7 @@
         "h": 4,
         "w": 2,
         "x": 0,
-        "y": 0
+        "y": 4
       },
       "id": 6,
       "interval": null,
@@ -91,7 +170,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "memcached_up{job=~\"$job\"}",
+          "expr": "memcached_up{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -144,7 +223,7 @@
         "h": 4,
         "w": 3,
         "x": 2,
-        "y": 0
+        "y": 4
       },
       "id": 7,
       "interval": null,
@@ -185,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "memcached_uptime_seconds{job=~\"$job\"}",
+          "expr": "memcached_uptime_seconds{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A"
@@ -216,7 +295,7 @@
         "h": 4,
         "w": 3,
         "x": 5,
-        "y": 0
+        "y": 4
       },
       "id": 23,
       "links": [],
@@ -269,11 +348,11 @@
           "displayAliasType": "Warning / Critical",
           "displayType": "Regular",
           "displayValueWithAlias": "Never",
-          "expr": "memcached_current_bytes{job=~\"$job\"}/memcached_limit_bytes{job=~\"$job\"}",
+          "expr": "memcached_current_bytes{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}/memcached_limit_bytes{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "Memory used",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 memory",
           "refId": "A",
           "step": 20,
           "units": "none",
@@ -305,7 +384,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 0
+        "y": 4
       },
       "hiddenSeries": false,
       "id": 25,
@@ -337,19 +416,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\"}))",
+          "expr": "sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "Get",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 get",
           "refId": "A",
           "step": 5,
           "target": ""
         },
         {
-          "expr": "sum (memcached_commands_total{command=\"set\",job=~\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\"}))",
+          "expr": "sum (memcached_commands_total{command=\"set\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}))",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "Set",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 set",
           "refId": "B",
           "step": 10
         }
@@ -416,7 +495,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 0
+        "y": 4
       },
       "height": "120px",
       "hiddenSeries": false,
@@ -452,19 +531,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\"})",
+          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "hit",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 hit",
           "refId": "C",
           "step": 5
         },
         {
-          "expr": "sum (memcached_commands_total{status=\"miss\",command=\"get\",job=~\"$job\"}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\"})",
+          "expr": "sum (memcached_commands_total{status=\"miss\",command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "miss",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 miss",
           "refId": "A",
           "step": 5
         }
@@ -541,7 +620,7 @@
         "h": 2,
         "w": 4,
         "x": 0,
-        "y": 4
+        "y": 8
       },
       "height": "120px",
       "id": 35,
@@ -582,7 +661,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum (memcached_items_evicted_total{job=~\"$job\"})",
+          "expr": "sum (memcached_items_evicted_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A",
@@ -630,7 +709,7 @@
         "h": 2,
         "w": 4,
         "x": 4,
-        "y": 4
+        "y": 8
       },
       "height": "120px",
       "id": 37,
@@ -671,7 +750,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum (memcached_items_reclaimed_total{job=~\"$job\"})",
+          "expr": "sum (memcached_items_reclaimed_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A",
@@ -713,7 +792,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 6
+        "y": 10
       },
       "height": "240px",
       "hiddenSeries": false,
@@ -749,19 +828,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_items_evicted_total{job=~\"$job\"}[5m]))",
+          "expr": "sum (irate (memcached_items_evicted_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "evicts",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 evicts",
           "refId": "A",
           "step": 5,
           "target": ""
         },
         {
-          "expr": "sum (irate (memcached_items_reclaimed_total{job=~\"$job\"}[5m]))",
+          "expr": "sum (irate (memcached_items_reclaimed_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "reclaims",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 reclaims",
           "refId": "B",
           "step": 5
         }
@@ -824,7 +903,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 6
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 10,
@@ -856,11 +935,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_connections{job=~\"$job\"}",
+          "expr": "memcached_current_connections{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "Connections",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 connections",
           "refId": "A"
         }
       ],
@@ -925,7 +1004,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 6
+        "y": 10
       },
       "height": "240px",
       "hiddenSeries": false,
@@ -956,10 +1035,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_commands_total{status=\"hit\",command=\"get\",job=~\"$job\"}[5m])) / sum (irate (memcached_commands_total{command=\"get\",job=~\"$job\"}[5m]\n))",
+          "expr": "sum (irate (memcached_commands_total{status=\"hit\",command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[5m])) / sum (irate (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[5m]\n))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "Hit",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 hit rate",
           "refId": "A",
           "step": 5
         }
@@ -1024,7 +1103,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 13
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 19,
@@ -1056,19 +1135,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "delta(memcached_read_bytes_total{job=~\"$job\"}[1m])",
+          "expr": "delta(memcached_read_bytes_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[1m])",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "read",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 read",
           "refId": "A"
         },
         {
-          "expr": "delta(memcached_written_bytes_total{job=~\"$job\"}[1m])",
+          "expr": "delta(memcached_written_bytes_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[1m])",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "write",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 write",
           "refId": "B"
         }
       ],
@@ -1131,7 +1210,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 13
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 5,
@@ -1161,10 +1240,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_bytes{job=~\"$job\"}/memcached_limit_bytes{job=~\"$job\"}",
+          "expr": "memcached_current_bytes{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}/memcached_limit_bytes{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "Memory",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 memory %",
           "refId": "A"
         }
       ],
@@ -1225,7 +1304,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 13
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 4,
@@ -1255,10 +1334,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_items{job=~\"$job\"}",
+          "expr": "memcached_current_items{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "Items",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 items",
           "refId": "A"
         }
       ],
@@ -1321,7 +1400,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 20
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 33,
@@ -1356,10 +1435,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_commands_total{job=~\"$job\"}[5m])) by (command)",
+          "expr": "sum (irate (memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[5m])) by (command)",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "{{command}}",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 {command}",
           "refId": "A",
           "step": 4,
           "target": ""
@@ -1423,7 +1502,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 20
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 20,
@@ -1455,11 +1534,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(delta(memcached_commands_total{job=~\"$job\"}[30s]))/30",
+          "expr": "sum(delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[30s]))/30",
           "format": "time_series",
           "interval": "15s",
           "intervalFactor": 1,
-          "legendFormat": "QPS",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 qps",
           "refId": "A"
         }
       ],
@@ -1522,7 +1601,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 28
+        "y": 32
       },
       "hiddenSeries": false,
       "id": 9,
@@ -1554,11 +1633,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\", status=\"hit\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "Hit Ratio",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 hit ratio",
           "refId": "A"
         }
       ],
@@ -1621,7 +1700,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 28
+        "y": 32
       },
       "hiddenSeries": false,
       "id": 11,
@@ -1653,19 +1732,19 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\",command=\"get\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\",command=\"get\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\", status=\"hit\",command=\"get\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\",command=\"get\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "get",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 get hit %",
           "refId": "A"
         },
         {
-          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\",command=\"delete\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\",command=\"delete\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\", status=\"hit\",command=\"delete\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\",command=\"delete\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
-          "legendFormat": "delete",
+          "legendFormat": "{{memcached_role}} :{{memcached_port}} \u2014 delete hit %",
           "refId": "B"
         }
       ],
@@ -1721,6 +1800,7 @@
     "list": [
       {
         "name": "job",
+        "label": "Job Prometheus",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -1739,14 +1819,35 @@
         }
       },
       {
-        "name": "instance",
+        "name": "memcached_role",
+        "label": "R\u00f4le",
         "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(memcached_up{job=~\"$job\"}, instance)",
-        "query": "label_values(memcached_up{job=~\"$job\"}, instance)",
+        "definition": "label_values(memcached_up{job=~\"$job\"}, memcached_role)",
+        "query": "label_values(memcached_up{job=~\"$job\"}, memcached_role)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "instance",
+        "label": "Exporter",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(memcached_up{job=~\"$job\", memcached_role=~\"$memcached_role\"}, instance)",
+        "query": "label_values(memcached_up{job=~\"$job\", memcached_role=~\"$memcached_role\"}, instance)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
