@@ -24,15 +24,20 @@ check_aaaa() {
 
 check_tcp6() {
   local host="$1" port="$2" label="$3"
-  if command -v nc >/dev/null 2>&1; then
-    if nc -6 -z -w 3 "${host}" "${port}" 2>/dev/null; then
-      log "OK  TCP6 ${label} ${host}:${port}"
-      return 0
-    fi
-    if nc -4 -z -w 3 "${host}" "${port}" 2>/dev/null; then
-      log "OK  TCP4 ${label} ${host}:${port}"
-      return 0
-    fi
+  local aaaa ipv4
+  aaaa="$(dig +short AAAA "${host}" 2>/dev/null | head -n 1 || true)"
+  ipv4="$(dig +short A "${host}" 2>/dev/null | head -n 1 || true)"
+  if ! command -v nc >/dev/null 2>&1; then
+    warn "nc absent — skip TCP ${label}"
+    return 0
+  fi
+  if [[ -n "${aaaa}" ]] && nc -z -G 2 -w 2 "${aaaa}" "${port}" 2>/dev/null; then
+    log "OK  TCP6 ${label} ${host}:${port} via [${aaaa}]"
+    return 0
+  fi
+  if [[ -n "${ipv4}" ]] && nc -z -G 2 -w 2 "${ipv4}" "${port}" 2>/dev/null; then
+    log "OK  TCP4 ${label} ${host}:${port} via ${ipv4}"
+    return 0
   fi
   warn "FAIL TCP ${label} ${host}:${port} (v6 et v4)"
   fail=1
@@ -45,7 +50,7 @@ check_tls_sni() {
     return 0
   fi
   local issuer
-  issuer="$(timeout 8 openssl s_client -connect "${host}:${port}" -servername "${host}" </dev/null 2>/dev/null \
+  issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" -brief 2>/dev/null \
     | openssl x509 -noout -issuer 2>/dev/null || true)"
   if [[ -n "${issuer}" ]] && [[ "${issuer}" == *"Let's Encrypt"* ]]; then
     log "OK  TLS ${label} ${host}:${port} — Let's Encrypt"
