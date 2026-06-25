@@ -20,6 +20,14 @@ check() {
 
 fail=0
 
+log "=== Node exporter (hôte VPS) ==="
+if curl -sf "http://127.0.0.1:9100/metrics" | grep -q '^node_cpu_seconds_total'; then
+  log "OK  node_exporter (:9100) — métriques CPU présentes"
+else
+  warn "FAIL node_exporter (:9100) — conteneur wise-eat-node-exporter arrêté ?"
+  fail=1
+fi
+
 log "=== Redis exporters (host) ==="
 for pair in "9121:cache" "9122:bullmq"; do
   port="${pair%%:*}"
@@ -60,7 +68,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus','memcached'):
+  if 'redis' in j or j in ('prometheus','memcached','node'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -84,6 +92,25 @@ else:
 "
 else
   warn "FAIL requête Prometheus redis_up"
+  fail=1
+fi
+
+log "=== requête node_uname_info (dashboard #1860) ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — job node non scrapé)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  job={m.get('job')} nodename={m.get('nodename')} instance={m.get('instance')}\")
+"
+else
+  warn "FAIL requête Prometheus node_uname_info"
   fail=1
 fi
 
@@ -116,4 +143,4 @@ if [[ "${fail}" -ne 0 ]]; then
   exit 1
 fi
 
-log "Stack monitoring OK — Grafana : dossiers Redis / Memcached, job=All"
+log "Stack monitoring OK — Grafana : System / Redis / Memcached"

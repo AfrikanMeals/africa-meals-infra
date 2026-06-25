@@ -122,6 +122,8 @@ Après `./install.sh stunnel` (cert LE sur `cache.wise-eat.com` requis).
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
 
+**System (VPS)** : `node_exporter` Docker sur `127.0.0.1:9100`, job Prometheus `node`, dashboard **Wise Eat — System (Node Exporter)** (Grafana.com #1860, dossier `System/`). Les variables **Job**, **Nodename** et **Instance** restent vides tant que `node_exporter` n’est pas scrapé.
+
 #### Grafana vide (Redis DOWN / Memcached DOWN / No data)
 
 Cause fréquente : les exporters Docker ne joignaient pas Redis/Memcached car ces services n’écoutent que sur `127.0.0.1` (inaccessible via `host.docker.internal`). Le stack utilise désormais le réseau Docker partagé `wise-eat-infra`.
@@ -146,7 +148,8 @@ sudo ./install.sh repair-monitoring
 ```bash
 curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '
 curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '
-curl -s 'http://127.0.0.1:9090/api/v1/query?query=redis_up'
+curl -s http://127.0.0.1:9100/metrics | grep '^node_cpu_seconds_total' | head -1
+curl -s 'http://127.0.0.1:9090/api/v1/query?query=node_uname_info'
 ```
 
 Attendu : `redis_up 1` et `memcached_up 1`. Si `redis_up 0`, aligner `CACHE_REDIS_PASSWORD` / `BULL_REDIS_PASSWORD` entre `redis/.env.redis` et `monitoring/.env.monitoring`, puis relancer `repair-monitoring`.

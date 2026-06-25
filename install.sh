@@ -42,7 +42,7 @@ Composants:
   stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
-  monitoring    Prometheus + Grafana + redis_exporter
+  monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)

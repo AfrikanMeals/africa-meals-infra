@@ -531,7 +531,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
+          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\", memcached_role=~\"$memcached_role\", instance=~\"$instance\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,

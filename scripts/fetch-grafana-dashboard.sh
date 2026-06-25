@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 DASH_ROOT="${MON_DIR}/grafana/dashboards"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${DASH_ROOT}/System"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -149,8 +149,71 @@ PY
   log "Dashboard Memcached → ${out} (base Grafana.com)"
 }
 
+fetch_node_dashboard() {
+  local out="${DASH_ROOT}/System/node-exporter-full.json"
+  curl -fsSL "https://grafana.com/api/dashboards/1860/revisions/latest/download" -o "${out}.tmp"
+  python3 - <<'PY' "${out}.tmp" "${out}"
+import json, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+PROM_UID = "prometheus"
+DS = {"type": "prometheus", "uid": PROM_UID}
+
+with open(src, encoding="utf-8") as f:
+    dash = json.load(f)
+
+dash["id"] = None
+dash["uid"] = "wise-eat-node-1860"
+dash["title"] = "Wise Eat — System (Node Exporter)"
+
+repl = json.dumps(dash)
+repl = repl.replace("${ds_prometheus}", PROM_UID)
+repl = repl.replace('"uid": "${ds_prometheus}"', f'"uid": "{PROM_UID}"')
+repl = repl.replace("${DS_PROMETHEUS}", "Prometheus")
+repl = repl.replace("${DS_PROM}", PROM_UID)
+dash = json.loads(repl)
+
+for key in ("__inputs", "__requires", "__elements"):
+    dash.pop(key, None)
+
+def fix_ds(obj):
+    if isinstance(obj, dict):
+        ds = obj.get("datasource")
+        if ds in ("Prometheus", "${DS_PROMETHEUS}", "${ds_prometheus}"):
+            obj["datasource"] = DS
+        elif isinstance(ds, dict) and ds.get("uid") in ("${ds_prometheus}", "Prometheus"):
+            obj["datasource"] = DS
+        for v in obj.values():
+            fix_ds(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            fix_ds(item)
+
+fix_ds(dash)
+
+# Variable datasource « Prometheus » (uid prometheus) — retrait du sélecteur ds_prometheus.
+templating = dash.get("templating", {}).get("list", [])
+dash["templating"]["list"] = [
+    v for v in templating if v.get("name") != "ds_prometheus"
+]
+for var in dash["templating"]["list"]:
+    if var.get("datasource"):
+        var["datasource"] = DS
+    q = var.get("query")
+    if isinstance(q, dict) and "datasource" in q:
+        q["datasource"] = DS
+
+with open(dst, "w", encoding="utf-8") as f:
+    json.dump(dash, f, indent=2)
+    f.write("\n")
+PY
+  rm -f "${out}.tmp"
+  log "Dashboard Node Exporter → ${out} (Grafana.com #1860)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
+fetch_node_dashboard
 patch_dashboards
 
 # Ancien chemin plat (avant foldersFromFilesStructure).

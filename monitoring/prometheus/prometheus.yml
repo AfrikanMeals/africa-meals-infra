@@ -10,6 +10,14 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  # Métriques hôte Ubuntu (dashboard Grafana Node Exporter Full #1860)
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          namespace: wise-eat
+          host_role: vps
+
   - job_name: redis-cache
     static_configs:
       - targets: ['redis-exporter-cache:9121']
