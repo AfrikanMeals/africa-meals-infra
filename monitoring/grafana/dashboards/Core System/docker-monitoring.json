@@ -113,7 +113,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(count by (name) (container_last_seen{instance=\"wise-eat:8080\",container_label_com_docker_compose_project!=\"\",image!=\"\"}))",
+          "expr": "count(count by (name) (container_cpu_usage_seconds_total{instance=\"wise-eat:8080\",image!=\"\",name!=\"/\",cpu=\"total\"}))",
           "instant": true,
           "format": "time_series",
           "legendFormat": "conteneurs wise-eat",
@@ -189,7 +189,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count by (name) (container_last_seen{instance=\"wise-eat:8080\",container_label_com_docker_compose_project!=\"\",image!=\"\"}))",
+          "expr": "count(count by (name) (container_cpu_usage_seconds_total{instance=\"wise-eat:8080\",image!=\"\",name!=\"/\",cpu=\"total\"}))",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -1090,7 +1090,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_network_receive_bytes_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[3m])) by (name)",
+          "expr": "sum(rate(container_network_receive_bytes_total{image!=\"\",name!=\"/\",instance=\"wise-eat:8080\"}[3m])) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -1184,7 +1184,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[5m])) by (name)",
+          "expr": "sum(rate(container_network_transmit_bytes_total{image!=\"\",name!=\"/\",instance=\"wise-eat:8080\"}[5m])) by (name)",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{name}}",
@@ -1275,7 +1275,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[5m])) by (name) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{image!=\"\",name!=\"/\",instance=\"wise-eat:8080\"}[5m])) by (name) * 100",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -1367,7 +1367,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_rss{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}) by (name)",
+          "expr": "sum(container_memory_rss{image!=\"\",name!=\"/\",instance=\"wise-eat:8080\"}) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -1458,7 +1458,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_swap{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}) by (name)",
+          "expr": "sum(container_memory_swap{image!=\"\",name!=\"/\",instance=\"wise-eat:8080\"}) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,

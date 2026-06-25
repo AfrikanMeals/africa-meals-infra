@@ -35,8 +35,10 @@ services:
     command:
       - --docker_only=true
       - --store_container_labels=true
-      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service,com.docker.compose.config-hash
+      - --housekeeping_interval=10s
       - --enable_metrics=cpu,memory,network,disk,process,oom_event
+    devices:
+      - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

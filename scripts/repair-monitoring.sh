@@ -65,6 +65,15 @@ fi
 
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
+cd "${MON_DIR}"
+COMPOSE_ARGS=(--env-file .env.monitoring)
+if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
+  COMPOSE_ARGS+=(--profile cluster-b)
+fi
+log "Recréation cAdvisor (métriques conteneurs)…"
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate cadvisor
+sleep 8
+
 if ! bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"; then
   warn "fetch-grafana-dashboard partiellement échoué — vérifier python3 / curl"
 fi

@@ -15,11 +15,11 @@ CADVISOR_INSTANCE = "wise-eat:8080"
 INSTANCE_MIXED = "wise-eat:(9100|8080)"
 INSTANCE_MIXED_RE = rf'instance=~"{re.escape(INSTANCE_MIXED)}"'
 
-# cAdvisor : filtrer conteneurs Docker réels (pas le filtre name=~wise-eat — compose project ≠ nom conteneur)
-CONTAINER_FILTER = 'container_label_com_docker_compose_project!="", image!=""'
+# Conteneurs Docker réels (évite cgroup racine « / ») — ne pas exiger compose_project (souvent absent)
+CONTAINER_FILTER = 'image!="", name!="/"'
 CONTAINER_COUNT_EXPR = (
-    f'count(count by (name) (container_last_seen{{instance="{CADVISOR_INSTANCE}", '
-    f'{CONTAINER_FILTER}}}))'
+    f'count(count by (name) (container_cpu_usage_seconds_total{{instance="{CADVISOR_INSTANCE}", '
+    f'{CONTAINER_FILTER}, cpu="total"}}))'
 )
 DISK_USED_EXPR = (
     f'1 - (node_filesystem_avail_bytes{{instance="{NODE_INSTANCE}", mountpoint="/", '
@@ -73,6 +73,11 @@ def patch_expr(expr: str) -> str:
 
     # #4271 : rate() sur container_last_seen (gauge) → N/A ; compter les séries directement.
     expr = re.sub(
+        r"count\s*\(\s*count by \(name\) \(container_last_seen[^)]*\)\s*\)",
+        CONTAINER_COUNT_EXPR,
+        expr,
+    )
+    expr = re.sub(
         r"count\s*\(\s*rate\s*\(\s*container_last_seen[^)]*\)\s*\)",
         CONTAINER_COUNT_EXPR,
         expr,
@@ -100,7 +105,11 @@ def patch_expr(expr: str) -> str:
         CONTAINER_FILTER,
     )
 
-    # Remplace anciens filtres name=~".*wise-eat.*" (0 série si labels cAdvisor différents)
+    # Remplace anciens filtres trop stricts
+    expr = expr.replace(
+        'container_label_com_docker_compose_project!="",image!=""',
+        CONTAINER_FILTER,
+    )
     expr = expr.replace('name=~".*wise-eat.*",', f"{CONTAINER_FILTER},")
     expr = expr.replace('{name=~".*wise-eat.*",', f'{{{CONTAINER_FILTER},')
     expr = expr.replace(',name=~".*wise-eat.*"', "")

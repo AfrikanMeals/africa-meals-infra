@@ -139,7 +139,7 @@ else
 fi
 
 log "=== requête container_cpu (dashboard Docker #4271) ==="
-CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",container_label_com_docker_compose_project!=""}'
+CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",image!="",name!="/",cpu="total"}'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" \
     | python3 -c "
@@ -177,7 +177,7 @@ else
 fi
 
 log "=== requête count conteneurs (dashboard Docker #4271 — panel Containers) ==="
-CONTAINER_COUNT_Q='count(count by (name) (container_last_seen{instance="wise-eat:8080",container_label_com_docker_compose_project!="",image!=""}))'
+CONTAINER_COUNT_Q='count(count by (name) (container_cpu_usage_seconds_total{instance="wise-eat:8080",image!="",name!="/",cpu="total"}))'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" \
     | python3 -c "
