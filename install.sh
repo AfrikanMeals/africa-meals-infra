@@ -39,6 +39,7 @@ Composants:
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
+  minio-replication  MinIO + 2 réplicas site replication (:9002, :9004)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
@@ -106,6 +107,9 @@ run_component() {
       ;;
     minio-backup)
       bash "${SCRIPTS}/install-minio-backup.sh"
+      ;;
+    minio-replication)
+      bash "${SCRIPTS}/install-minio-replication.sh"
       ;;
     nginx)
       bash "${SCRIPTS}/install-nginx.sh"

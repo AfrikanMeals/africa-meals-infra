@@ -1,0 +1,48 @@
+# Wise Eat — 2 sites MinIO réplicas (site replication avec le primaire)
+# Usage : sudo ./install.sh minio-replication
+# Compose : docker compose -f docker-compose.yml -f docker-compose.replicas.yml
+
+services:
+  minio-replica-1:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: wise-eat-minio-replica-1
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+      MINIO_SERVER_URL: ${MINIO_REPLICA_1_SERVER_URL:-http://127.0.0.1:9002}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://cdn.wise-eat.com}
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    ports:
+      - "127.0.0.1:${MINIO_REPLICA_1_API_PORT:-9002}:9000"
+      - "127.0.0.1:${MINIO_REPLICA_1_CONSOLE_PORT:-9012}:9001"
+    volumes:
+      - ${MINIO_REPLICA_1_DATA_DIR:-/var/lib/wise-eat/minio-replica-1}:/data
+    restart: unless-stopped
+    networks:
+      wise-eat-minio: {}
+      wise-eat-infra:
+        aliases:
+          - wise-eat-minio-replica-1
+
+  minio-replica-2:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: wise-eat-minio-replica-2
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+      MINIO_SERVER_URL: ${MINIO_REPLICA_2_SERVER_URL:-http://127.0.0.1:9004}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://cdn.wise-eat.com}
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    ports:
+      - "127.0.0.1:${MINIO_REPLICA_2_API_PORT:-9004}:9000"
+      - "127.0.0.1:${MINIO_REPLICA_2_CONSOLE_PORT:-9014}:9001"
+    volumes:
+      - ${MINIO_REPLICA_2_DATA_DIR:-/var/lib/wise-eat/minio-replica-2}:/data
+    restart: unless-stopped
+    networks:
+      wise-eat-minio: {}
+      wise-eat-infra:
+        aliases:
+          - wise-eat-minio-replica-2

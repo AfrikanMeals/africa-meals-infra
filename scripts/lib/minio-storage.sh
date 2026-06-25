@@ -105,6 +105,25 @@ ensure_minio_data_volume() {
   log "Volume MinIO ${MINIO_STORAGE_GB}G monté : ${MINIO_DATA_DIR} ($(df -h "${MINIO_DATA_DIR}" | awk 'NR==2{print $2" total, "$3" utilisés"}'))"
 }
 
+ensure_minio_replica_data_volume() {
+  local replica_num="$1"
+  local data_dir_var="MINIO_REPLICA_${replica_num}_DATA_DIR"
+  local loop_var="MINIO_REPLICA_${replica_num}_LOOP_FILE"
+  local gb_var="MINIO_REPLICA_${replica_num}_STORAGE_GB"
+  local data_dir_default="/var/lib/wise-eat/minio-replica-${replica_num}"
+  local data_dir="${!data_dir_var:-${data_dir_default}}"
+  local loop_default="${MINIO_DATA_ROOT:-/var/lib/wise-eat}/minio-replica-${replica_num}-data.img"
+  local loop_file="${!loop_var:-${loop_default}}"
+  local storage_gb="${!gb_var:-${MINIO_STORAGE_GB:-25}}"
+
+  MINIO_DATA_DIR="${data_dir}" \
+    MINIO_LOOP_FILE="${loop_file}" \
+    MINIO_STORAGE_GB="${storage_gb}" \
+    ensure_minio_data_volume
+
+  export "${data_dir_var}=${data_dir}"
+}
+
 persist_minio_env_paths() {
   local env_file="${MINIO_ENV}"
   [[ -f "${env_file}" ]] || return 0
@@ -114,7 +133,11 @@ persist_minio_env_paths() {
     "MINIO_STORAGE_GB=${MINIO_STORAGE_GB}" \
     "MINIO_STORAGE_DOMAIN=${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}" \
     "MINIO_CONSOLE_DOMAIN=${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com}" \
-    "MINIO_BACKUP_DIR=${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"; do
+    "MINIO_BACKUP_DIR=${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}" \
+    "MINIO_REPLICA_1_DATA_DIR=${MINIO_REPLICA_1_DATA_DIR:-/var/lib/wise-eat/minio-replica-1}" \
+    "MINIO_REPLICA_2_DATA_DIR=${MINIO_REPLICA_2_DATA_DIR:-/var/lib/wise-eat/minio-replica-2}" \
+    "MINIO_REPLICA_1_API_PORT=${MINIO_REPLICA_1_API_PORT:-9002}" \
+    "MINIO_REPLICA_2_API_PORT=${MINIO_REPLICA_2_API_PORT:-9004}"; do
     local key="${pair%%=*}" val="${pair#*=}"
     if grep -q "^${key}=" "${env_file}"; then
       sed -i "s|^${key}=.*|${key}=${val}|" "${env_file}"
