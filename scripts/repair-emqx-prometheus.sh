@@ -124,6 +124,23 @@ if not r:
 "
 fi
 
+log "Collecteurs Prometheus Erlang VM / Mnesia (recréation EMQX si besoin)"
+if [[ -f "${EMQX_DIR}/docker-compose.yml" ]]; then
+  cd "${EMQX_DIR}"
+  docker compose --env-file "${EMQX_ENV}" up -d --force-recreate
+  sleep 15
+fi
+
+log "Vérification métriques Erlang / Mnesia sur primary"
+metrics_sample="$(curl -sf "http://127.0.0.1:${EMQX_DASH_PORT}/api/v5/prometheus/stats" || true)"
+for needle in erlang_vm_process_count erlang_mnesia_memory_usage_bytes erlang_vm_threads emqx_vm_total_memory; do
+  if echo "${metrics_sample}" | grep -q "^${needle}"; then
+    log "OK  métrique ${needle}"
+  else
+    warn "ABSENT ${needle} — vérifier EMQX_PROMETHEUS__COLLECTORS__* dans docker-compose.yml"
+  fi
+done
+
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 

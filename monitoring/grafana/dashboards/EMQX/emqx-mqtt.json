@@ -1408,7 +1408,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_total_bytes{instance=\"wise-eat:9100\"}",
+          "expr": "max(node_memory_MemTotal_bytes{instance=\"wise-eat:9100\",job=\"node\"}) or max(emqx_vm_total_memory{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -1919,7 +1919,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_mnesia_memory_usage_bytes{job=\"emqx\"})",
+          "expr": "sum(erlang_mnesia_memory_usage_bytes{job=\"emqx\"}) or sum(erlang_vm_memory_ets{job=\"emqx\"})",
           "legendFormat": "Mnesia (built-in database) Memory Usage",
           "range": true,
           "refId": "A"
@@ -2010,7 +2010,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_vm_process_count{job=\"emqx\"})",
+          "expr": "sum(erlang_vm_process_count{job=\"emqx\"}) or max(emqx_vm_process_messages_in_queues{job=\"emqx\"})",
           "legendFormat": "Process Count",
           "range": true,
           "refId": "A"

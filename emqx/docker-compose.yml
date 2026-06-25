@@ -24,6 +24,11 @@ x-emqx-env: &emqx-env
   EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION: suffix
   EMQX_LOG__CONSOLE__LEVEL: warning
   EMQX_PROMETHEUS__ENABLE: "true"
+  # Collecteurs Erlang VM / Mnesia (désactivés par défaut — requis pour Grafana System)
+  EMQX_PROMETHEUS__COLLECTORS__VM_MEMORY: enabled
+  EMQX_PROMETHEUS__COLLECTORS__VM_SYSTEM_INFO: enabled
+  EMQX_PROMETHEUS__COLLECTORS__VM_STATISTICS: enabled
+  EMQX_PROMETHEUS__COLLECTORS__MNESIA: enabled
 
 services:
   emqx-1:

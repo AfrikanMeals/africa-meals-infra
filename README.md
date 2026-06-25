@@ -416,6 +416,10 @@ docker exec wise-eat-emqx-1 emqx ctl cluster status
 
 **Grafana** : dossier **EMQX** → **Wise Eat — EMQX** (connexions, messages, packets, cluster, VM Erlang). Prérequis : EMQX installé + scrape Prometheus.
 
+Panneau **System** (RAM, Mnesia, processus Erlang) :
+- **RAM Total** : requête `node_memory_MemTotal_bytes` (node_exporter récent) avec repli `emqx_vm_total_memory`.
+- **Mnesia / Erlang VM** : collecteurs `EMQX_PROMETHEUS__COLLECTORS__*` activés dans `emqx/docker-compose.yml` (`vm_memory`, `vm_system_info`, `vm_statistics`, `mnesia`).
+
 Si Grafana affiche **No data** :
 ```bash
 sudo ./install.sh repair-emqx-prometheus

@@ -13,6 +13,25 @@ EMQX_JOB = "emqx"
 # node_exporter VPS (prometheus.yml relabel instance=wise-eat:9100)
 NODE_INSTANCE = "wise-eat:9100"
 
+# Requêtes corrigées (dashboard Grafana #17446 vs EMQX 5.8 / node_exporter récent)
+EXPR_FIXES: dict[str, str] = {
+    'node_memory_total_bytes{instance="wise-eat:9100"}': (
+        f'max(node_memory_MemTotal_bytes{{instance="{NODE_INSTANCE}",job="node"}}) '
+        f'or max(emqx_vm_total_memory{{job="{EMQX_JOB}"}})'
+    ),
+    f'sum(erlang_mnesia_memory_usage_bytes{{job="{EMQX_JOB}"}})': (
+        f'sum(erlang_mnesia_memory_usage_bytes{{job="{EMQX_JOB}"}}) '
+        f'or sum(erlang_vm_memory_ets{{job="{EMQX_JOB}"}})'
+    ),
+    f'sum(erlang_vm_process_count{{job="{EMQX_JOB}"}})': (
+        f'sum(erlang_vm_process_count{{job="{EMQX_JOB}"}}) '
+        f'or max(emqx_vm_process_messages_in_queues{{job="{EMQX_JOB}"}})'
+    ),
+    f'sum(erlang_vm_threads{{job="{EMQX_JOB}"}})': (
+        f'sum(erlang_vm_threads{{job="{EMQX_JOB}"}})'
+    ),
+}
+
 
 def fix_ds(obj) -> None:
     if isinstance(obj, dict):
@@ -29,6 +48,9 @@ def fix_ds(obj) -> None:
 
 
 def patch_expr(expr: str) -> str:
+    if expr in EXPR_FIXES:
+        return EXPR_FIXES[expr]
+
     expr = expr.replace('job="emqx"', f'job="{EMQX_JOB}"')
 
     # System / hôte : node_exporter VPS (pas les targets EMQX).
