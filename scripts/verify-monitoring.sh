@@ -71,11 +71,25 @@ fi
 log "=== MinIO (métriques cluster) ==="
 MINIO_PORT="${MINIO_API_PORT:-9000}"
 if curl -sf "http://127.0.0.1:${MINIO_PORT}/minio/health/live" >/dev/null 2>&1; then
+  cluster_ok=0
+  node_ok=0
   if curl -sf "http://127.0.0.1:${MINIO_PORT}/minio/v2/metrics/cluster" | grep -q '^minio_cluster_health_status'; then
-    log "OK  MinIO (:${MINIO_PORT}) — métriques Prometheus exposées"
+    cluster_ok=1
+  fi
+  if curl -sf "http://127.0.0.1:${MINIO_PORT}/minio/v2/metrics/node" | grep -q '^minio_node_process_cpu_total_seconds'; then
+    node_ok=1
+  fi
+  if [[ "${cluster_ok}" -eq 1 && "${node_ok}" -eq 1 ]]; then
+    log "OK  MinIO (:${MINIO_PORT}) — métriques cluster + node exposées"
   else
-    warn "FAIL MinIO (:${MINIO_PORT}) — endpoint /minio/v2/metrics/cluster sans minio_cluster_health_status"
+    warn "FAIL MinIO (:${MINIO_PORT}) — cluster=${cluster_ok} node=${node_ok}"
     warn "      Recréer MinIO : sudo ./install.sh minio (MINIO_PROMETHEUS_AUTH_TYPE=public)"
+    fail=1
+  fi
+  if ! docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null \
+    | grep -q 'wise-eat-infra'; then
+    warn "FAIL MinIO — conteneur absent du réseau wise-eat-infra (Prometheus ne peut pas scraper)"
+    warn "      sudo docker network connect wise-eat-infra wise-eat-minio"
     fail=1
   fi
 else
@@ -192,14 +206,51 @@ else
   fail=1
 fi
 
+log "=== requête up{job=\"minio\"} ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22minio%22%7D' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22minio%22%7D' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — target minio non scrapée)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus up{job=\"minio\"}"
+  fail=1
+fi
+
+log "=== requête minio_node_process_cpu_total_seconds ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_node_process_cpu_total_seconds' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_node_process_cpu_total_seconds' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — ajouter scrape /minio/v2/metrics/node dans prometheus.yml)')
+else:
+    print(f'  {len(r)} série(s) minio_node_*')
+"
+else
+  warn "FAIL requête Prometheus minio_node_process_cpu_total_seconds"
+  fail=1
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   echo ""
   warn "Correctifs fréquents :"
   echo "  1. Redis : aligner mots de passe dans monitoring/.env.monitoring"
   echo "  2. Memcached : sudo ./install.sh memcached puis vérifier curl :11211"
   echo "  3. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
-  echo "  4. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate"
-  echo "  5. curl -X POST http://127.0.0.1:9090/-/reload"
+  echo "  4. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
+  echo "  5. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
+  echo "  6. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
   exit 1
 fi
 

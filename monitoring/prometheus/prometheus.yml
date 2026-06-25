@@ -128,3 +128,16 @@ scrape_configs:
     relabel_configs:
       - target_label: instance
         replacement: wise-eat-minio:9000
+
+  # Métriques nœud (minio_node_*, CPU, mémoire, FDs — panneaux dashboard)
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/node
+    scheme: http
+    static_configs:
+      - targets: ['wise-eat-minio:9000']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+    relabel_configs:
+      - target_label: instance
+        replacement: wise-eat-minio:9000

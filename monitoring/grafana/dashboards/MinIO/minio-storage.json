@@ -21,7 +21,7 @@
       }
     ]
   },
-  "description": "M\u00e9triques cluster MinIO (Prometheus). \u00c9quivalent du dashboard Grafana #20826 (InfluxDB 2.0) \u2014 job Prometheus : minio \u2014 scrape /minio/v2/metrics/cluster.",
+  "description": "M\u00e9triques cluster MinIO (Prometheus). \u00c9quivalent du dashboard Grafana #20826 (InfluxDB 2.0) \u2014 job Prometheus : minio \u2014 scrape /minio/v2/metrics/cluster + /minio/v2/metrics/node.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 25202,
@@ -40,6 +40,94 @@
   ],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9200,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "up{job=\"minio\", instance=\"wise-eat-minio:9000\"}",
+          "legendFormat": "Prometheus scrape minio",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "minio_cluster_health_status{job=\"minio\"}",
+          "legendFormat": "cluster health",
+          "refId": "B"
+        }
+      ],
+      "title": "MinIO \u2014 scrape Prometheus / sant\u00e9 cluster",
+      "type": "stat"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -77,7 +165,7 @@
         "h": 6,
         "w": 3,
         "x": 0,
-        "y": 0
+        "y": 4
       },
       "id": 1,
       "links": [],
@@ -107,7 +195,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "time() - max(minio_node_process_starttime_seconds{job=~\"$scrape_jobs\"})",
+          "expr": "time() - max(minio_node_process_starttime_seconds{job=\"minio\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -158,7 +246,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 0
+        "y": 4
       },
       "id": 65,
       "links": [],
@@ -188,7 +276,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (instance) (minio_s3_traffic_received_bytes{job=~\"$scrape_jobs\"})",
+          "expr": "sum by (instance) (minio_s3_traffic_received_bytes{job=\"minio\"})",
           "format": "table",
           "hide": false,
           "instant": false,
@@ -272,7 +360,7 @@
         "h": 6,
         "w": 4,
         "x": 6,
-        "y": 0
+        "y": 4
       },
       "id": 50,
       "interval": "1m",
@@ -309,7 +397,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(1, sum(minio_cluster_capacity_usable_total_bytes{job=~\"$scrape_jobs\"}) by (instance)) - topk(1, sum(minio_cluster_capacity_usable_free_bytes{job=~\"$scrape_jobs\"}) by (instance))",
+          "expr": "topk(1, sum(minio_cluster_capacity_usable_total_bytes{job=\"minio\"}) by (instance)) - topk(1, sum(minio_cluster_capacity_usable_free_bytes{job=\"minio\"}) by (instance))",
           "format": "time_series",
           "instant": false,
           "interval": "1m",
@@ -324,7 +412,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "topk(1, sum(minio_cluster_capacity_usable_free_bytes{job=~\"$scrape_jobs\"}) by (instance)) ",
+          "expr": "topk(1, sum(minio_cluster_capacity_usable_free_bytes{job=\"minio\"}) by (instance)) ",
           "hide": false,
           "interval": "1m",
           "legendFormat": "Free",
@@ -439,7 +527,7 @@
         "h": 6,
         "w": 6,
         "x": 10,
-        "y": 0
+        "y": 4
       },
       "id": 68,
       "options": {
@@ -463,7 +551,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_usage_total_bytes{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_usage_total_bytes{job=\"minio\"})",
           "interval": "",
           "legendFormat": "Usage",
           "range": true,
@@ -501,7 +589,7 @@
         "h": 6,
         "w": 5,
         "x": 16,
-        "y": 0
+        "y": 4
       },
       "id": 52,
       "links": [],
@@ -533,7 +621,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_cluster_objects_size_distribution{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_objects_size_distribution{job=\"minio\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -614,7 +702,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 0
+        "y": 4
       },
       "id": 61,
       "links": [],
@@ -640,7 +728,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_node_file_descriptor_open_total{job=~\"$scrape_jobs\"}",
+          "expr": "minio_node_file_descriptor_open_total{job=\"minio\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -692,7 +780,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 3
+        "y": 7
       },
       "id": 64,
       "links": [],
@@ -722,7 +810,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (instance) (minio_s3_traffic_sent_bytes{job=~\"$scrape_jobs\"})",
+          "expr": "sum by (instance) (minio_s3_traffic_sent_bytes{job=\"minio\"})",
           "format": "table",
           "hide": false,
           "instant": false,
@@ -802,7 +890,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 3
+        "y": 7
       },
       "id": 62,
       "links": [],
@@ -828,7 +916,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_node_go_routine_total{job=~\"$scrape_jobs\"}",
+          "expr": "minio_node_go_routine_total{job=\"minio\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -869,7 +957,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 6
+        "y": 10
       },
       "id": 94,
       "options": {
@@ -898,7 +986,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_cluster_health_status{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_status{job=\"minio\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "interval": "",
@@ -938,7 +1026,7 @@
         "h": 4,
         "w": 3,
         "x": 3,
-        "y": 6
+        "y": 10
       },
       "id": 78,
       "links": [],
@@ -967,7 +1055,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max(minio_cluster_drive_online_total{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_drive_online_total{job=\"minio\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -986,7 +1074,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max(minio_cluster_drive_offline_total{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_drive_offline_total{job=\"minio\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -1042,7 +1130,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 6
+        "y": 10
       },
       "id": 66,
       "links": [],
@@ -1073,7 +1161,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_bucket_total{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_bucket_total{job=\"minio\"})",
           "format": "time_series",
           "instant": false,
           "interval": "1m",
@@ -1150,7 +1238,7 @@
         "h": 6,
         "w": 7,
         "x": 9,
-        "y": 6
+        "y": 10
       },
       "id": 63,
       "options": {
@@ -1173,7 +1261,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_s3_traffic_received_bytes{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_s3_traffic_received_bytes{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "Data Received [{{server}}]",
@@ -1248,7 +1336,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 6
+        "y": 10
       },
       "id": 70,
       "options": {
@@ -1271,7 +1359,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_s3_traffic_sent_bytes{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_s3_traffic_sent_bytes{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "Data Sent [{{server}}]",
@@ -1322,7 +1410,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 8
+        "y": 12
       },
       "id": 53,
       "links": [],
@@ -1352,7 +1440,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_cluster_nodes_online_total{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_nodes_online_total{job=\"minio\"})",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1411,7 +1499,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 9
+        "y": 13
       },
       "id": 44,
       "links": [],
@@ -1442,7 +1530,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_usage_object_total{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_cluster_usage_object_total{job=\"minio\"})",
           "format": "time_series",
           "instant": false,
           "interval": "1m",
@@ -1484,7 +1572,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 10
+        "y": 14
       },
       "id": 80,
       "links": [],
@@ -1514,7 +1602,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_heal_time_last_activity_nano_seconds{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_heal_time_last_activity_nano_seconds{job=\"minio\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -1558,7 +1646,7 @@
         "h": 2,
         "w": 3,
         "x": 3,
-        "y": 10
+        "y": 14
       },
       "id": 81,
       "links": [],
@@ -1588,7 +1676,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_usage_last_activity_nano_seconds{job=~\"$scrape_jobs\"})",
+          "expr": "max(minio_usage_last_activity_nano_seconds{job=\"minio\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -1626,7 +1714,7 @@
         "h": 6,
         "w": 9,
         "x": 0,
-        "y": 12
+        "y": 16
       },
       "hiddenSeries": false,
       "id": 60,
@@ -1661,7 +1749,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_total{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_total{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -1724,7 +1812,7 @@
         "h": 6,
         "w": 7,
         "x": 9,
-        "y": 12
+        "y": 16
       },
       "hiddenSeries": false,
       "id": 88,
@@ -1759,7 +1847,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_4xx_errors_total{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_4xx_errors_total{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -1822,7 +1910,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 12
+        "y": 16
       },
       "hiddenSeries": false,
       "id": 86,
@@ -1857,7 +1945,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_5xx_errors_total{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_5xx_errors_total{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -1924,7 +2012,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 18
+        "y": 22
       },
       "id": 99,
       "options": {
@@ -1954,7 +2042,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_online_drives{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_erasure_set_online_drives{job=\"minio\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1971,7 +2059,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_read_quorum{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_erasure_set_read_quorum{job=\"minio\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1988,7 +2076,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_write_quorum{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_erasure_set_write_quorum{job=\"minio\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2005,7 +2093,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_healing_drives{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_erasure_set_healing_drives{job=\"minio\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2022,7 +2110,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_status{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_health_erasure_set_status{job=\"minio\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2069,7 +2157,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 18
+        "y": 22
       },
       "id": 76,
       "options": {
@@ -2099,7 +2187,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "minio_node_process_resident_memory_bytes{job=~\"$scrape_jobs\"}",
+          "expr": "minio_node_process_resident_memory_bytes{job=\"minio\"}",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2132,7 +2220,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 26
+        "y": 30
       },
       "hiddenSeries": false,
       "id": 73,
@@ -2167,7 +2255,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_io_rchar_bytes{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_io_rchar_bytes{job=\"minio\"}[$__rate_interval])",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2180,7 +2268,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_io_wchar_bytes{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_io_wchar_bytes{job=\"minio\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Node WChar [{{server}}]",
           "refId": "B"
@@ -2251,7 +2339,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 26
+        "y": 30
       },
       "id": 77,
       "options": {
@@ -2278,7 +2366,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(minio_node_process_cpu_total_seconds{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_process_cpu_total_seconds{job=\"minio\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "{{server}}",
           "range": true,
@@ -2353,7 +2441,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 37
       },
       "id": 17,
       "links": [],
@@ -2378,7 +2466,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(minio_inter_node_traffic_sent_bytes{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_inter_node_traffic_sent_bytes{job=\"minio\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2394,7 +2482,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_inter_node_traffic_received_bytes{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_inter_node_traffic_received_bytes{job=\"minio\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Internode Bytes Sent [{{server}}]",
           "refId": "B"
@@ -2430,7 +2518,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 37
       },
       "hiddenSeries": false,
       "id": 8,
@@ -2467,7 +2555,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "minio_node_file_descriptor_open_total{job=~\"$scrape_jobs\"}",
+          "expr": "minio_node_file_descriptor_open_total{job=\"minio\"}",
           "interval": "",
           "legendFormat": "Open FDs [{{server}}]",
           "refId": "B"
@@ -2533,7 +2621,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 40
+        "y": 44
       },
       "hiddenSeries": false,
       "id": 11,
@@ -2570,7 +2658,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_syscall_read_total{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_syscall_read_total{job=\"minio\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2585,7 +2673,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_syscall_write_total{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_syscall_write_total{job=\"minio\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Write Syscalls [{{server}}]",
           "refId": "B"
@@ -2646,7 +2734,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 40
+        "y": 44
       },
       "hiddenSeries": false,
       "id": 95,
@@ -2681,7 +2769,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_objects_scanned{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_objects_scanned{job=\"minio\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -2742,7 +2830,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 47
+        "y": 51
       },
       "hiddenSeries": false,
       "id": 75,
@@ -2777,7 +2865,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_versions_scanned{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_versions_scanned{job=\"minio\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -2838,7 +2926,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 47
+        "y": 51
       },
       "hiddenSeries": false,
       "id": 96,
@@ -2873,7 +2961,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_directories_scanned{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_directories_scanned{job=\"minio\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -2949,7 +3037,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 54
+        "y": 58
       },
       "id": 89,
       "links": [],
@@ -2979,7 +3067,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "minio_cluster_kms_uptime{job=~\"$scrape_jobs\"}",
+          "expr": "minio_cluster_kms_uptime{job=\"minio\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -3017,7 +3105,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 54
+        "y": 58
       },
       "hiddenSeries": false,
       "id": 91,
@@ -3052,7 +3140,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (increase(minio_cluster_kms_request_error{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server) (increase(minio_cluster_kms_request_error{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server}}",
@@ -3113,7 +3201,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 54
+        "y": 58
       },
       "hiddenSeries": false,
       "id": 90,
@@ -3148,7 +3236,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (minio_cluster_kms_online{job=~\"$scrape_jobs\"})",
+          "expr": "sum by (server) (minio_cluster_kms_online{job=\"minio\"})",
           "interval": "1m",
           "legendFormat": "{{server}}",
           "refId": "A"
@@ -3209,7 +3297,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 54
+        "y": 58
       },
       "hiddenSeries": false,
       "id": 98,
@@ -3244,7 +3332,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_bucket_scans_finished{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_bucket_scans_finished{job=\"minio\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -3308,7 +3396,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 58
+        "y": 62
       },
       "hiddenSeries": false,
       "id": 92,
@@ -3343,7 +3431,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (increase(minio_cluster_kms_request_failure{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server) (increase(minio_cluster_kms_request_failure{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server}}",
@@ -3406,7 +3494,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 58
+        "y": 62
       },
       "hiddenSeries": false,
       "id": 93,
@@ -3441,7 +3529,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_cluster_kms_request_success{job=~\"$scrape_jobs\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_cluster_kms_request_success{job=\"minio\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "KMS Request Success [{{server}}]",
@@ -3501,7 +3589,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 61
+        "y": 65
       },
       "hiddenSeries": false,
       "id": 97,
@@ -3536,7 +3624,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_bucket_scans_started{job=~\"$scrape_jobs\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_bucket_scans_started{job=\"minio\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -3585,31 +3673,34 @@
   "templating": {
     "list": [
       {
+        "name": "scrape_jobs",
+        "label": "Prometheus job",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=\"minio\"}, job)",
+        "query": {
+          "query": "label_values(up{job=\"minio\"}, job)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
         "current": {
           "selected": true,
           "text": "minio",
           "value": "minio"
         },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(minio_cluster_health_status, job)",
-        "hide": 0,
-        "includeAll": true,
-        "multi": true,
-        "name": "scrape_jobs",
-        "options": [],
-        "query": {
-          "query": "label_values(minio_cluster_health_status, job)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query",
-        "label": "Prometheus job"
+        "options": [
+          {
+            "selected": true,
+            "text": "minio",
+            "value": "minio"
+          }
+        ]
       }
     ]
   },
