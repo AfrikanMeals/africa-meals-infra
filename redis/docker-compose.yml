@@ -5,7 +5,7 @@
 networks:
   wise-eat-infra:
     name: wise-eat-infra
-    driver: bridge
+    external: true
 
 services:
   redis-cache:

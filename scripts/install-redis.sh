@@ -33,10 +33,12 @@ user ${user} on >${pass} ~* &* +@all -flushall -flushdb -debug -config
 EOF
 }
 
+log "Synchronisation ACL avec .env.redis"
+regenerate_acl cache-users.acl wise-eat-cache "${CACHE_REDIS_PASSWORD}"
+regenerate_acl bull-users.acl wise-eat-bull "${BULL_REDIS_PASSWORD}"
+
 if [[ ! -f cache-users.acl ]] || [[ ! -f bull-users.acl ]]; then
-  log "Génération fichiers ACL"
-  regenerate_acl cache-users.acl wise-eat-cache "${CACHE_REDIS_PASSWORD}"
-  regenerate_acl bull-users.acl wise-eat-bull "${BULL_REDIS_PASSWORD}"
+  log "Fichiers ACL créés"
 fi
 
 mkdir -p data-cache data-bullmq

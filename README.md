@@ -126,14 +126,22 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 
 Cause fréquente : les exporters Docker ne joignaient pas Redis/Memcached car ces services n’écoutent que sur `127.0.0.1` (inaccessible via `host.docker.internal`). Le stack utilise désormais le réseau Docker partagé `wise-eat-infra`.
 
-Sur le VPS :
+Sur le VPS (dépôt cloné dans `/opt/wise-eat`, pas `/opt/wise-eat/infra`) :
 
 ```bash
-cd /opt/wise-eat/infra   # ou le chemin du dépôt
+cd /opt/wise-eat
+git pull
 sudo ./install.sh repair-monitoring
 ```
 
-Vérifications manuelles :
+Ou étape par étape :
+
+```bash
+cd /opt/wise-eat
+sudo ./install.sh redis
+sudo ./install.sh memcached
+sudo ./install.sh repair-monitoring
+```
 
 ```bash
 curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '
