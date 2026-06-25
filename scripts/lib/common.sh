@@ -50,6 +50,8 @@ MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-25}"
 MINIO_BACKUP_DIR="${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"
 # Hostname présenté par Stunnel (:6381/:6382) — doit correspondre aux apps (REDIS_HOST).
 STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-${REDIS_TLS_DOMAIN}}"
+# IPv6 publique VPS (enregistrements AAAA Cloudflare — Hostinger).
+VPS_IPV6_ADDR="${VPS_IPV6_ADDR:-2a02:4780:75:447e::1}"
 WS_BACKEND_HOST="${WS_BACKEND_HOST:-127.0.0.1}"
 WS_BACKEND_PORT="${WS_BACKEND_PORT:-8000}"
 CERTBOT_WEBROOT="${CERTBOT_WEBROOT:-/var/www/certbot}"
@@ -182,6 +184,31 @@ require_root() {
     echo "Exécuter en root : sudo $0 $*" >&2
     exit 1
   fi
+}
+
+# UFW doit gérer IPv6 (sinon les règles n’ouvrent que v4 malgré les AAAA DNS).
+ensure_ufw_ipv6_enabled() {
+  if ! command -v ufw >/dev/null 2>&1; then
+    return 0
+  fi
+  local ufw_default="/etc/default/ufw"
+  [[ -f "${ufw_default}" ]] || return 0
+  if grep -q '^IPV6=no' "${ufw_default}" 2>/dev/null; then
+    log "Activation UFW IPv6 (IPV6=yes dans ${ufw_default})"
+    sed -i 's/^IPV6=no/IPV6=yes/' "${ufw_default}"
+  elif ! grep -q '^IPV6=' "${ufw_default}" 2>/dev/null; then
+    log "Ajout IPV6=yes dans ${ufw_default}"
+    printf '\nIPV6=yes\n' >> "${ufw_default}"
+  fi
+}
+
+ufw_allow_tcp_port() {
+  local port="$1"
+  local comment="$2"
+  if ! command -v ufw >/dev/null 2>&1; then
+    return 0
+  fi
+  ufw allow "${port}"/tcp comment "${comment}" 2>/dev/null || true
 }
 
 log() { echo "[wise-eat] $*"; }

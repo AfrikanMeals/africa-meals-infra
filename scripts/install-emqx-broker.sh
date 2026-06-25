@@ -66,6 +66,16 @@ fi
 ln -sf "${SITE}" "${ENABLED}"
 nginx_test_and_reload
 
+if command -v ufw >/dev/null 2>&1; then
+  ensure_ufw_ipv6_enabled
+  ufw_allow_tcp_port "${EMQX_MQTTS_PORT}" "nginx MQTTS ${EMQX_BROKER_DOMAIN}"
+  ufw_allow_tcp_port "${EMQX_WSS_PORT}" "nginx WSS ${EMQX_BROKER_DOMAIN}"
+  ufw reload
+  log "UFW : ports ${EMQX_MQTTS_PORT}/${EMQX_WSS_PORT} ouverts (v4 + v6 si IPV6=yes)"
+else
+  warn "ufw absent — ouvrir manuellement ${EMQX_MQTTS_PORT}/tcp et ${EMQX_WSS_PORT}/tcp (v4 + v6)"
+fi
+
 if [[ -n "${STUNNEL_TLS_EMAIL}" ]] && [[ ! -f "/etc/letsencrypt/live/${EMQX_BROKER_DOMAIN}/fullchain.pem" ]]; then
   log "Certbot pour ${EMQX_BROKER_DOMAIN}…"
   apt install -y certbot 2>/dev/null || true

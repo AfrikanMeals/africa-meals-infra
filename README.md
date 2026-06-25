@@ -75,6 +75,48 @@ Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-ea
 
 Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans TLS.
 
+### IPv6 / dual-stack (accès VPS si IPv4 bloquée)
+
+Si votre FAI ou le VPS bloque l’accès **IPv4** depuis votre poste, ajoutez des enregistrements **AAAA** Cloudflare (DNS only sur les ports non-HTTP) :
+
+| Hostname | A (IPv4) | AAAA (IPv6 VPS) | Proxy CF |
+|----------|----------|-----------------|----------|
+| `cache.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | **DNS only** (:6381–6386, :11212) |
+| `broker.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | **DNS only** (:8883, :8884) |
+| `storage.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | Proxy OK (HTTPS) ou DNS only si uploads >100 Mo |
+| `dr1-storage` / `dr2-storage` | conserver | `2a02:4780:75:447e::1` | DNS only |
+
+**Côté apps (API, WS, mobile)** : aucun changement — garder les **hostnames** dans `.env` (`cache.wise-eat.com`, `broker.wise-eat.com`). Le client résout AAAA automatiquement.
+
+**Sur le VPS** (une fois les AAAA publiés) :
+
+```bash
+cd /opt/wise-eat
+git pull
+sudo ./install.sh repair-ipv6-ufw
+# ou manuellement :
+sudo ./scripts/repair-ipv6-ufw.sh
+sudo ./scripts/repair-vps-mqtt-broker-hosts.sh   # ajoute ::1 broker.wise-eat.com (hairpin PM2)
+```
+
+**Depuis votre Mac** (vérification) :
+
+```bash
+cd infra
+chmod +x scripts/verify-ipv6-endpoints.sh
+./scripts/verify-ipv6-endpoints.sh
+```
+
+Détails techniques :
+- nginx écoute déjà en dual-stack (`listen [::]:443`, `[::]:8883`, …).
+- Stunnel écoute sur toutes les interfaces (`accept = 6381` → v4 + v6).
+- UFW doit avoir `IPV6=yes` (`/etc/default/ufw`) — activé par `repair-ipv6-ufw`.
+- Variable optionnelle : `VPS_IPV6_ADDR=2a02:4780:75:447e::1` (défaut dans `scripts/lib/common.sh`).
+
+> **Ne pas** remplacer les hostnames par l’adresse IPv6 dans `.env` — le certificat TLS (SNI) et la rotation DNS en dépendent.
+
+> **Ne pas** proxifier Cloudflare les ports Redis/MQTT (6381–6386, 8883–8884) — proxy orange = HTTP(S) uniquement.
+
 > **nginx et apache** ne tournent pas ensemble sur le port 80 — l’install de l’un arrête l’autre.
 
 ## Variables
@@ -94,6 +136,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `EMQX_WSS_PORT` | `8884` | WSS (nginx → EMQX :8083/mqtt) |
 | `EMQX_WORKER_DOMAIN` | `worker.wise-eat.com` | Dashboard EMQX public (nginx + basic auth) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
+| `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
@@ -357,7 +400,7 @@ sudo ./scripts/repair-vps-mqtt-broker-hosts.sh
 # équivalent manuel : echo "127.0.0.1 broker.wise-eat.com # wise-eat-emqx-broker-local" | sudo tee -a /etc/hosts
 ```
 
-DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
+DNS A + AAAA `broker.wise-eat.com` → VPS (`2a02:4780:75:447e::1` en v6). Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
 
 DNS A `worker.wise-eat.com` → VPS (proxy Cloudflare OK pour le dashboard HTTPS).
 

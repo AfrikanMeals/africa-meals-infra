@@ -75,6 +75,7 @@ systemctl enable stunnel4
 systemctl restart stunnel4
 
 if command -v ufw >/dev/null 2>&1; then
+  ensure_ufw_ipv6_enabled
   if [[ "${STUNNEL_MODE}" == "strict" ]]; then
     log "Mode A-strict — UFW autorise ${GCP_EGRESS_IP} uniquement"
     for stunnel_port in 6381 6382 6383 6384 6385 6386; do
@@ -85,21 +86,19 @@ if command -v ufw >/dev/null 2>&1; then
     ufw allow from "${GCP_EGRESS_IP}" to any port "${MEMCACHED_TLS_PORT}" proto tcp comment 'GCP CF Memcached TLS'
   else
     log "Mode A-lite (prod) — TLS Let's Encrypt + ACL Redis"
-    ufw allow 6381/tcp comment 'Stunnel Redis cache primary TLS'
-    ufw allow 6382/tcp comment 'Stunnel Redis bull primary TLS'
-    ufw allow 6383/tcp comment 'Stunnel Redis cache replica 1 TLS'
-    ufw allow 6384/tcp comment 'Stunnel Redis cache replica 2 TLS'
-    ufw allow 6385/tcp comment 'Stunnel Redis bull replica 1 TLS'
-    ufw allow 6386/tcp comment 'Stunnel Redis bull replica 2 TLS'
-    ufw allow "${MEMCACHED_TLS_PORT}"/tcp comment 'Stunnel Memcached TLS'
+    for stunnel_port in 6381 6382 6383 6384 6385 6386; do
+      ufw_allow_tcp_port "${stunnel_port}" "Stunnel Redis TLS :${stunnel_port}"
+    done
+    ufw_allow_tcp_port "${MEMCACHED_TLS_PORT}" 'Stunnel Memcached TLS'
   fi
   ufw reload
 else
-  warn "ufw absent — configurer le pare-feu manuellement"
+  warn "ufw absent — configurer le pare-feu manuellement (v4 + v6 pour :6381-6386, :11212)"
 fi
 
 log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381-6386 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
-if ss -tlnp | grep -E '638[1-6]'; then
+log "Dual-stack : ajouter AAAA ${VPS_IPV6_ADDR} sur ${REDIS_TLS_DOMAIN} (Cloudflare DNS only)"
+if ss -tlnp 2>/dev/null | grep -qE '638[1-6]|\[::\]:638[1-6]'; then
   log "Ports Redis Stunnel actifs (6381 primary cache, 6382 primary bull, 6383-6384 cache réplicas, 6385-6386 bull réplicas)"
 else
   warn "Ports Redis Stunnel (6381-6386) non visibles — cluster-b actif ? sudo ./install.sh redis"

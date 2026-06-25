@@ -56,6 +56,8 @@ Composants:
   stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
+  verify-ipv6-endpoints  Test AAAA + TCP/TLS depuis Mac ou VPS (./scripts/… sans sudo)
+  repair-ipv6-ufw  UFW IPv6 + ports Stunnel/MQTT + hairpin broker (sur VPS)
   monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
@@ -168,6 +170,12 @@ run_component() {
       ;;
     verify-tls)
       bash "${SCRIPTS}/verify-tls.sh"
+      ;;
+    verify-ipv6-endpoints)
+      bash "${SCRIPTS}/verify-ipv6-endpoints.sh"
+      ;;
+    repair-ipv6-ufw)
+      bash "${SCRIPTS}/repair-ipv6-ufw.sh"
       ;;
     monitoring)
       bash "${SCRIPTS}/install-monitoring.sh"
