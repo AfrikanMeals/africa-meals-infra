@@ -12,7 +12,11 @@ DS = {"type": "prometheus", "uid": PROM_UID}
 SERVER_HOST = "wise-eat"
 NODE_INSTANCE = "wise-eat:9100"
 CADVISOR_INSTANCE = "wise-eat:8080"
-INSTANCE_PATTERN = f"{SERVER_HOST}:(9100|8080)"
+INSTANCE_MIXED = "wise-eat:(9100|8080)"
+INSTANCE_MIXED_RE = rf'instance=~"{re.escape(INSTANCE_MIXED)}"'
+
+# cAdvisor : name=/wise-eat-redis-cache — plus fiable que compose.project seul
+CONTAINER_FILTER = 'name=~".*wise-eat.*"'
 
 METRIC_RENAMES = [
     ("node_network_transmit_bytes", "node_network_transmit_bytes_total"),
@@ -33,9 +37,8 @@ METRIC_RENAMES = [
 def fix_ds(obj) -> None:
     if isinstance(obj, dict):
         ds = obj.get("datasource")
-        if ds in ("Prometheus", "${DS_PROMETHEUS}", "${ds_prometheus}", "-- Grafana --"):
-            if ds != "-- Grafana --":
-                obj["datasource"] = DS
+        if ds in ("Prometheus", "prometheus", "${DS_PROMETHEUS}", "${ds_prometheus}"):
+            obj["datasource"] = DS
         elif isinstance(ds, dict) and ds.get("uid") in (
             "${ds_prometheus}",
             "Prometheus",
@@ -49,32 +52,80 @@ def fix_ds(obj) -> None:
             fix_ds(item)
 
 
+def apply_metric_renames(expr: str) -> str:
+    """Renomme les métriques legacy #4271 sans double-substitution (node_cpu → …_seconds_total)."""
+    for old, new in sorted(METRIC_RENAMES, key=lambda x: -len(x[0])):
+        expr = re.sub(rf"\b{re.escape(old)}(?=\{{|,|\s|\)|$)", new, expr)
+    return expr
+
+
 def patch_expr(expr: str) -> str:
-    for old, new in METRIC_RENAMES:
-        expr = expr.replace(old, new)
+    expr = apply_metric_renames(expr)
+
     expr = expr.replace(
         "container_label_namespace",
         "container_label_com_docker_compose_project",
     )
     expr = re.sub(
         r'instance=~\s*["\']\$server:\.\*["\']',
-        f'instance=~"{INSTANCE_PATTERN}"',
+        f'instance=~"{INSTANCE_MIXED}"',
         expr,
     )
-    # Namespace vide → tous les projets Compose
+
     expr = expr.replace(
         'container_label_com_docker_compose_project=~"$namespace"',
-        'container_label_com_docker_compose_project=~".+"',
+        CONTAINER_FILTER,
     )
+    expr = expr.replace(
+        'container_label_com_docker_compose_project=~".+"',
+        CONTAINER_FILTER,
+    )
+
+    if "container_" in expr:
+        expr = re.sub(
+            INSTANCE_MIXED_RE,
+            f'instance="{CADVISOR_INSTANCE}"',
+            expr,
+        )
+    elif "node_" in expr:
+        expr = re.sub(
+            INSTANCE_MIXED_RE,
+            f'instance="{NODE_INSTANCE}"',
+            expr,
+        )
+
     return expr
+
+
+def patch_panel_targets(panel: dict) -> None:
+    ptype = panel.get("type", "")
+    for target in panel.get("targets") or []:
+        if not isinstance(target, dict):
+            continue
+        if "expr" in target and isinstance(target["expr"], str):
+            target["expr"] = patch_expr(target["expr"])
+        if ptype in ("stat", "singlestat", "gauge"):
+            target["instant"] = True
+            target["format"] = "time_series"
+
+
+def patch_panels(panels: list) -> None:
+    for panel in panels:
+        patch_panel_targets(panel)
+        nested = panel.get("panels")
+        if isinstance(nested, list):
+            patch_panels(nested)
 
 
 def patch_dashboard(obj) -> None:
     if isinstance(obj, dict):
         if "expr" in obj and isinstance(obj["expr"], str):
             obj["expr"] = patch_expr(obj["expr"])
-        if "query" in obj and isinstance(obj["query"], str):
-            obj["query"] = patch_expr(obj["query"])
+        q = obj.get("query")
+        if isinstance(q, str):
+            obj["query"] = patch_expr(q)
+        elif isinstance(q, dict) and isinstance(q.get("query"), str):
+            q["query"] = patch_expr(q["query"])
         for v in obj.values():
             patch_dashboard(v)
     elif isinstance(obj, list):
@@ -90,11 +141,6 @@ def bump_grid_y(panels: list, delta: int) -> None:
         nested = panel.get("panels")
         if isinstance(nested, list):
             bump_grid_y(nested, delta)
-        # Ancien schema #4271 (rows sans gridPos sur enfants)
-        if panel.get("type") == "row" and nested:
-            for child in nested:
-                if isinstance(child.get("gridPos"), dict) and "y" in child["gridPos"]:
-                    child["gridPos"]["y"] = int(child["gridPos"]["y"]) + delta
 
 
 def health_panel() -> dict:
@@ -128,12 +174,16 @@ def health_panel() -> dict:
             {
                 "datasource": DS,
                 "expr": f'up{{job="cadvisor", instance="{CADVISOR_INSTANCE}"}}',
+                "instant": True,
+                "format": "time_series",
                 "legendFormat": "cAdvisor",
                 "refId": "A",
             },
             {
                 "datasource": DS,
                 "expr": f'up{{job="node", instance="{NODE_INSTANCE}"}}',
+                "instant": True,
+                "format": "time_series",
                 "legendFormat": "node_exporter",
                 "refId": "B",
             },
@@ -141,9 +191,11 @@ def health_panel() -> dict:
                 "datasource": DS,
                 "expr": (
                     f'count(container_last_seen{{instance="{CADVISOR_INSTANCE}",'
-                    f'container_label_com_docker_compose_project=~".+"}})'
+                    f'{CONTAINER_FILTER}}})'
                 ),
-                "legendFormat": "conteneurs vus",
+                "instant": True,
+                "format": "time_series",
+                "legendFormat": "conteneurs wise-eat",
                 "refId": "C",
             },
         ],
@@ -165,7 +217,7 @@ def main() -> None:
     dash["title"] = "Wise Eat — Docker Monitoring"
     dash["description"] = (
         "Conteneurs Docker (cAdvisor) + hôte (node_exporter). "
-        f"Instances Prometheus : {NODE_INSTANCE} / {CADVISOR_INSTANCE}."
+        f"Instances : {NODE_INSTANCE} / {CADVISOR_INSTANCE}."
     )
 
     repl = json.dumps(dash)
@@ -182,6 +234,7 @@ def main() -> None:
     panels = dash.get("panels", [])
     bump_grid_y(panels, 4)
     panels.insert(0, health_panel())
+    patch_panels(panels)
     dash["panels"] = panels
 
     dash["templating"] = {
@@ -212,8 +265,16 @@ def main() -> None:
                 "label": "Compose project",
                 "type": "query",
                 "datasource": DS,
-                "query": "label_values(container_label_com_docker_compose_project)",
-                "definition": "label_values(container_label_com_docker_compose_project)",
+                "query": (
+                    f'label_values(container_label_com_docker_compose_project'
+                    f'{{instance="{CADVISOR_INSTANCE}"}}, '
+                    f"container_label_com_docker_compose_project)"
+                ),
+                "definition": (
+                    f'label_values(container_label_com_docker_compose_project'
+                    f'{{instance="{CADVISOR_INSTANCE}"}}, '
+                    f"container_label_com_docker_compose_project)"
+                ),
                 "refresh": 1,
                 "includeAll": True,
                 "allValue": ".+",
@@ -225,7 +286,6 @@ def main() -> None:
         ]
     }
 
-    # Le dashboard #4271 embarque une fenêtre figée en 2018 → toujours « No data ».
     dash["time"] = {"from": "now-24h", "to": "now"}
     dash["timepicker"] = dash.get("timepicker") or {}
     dash["timepicker"]["refresh_intervals"] = dash["timepicker"].get(

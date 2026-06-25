@@ -50,6 +50,8 @@ fi
 
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
+bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
+
 log "Attente démarrage Prometheus (15s max)…"
 for _ in $(seq 1 15); do
   if curl -sf 'http://127.0.0.1:9090/-/ready' >/dev/null 2>&1; then

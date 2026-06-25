@@ -32,6 +32,10 @@ services:
     privileged: true
     networks:
       - wise-eat-infra
+    command:
+      - --docker_only=true
+      - --store_container_labels=true
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service,com.docker.compose.config-hash
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro

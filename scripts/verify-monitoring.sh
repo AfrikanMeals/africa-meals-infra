@@ -133,8 +133,9 @@ else
 fi
 
 log "=== requête container_cpu (dashboard Docker #4271) ==="
-if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=container_cpu_usage_seconds_total' | grep -q '"status":"success"'; then
-  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=container_cpu_usage_seconds_total' \
+CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",name=~".*wise-eat.*"}'
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" \
     | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
