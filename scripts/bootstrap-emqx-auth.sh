@@ -66,13 +66,13 @@ upsert_mqtt_user() {
     curl -sf -u "${EMQX_DASHBOARD_USERNAME}:${EMQX_DASHBOARD_PASSWORD}" \
       -X PUT "${EMQX_API}/authentication/${encoded}/users/${user}" \
       -H 'Content-Type: application/json' \
-      -d "{\"password\":\"${pass}\"}" >/dev/null
+      -d "{\"password\":\"${pass}\",\"is_superuser\":true}" >/dev/null
     log "EMQX user mis à jour : ${user}"
   else
     curl -sf -u "${EMQX_DASHBOARD_USERNAME}:${EMQX_DASHBOARD_PASSWORD}" \
       -X POST "${EMQX_API}/authentication/${encoded}/users" \
       -H 'Content-Type: application/json' \
-      -d "{\"user_id\":\"${user}\",\"password\":\"${pass}\"}" >/dev/null
+      -d "{\"user_id\":\"${user}\",\"password\":\"${pass}\",\"is_superuser\":true}" >/dev/null
     log "EMQX user créé : ${user}"
   fi
 }
