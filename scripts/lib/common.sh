@@ -717,3 +717,73 @@ wise_eat_compose_profiles() {
   # Déduplique cluster-b
   echo "cluster-b"
 }
+
+# Stunnel : accept = :::PORT (pas [::]:PORT — résolu comme hostname par stunnel4).
+# Si net.ipv6.bindv6only=0, :::PORT accepte déjà v4+v6 → retirer les sections accept=PORT seules.
+stunnel_ipv6_bindv6only() {
+  sysctl -n net.ipv6.bindv6only 2>/dev/null || echo 1
+}
+
+stunnel_strip_redundant_v4_listeners() {
+  local conf tmp
+  for conf in /etc/stunnel/conf.d/*.conf; do
+    [[ -f "${conf}" ]] || continue
+    tmp="$(mktemp)"
+    awk '
+      function flush() {
+        if (block != "" && !drop_block) printf "%s", block
+        block = ""
+        drop_block = 0
+      }
+      /^\[/ {
+        flush()
+        block = $0 "\n"
+        next
+      }
+      {
+        block = block $0 "\n"
+        if ($0 ~ /^accept = [0-9][0-9]*$/) drop_block = 1
+        if ($0 ~ /^accept = :::[0-9]/) drop_block = 0
+      }
+      END { flush() }
+    ' "${conf}" > "${tmp}"
+    mv "${tmp}" "${conf}"
+  done
+}
+
+stunnel_sync_conf_d() {
+  for primary_conf in redis-cache.conf redis-bullmq.conf; do
+    cp "${STUNNEL_CONF_SRC}/${primary_conf}" /etc/stunnel/conf.d/
+  done
+  if redis_cluster_b_enabled; then
+    for replica_conf in \
+      redis-cache-replica-1.conf \
+      redis-cache-replica-2.conf \
+      redis-bullmq-replica-1.conf \
+      redis-bullmq-replica-2.conf; do
+      cp "${STUNNEL_CONF_SRC}/${replica_conf}" /etc/stunnel/conf.d/
+    done
+  else
+    rm -f /etc/stunnel/conf.d/redis-cache-replica-*.conf /etc/stunnel/conf.d/redis-bullmq-replica-*.conf
+    log "Cluster-b désactivé — configs Stunnel réplicas retirées de conf.d"
+  fi
+  if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
+    cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
+  fi
+  local bindv6only
+  bindv6only="$(stunnel_ipv6_bindv6only)"
+  log "net.ipv6.bindv6only=${bindv6only}"
+  if [[ "${bindv6only}" == "0" ]]; then
+    log "bindv6only=0 — listeners :::PORT couvrent v4+v6 ; retrait sections accept=PORT seules"
+    stunnel_strip_redundant_v4_listeners
+  fi
+}
+
+stunnel_restart_or_die() {
+  if ! systemctl restart stunnel4; then
+    warn "stunnel4 a échoué — journal (40 dernières lignes) :"
+    journalctl -u stunnel4 -n 40 --no-pager 2>/dev/null || true
+    die "Corrigez /etc/stunnel/conf.d puis : sudo systemctl restart stunnel4"
+  fi
+  log "stunnel4 redémarré"
+}

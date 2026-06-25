@@ -40,25 +40,7 @@ else
   die "Certificat Let's Encrypt absent pour ${REDIS_TLS_DOMAIN}. Lancer : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls"
 fi
 
-cp "${STUNNEL_CONF_SRC}/redis-cache.conf" /etc/stunnel/conf.d/
-cp "${STUNNEL_CONF_SRC}/redis-bullmq.conf" /etc/stunnel/conf.d/
-for replica_conf in \
-  redis-cache-replica-1.conf \
-  redis-cache-replica-2.conf \
-  redis-bullmq-replica-1.conf \
-  redis-bullmq-replica-2.conf; do
-  if [[ -f "${STUNNEL_CONF_SRC}/${replica_conf}" ]]; then
-    cp "${STUNNEL_CONF_SRC}/${replica_conf}" /etc/stunnel/conf.d/
-  else
-    warn "Config réplica absente (${STUNNEL_CONF_SRC}/${replica_conf}) — git pull infra puis relancer stunnel"
-  fi
-done
-if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
-  cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
-  log "Stunnel Memcached : ${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf → conf.d"
-else
-  warn "Config Memcached TLS absente (${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf) — git pull infra puis relancer stunnel"
-fi
+stunnel_sync_conf_d
 
 if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then
   cat >> /etc/stunnel/stunnel.conf <<'EOF'
@@ -72,7 +54,7 @@ EOF
 fi
 
 systemctl enable stunnel4
-systemctl restart stunnel4
+stunnel_restart_or_die
 
 if command -v ufw >/dev/null 2>&1; then
   ensure_ufw_ipv6_enabled
