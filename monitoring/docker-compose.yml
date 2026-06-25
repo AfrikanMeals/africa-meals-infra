@@ -75,7 +75,7 @@ services:
       - memcached-exporter
 
   grafana:
-    image: grafana/grafana:11.2.2
+    image: grafana/grafana:13.1.0
     container_name: wise-eat-grafana
     restart: unless-stopped
     networks:
