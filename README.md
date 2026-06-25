@@ -361,7 +361,7 @@ DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** s
 
 DNS A `worker.wise-eat.com` → VPS (proxy Cloudflare OK pour le dashboard HTTPS).
 
-**Accès dashboard public** : double authentification — basic auth nginx (`EMQX_WORKER_BASIC_AUTH_PASSWORD`, user `emqx-worker`) puis login EMQX (`admin` / `EMQX_DASHBOARD_PASSWORD` dans `.env.emqx`).
+**Accès dashboard public** : double authentification — basic auth nginx sur l’UI (`EMQX_WORKER_BASIC_AUTH_PASSWORD`, user `emqx-worker`) puis login EMQX (`admin` / `EMQX_DASHBOARD_PASSWORD`). Les appels `/api/` passent sans basic auth nginx (le dashboard EMQX utilise `Authorization: Bearer`, incompatible avec une double couche sur la même en-tête).
 
 Cluster : **3 conteneurs toujours déployés** (`wise-eat-emqx-1` primary + `wise-eat-emqx-2/3` réplicas). Sessions/topics répliqués ; seul le primary expose `:1883/:8083/:18083` en local.
 
