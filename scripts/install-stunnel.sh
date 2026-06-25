@@ -42,6 +42,17 @@ fi
 
 cp "${STUNNEL_CONF_SRC}/redis-cache.conf" /etc/stunnel/conf.d/
 cp "${STUNNEL_CONF_SRC}/redis-bullmq.conf" /etc/stunnel/conf.d/
+for replica_conf in \
+  redis-cache-replica-1.conf \
+  redis-cache-replica-2.conf \
+  redis-bullmq-replica-1.conf \
+  redis-bullmq-replica-2.conf; do
+  if [[ -f "${STUNNEL_CONF_SRC}/${replica_conf}" ]]; then
+    cp "${STUNNEL_CONF_SRC}/${replica_conf}" /etc/stunnel/conf.d/
+  else
+    warn "Config réplica absente (${STUNNEL_CONF_SRC}/${replica_conf}) — git pull infra puis relancer stunnel"
+  fi
+done
 if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
   cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
   log "Stunnel Memcached : ${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf → conf.d"
@@ -66,16 +77,20 @@ systemctl restart stunnel4
 if command -v ufw >/dev/null 2>&1; then
   if [[ "${STUNNEL_MODE}" == "strict" ]]; then
     log "Mode A-strict — UFW autorise ${GCP_EGRESS_IP} uniquement"
-    ufw deny 6381/tcp 2>/dev/null || true
-    ufw deny 6382/tcp 2>/dev/null || true
+    for stunnel_port in 6381 6382 6383 6384 6385 6386; do
+      ufw deny "${stunnel_port}"/tcp 2>/dev/null || true
+      ufw allow from "${GCP_EGRESS_IP}" to any port "${stunnel_port}" proto tcp comment "GCP CF Redis Stunnel :${stunnel_port}"
+    done
     ufw deny "${MEMCACHED_TLS_PORT}"/tcp 2>/dev/null || true
-    ufw allow from "${GCP_EGRESS_IP}" to any port 6381 proto tcp comment 'GCP CF Redis cache'
-    ufw allow from "${GCP_EGRESS_IP}" to any port 6382 proto tcp comment 'GCP CF Redis BullMQ'
     ufw allow from "${GCP_EGRESS_IP}" to any port "${MEMCACHED_TLS_PORT}" proto tcp comment 'GCP CF Memcached TLS'
   else
     log "Mode A-lite (prod) — TLS Let's Encrypt + ACL Redis"
-    ufw allow 6381/tcp comment 'Stunnel Redis cache TLS'
-    ufw allow 6382/tcp comment 'Stunnel Redis bull TLS'
+    ufw allow 6381/tcp comment 'Stunnel Redis cache primary TLS'
+    ufw allow 6382/tcp comment 'Stunnel Redis bull primary TLS'
+    ufw allow 6383/tcp comment 'Stunnel Redis cache replica 1 TLS'
+    ufw allow 6384/tcp comment 'Stunnel Redis cache replica 2 TLS'
+    ufw allow 6385/tcp comment 'Stunnel Redis bull replica 1 TLS'
+    ufw allow 6386/tcp comment 'Stunnel Redis bull replica 2 TLS'
     ufw allow "${MEMCACHED_TLS_PORT}"/tcp comment 'Stunnel Memcached TLS'
   fi
   ufw reload
@@ -83,11 +98,11 @@ else
   warn "ufw absent — configurer le pare-feu manuellement"
 fi
 
-log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
-if ss -tlnp | grep -E '6381|6382'; then
-  log "Ports Redis Stunnel actifs"
+log "Stunnel ${STUNNEL_MODE} — rediss://${REDIS_TLS_DOMAIN}:6381-6386 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
+if ss -tlnp | grep -E '638[1-6]'; then
+  log "Ports Redis Stunnel actifs (6381 primary cache, 6382 primary bull, 6383-6384 cache réplicas, 6385-6386 bull réplicas)"
 else
-  warn "Ports Redis Stunnel (6381/6382) non visibles"
+  warn "Ports Redis Stunnel (6381-6386) non visibles — cluster-b actif ? sudo ./install.sh redis"
 fi
 if ss -tlnp | grep -q ":${MEMCACHED_TLS_PORT}"; then
   log "Port Memcached TLS :${MEMCACHED_TLS_PORT} actif"

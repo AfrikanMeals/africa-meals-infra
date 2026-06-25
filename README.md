@@ -61,7 +61,7 @@ sudo ./install.sh verify-tls
 | Hostname | Port | Usage | Cloudflare |
 |----------|------|-------|------------|
 | `wise-eat.cloud` | 80 / 443 | WS nginx | proxy OK |
-| `cache.wise-eat.com` | **80** (ACME) + **6381/6382** (Redis TLS) + **11212** (Memcached TLS) | Stunnel | **6381/6382/11212 en DNS only** (pas de proxy orange) |
+| `cache.wise-eat.com` | **80** (ACME) + **6381–6386** (Redis TLS) + **11212** (Memcached TLS) | Stunnel | **6381–6386/11212 en DNS only** (pas de proxy orange) |
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 | `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
@@ -98,7 +98,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `apache` | Installe apache2, proxy → WS, webroot Certbot |
 | `web` | `WEB_SERVER=nginx\|apache` |
 | `certbot` | LE : WS + Redis Stunnel + Grafana + Prometheus |
-| `stunnel` | Redis TLS :6381/:6382 (cert LE requis en prod) |
+| `stunnel` | Redis TLS :6381–6386 (primary + réplicas cluster-b, cert LE requis) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
 | `redis` / `memcached` / `minio` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
@@ -170,11 +170,11 @@ Attendu : `redis_up 1` et `memcached_up 1`. Si `redis_up 0`, aligner `CACHE_REDI
 
 ## Multi-clusters (même VPS) — 1 primary + 2 réplicas
 
-| Service | Primary | Réplica 1 | Réplica 2 |
-|---------|---------|-----------|-----------|
-| Redis cache | `:6379` | `:6371` | `:6372` |
-| Redis BullMQ | `:6380` | `:6390` | `:6391` |
-| Memcached | `:11211` | `:11213` | `:11214` |
+| Service | Primary (local) | Réplica 1 | Réplica 2 | Stunnel TLS (remote) |
+|---------|-----------------|-----------|-----------|----------------------|
+| Redis cache | `:6379` | `:6371` | `:6372` | `:6381` / `:6383` / `:6384` |
+| Redis BullMQ | `:6380` | `:6390` | `:6391` | `:6382` / `:6385` / `:6386` |
+| Memcached | `:11211` | `:11213` | `:11214` | `:11212` (primary) |
 
 ```bash
 cd /opt/wise-eat
@@ -187,7 +187,20 @@ sudo ./install.sh repair-monitoring
 - `redis/.env.redis` : `REDIS_CLUSTER_B_ENABLED=true`
 - `memcached/.env.memcached` : `MEMCACHED_CLUSTER_B_ENABLED=true`
 
-**Redis** : les 2 réplicas répliquent le primary (async). Failover manuel :
+**Remote (Mac / Cloud Functions → VPS)** — primary + réplicas via Stunnel :
+
+```env
+REDIS_URL=rediss://wise-eat-cache:<password>@cache.wise-eat.com:6381
+REDIS_REPLICA_1_URL=rediss://wise-eat-cache:<password>@cache.wise-eat.com:6383
+REDIS_REPLICA_2_URL=rediss://wise-eat-cache:<password>@cache.wise-eat.com:6384
+BULLMQ_REDIS_URL=rediss://wise-eat-bull:<password>@cache.wise-eat.com:6382
+BULLMQ_REDIS_REPLICA_1_URL=rediss://wise-eat-bull:<password>@cache.wise-eat.com:6385
+BULLMQ_REDIS_REPLICA_2_URL=rediss://wise-eat-bull:<password>@cache.wise-eat.com:6386
+REDIS_TLS=true
+REDIS_TLS_REJECT_UNAUTHORIZED=true
+```
+
+**Redis** : les 2 réplicas répliquent le primary (async). Failover manuel (VPS local) :
 
 ```env
 REDIS_PORT=6371
