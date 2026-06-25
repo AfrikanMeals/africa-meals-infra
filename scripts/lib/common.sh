@@ -440,6 +440,96 @@ emqx_primary_ready() {
   wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 3
 }
 
+emqx_prometheus_stats_url() {
+  local port="${1:-${EMQX_DASHBOARD_PORT:-18083}}"
+  echo "http://127.0.0.1:${port}/api/v5/prometheus/stats"
+}
+
+emqx_fetch_prometheus_stats() {
+  local port="${1:-${EMQX_DASHBOARD_PORT:-18083}}"
+  curl -sf --connect-timeout 3 --max-time 15 "$(emqx_prometheus_stats_url "${port}")" 2>/dev/null || true
+}
+
+emqx_prometheus_metric_present() {
+  local metric="$1" body="${2:-}"
+  [[ -n "${body}" ]] || body="$(emqx_fetch_prometheus_stats)"
+  [[ -n "${body}" ]] && printf '%s\n' "${body}" | grep -qE "(^|[[:space:]])${metric}([[:space:]]|$)"
+}
+
+emqx_container_has_prometheus_collector_env() {
+  local container="${1:-wise-eat-emqx-1}"
+  docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+    | grep -qE '^EMQX_PROMETHEUS__COLLECTORS__VM_MEMORY=enabled$'
+}
+
+wait_for_emqx_prometheus_metrics() {
+  local port="${1:-${EMQX_DASHBOARD_PORT:-18083}}"
+  local max="${2:-36}"
+  local metric body i
+  shift 2 2>/dev/null || true
+  local metrics=("$@")
+  if [[ "${#metrics[@]}" -eq 0 ]]; then
+    metrics=(erlang_vm_process_count emqx_vm_total_memory)
+  fi
+
+  log "Attente métriques Prometheus EMQX (:${port}, max $((max * 5))s)…"
+  for ((i = 1; i <= max; i++)); do
+    body="$(emqx_fetch_prometheus_stats "${port}")"
+    if [[ -n "${body}" ]] && printf '%s\n' "${body}" | grep -q 'emqx_connections_count'; then
+      local all=1 metric
+      for metric in "${metrics[@]}"; do
+        if ! emqx_prometheus_metric_present "${metric}" "${body}"; then
+          all=0
+          break
+        fi
+      done
+      if [[ "${all}" -eq 1 ]]; then
+        log "OK  métriques EMQX prêtes (~$((i * 5))s)"
+        return 0
+      fi
+    fi
+    if (( i % 6 == 0 )); then
+      log "… attente métriques ${i}/${max}"
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+ensure_emqx_prometheus_collectors() {
+  local force="${EMQX_FORCE_RECREATE:-0}"
+  local env_file="${EMQX_DIR}/.env.emqx"
+  local compose_args=(--env-file "${env_file}")
+
+  [[ -d "${EMQX_DIR}" ]] || return 0
+  [[ -f "${env_file}" ]] || die ".env.emqx absent — sudo ./install.sh emqx"
+
+  if [[ "${force}" == "1" ]]; then
+    log "EMQX_FORCE_RECREATE=1 — recréation stack EMQX"
+  elif ! emqx_container_has_prometheus_collector_env; then
+    log "Collecteurs Erlang VM / Mnesia absents du conteneur — recréation EMQX"
+    force=1
+  elif ! emqx_prometheus_metric_present erlang_vm_process_count; then
+    log "Métriques erlang_* absentes — docker compose up -d EMQX"
+  else
+    log "Collecteurs Prometheus EMQX déjà actifs"
+    return 0
+  fi
+
+  (
+    cd "${EMQX_DIR}"
+    if [[ "${force}" == "1" ]]; then
+      docker compose "${compose_args[@]}" up -d --force-recreate
+    else
+      docker compose "${compose_args[@]}" up -d
+    fi
+  )
+
+  ensure_emqx_on_wise_eat_infra || true
+  wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 90 \
+    || die "EMQX API injoignable après mise à jour collecteurs — voir docker logs wise-eat-emqx-1"
+}
+
 _infra_minio_curl() {
   local url="$1"
   shift

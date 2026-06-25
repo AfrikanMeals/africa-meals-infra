@@ -424,3 +424,9 @@ Si Grafana affiche **No data** :
 ```bash
 sudo ./install.sh repair-emqx-prometheus
 ```
+
+Après une **recréation EMQX** (collecteurs Prometheus), le dashboard `worker.wise-eat.com` peut afficher **502** pendant ~2 min (healthcheck EMQX). Le script attend l’API avant de recharger nginx. En cas de 502 persistant :
+```bash
+curl -sf http://127.0.0.1:18083/api/v5/status && sudo ./install.sh emqx-worker
+```
+Recréation forcée des conteneurs EMQX (rare) : `EMQX_FORCE_RECREATE=1 sudo ./install.sh repair-emqx-prometheus`

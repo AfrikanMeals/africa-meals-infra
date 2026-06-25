@@ -24,6 +24,8 @@ if [[ -f "${EMQX_ENV}" ]]; then
   EMQX_DASH_PORT="${EMQX_DASHBOARD_PORT:-18083}"
 fi
 
+ensure_emqx_prometheus_collectors
+
 probe_emqx_metrics() {
   local target="$1"
   docker run --rm --network wise-eat-infra curlimages/curl:8.5.0 \
@@ -77,12 +79,19 @@ else
   wait_for_prometheus_ready 60 || die "Prometheus injoignable après restart"
 fi
 
-log "Test scrape depuis conteneur Prometheus"
-if docker exec wise-eat-prometheus wget -qO- -T 8 \
-  'http://wise-eat-emqx-1:18083/api/v5/prometheus/stats' 2>/dev/null \
-  | grep -q 'emqx_connections_count'; then
-  log "OK  wise-eat-prometheus → wise-eat-emqx-1:18083"
-else
+log "Test scrape depuis conteneur Prometheus (retry 30s)"
+scrape_ok=0
+for _ in $(seq 1 6); do
+  if docker exec wise-eat-prometheus wget -qO- -T 8 \
+    'http://wise-eat-emqx-1:18083/api/v5/prometheus/stats' 2>/dev/null \
+    | grep -q 'emqx_connections_count'; then
+    log "OK  wise-eat-prometheus → wise-eat-emqx-1:18083"
+    scrape_ok=1
+    break
+  fi
+  sleep 5
+done
+if [[ "${scrape_ok}" -eq 0 ]]; then
   warn "FAIL wise-eat-prometheus → wise-eat-emqx-1:18083"
   docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
 fi
@@ -124,22 +133,36 @@ if not r:
 "
 fi
 
-log "Collecteurs Prometheus Erlang VM / Mnesia (recréation EMQX si besoin)"
-if [[ -f "${EMQX_DIR}/docker-compose.yml" ]]; then
-  cd "${EMQX_DIR}"
-  docker compose --env-file "${EMQX_ENV}" up -d --force-recreate
-  sleep 15
-fi
-
 log "Vérification métriques Erlang / Mnesia sur primary"
-metrics_sample="$(curl -sf "http://127.0.0.1:${EMQX_DASH_PORT}/api/v5/prometheus/stats" || true)"
+metrics_sample="$(emqx_fetch_prometheus_stats "${EMQX_DASH_PORT}")"
 for needle in erlang_vm_process_count erlang_mnesia_memory_usage_bytes erlang_vm_threads emqx_vm_total_memory; do
-  if echo "${metrics_sample}" | grep -q "^${needle}"; then
+  if emqx_prometheus_metric_present "${needle}" "${metrics_sample}"; then
     log "OK  métrique ${needle}"
   else
-    warn "ABSENT ${needle} — vérifier EMQX_PROMETHEUS__COLLECTORS__* dans docker-compose.yml"
+    warn "ABSENT ${needle} — attente supplémentaire…"
   fi
 done
+
+if ! emqx_prometheus_metric_present erlang_vm_process_count "${metrics_sample}"; then
+  if wait_for_emqx_prometheus_metrics "${EMQX_DASH_PORT}" 36 \
+    erlang_vm_process_count erlang_mnesia_memory_usage_bytes erlang_vm_threads emqx_vm_total_memory; then
+    metrics_sample="$(emqx_fetch_prometheus_stats "${EMQX_DASH_PORT}")"
+    for needle in erlang_vm_process_count erlang_mnesia_memory_usage_bytes erlang_vm_threads emqx_vm_total_memory; do
+      if emqx_prometheus_metric_present "${needle}" "${metrics_sample}"; then
+        log "OK  métrique ${needle}"
+      else
+        warn "ABSENT ${needle} — vérifier EMQX_PROMETHEUS__COLLECTORS__* (ou EMQX_FORCE_RECREATE=1)"
+      fi
+    done
+  else
+    warn "Métriques Erlang / Mnesia toujours absentes — relancer avec EMQX_FORCE_RECREATE=1 si besoin"
+  fi
+fi
+
+if emqx_api_responds "${EMQX_DASH_PORT}" && command -v nginx >/dev/null 2>&1; then
+  log "EMQX dashboard OK — reload nginx (worker.wise-eat.com)"
+  nginx_test_and_reload || warn "nginx reload échoué — sudo ./install.sh emqx-worker"
+fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true

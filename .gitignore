@@ -31,3 +31,5 @@ emqx/data-emqx-3/
 # OS / éditeur
 .DS_Store
 *.swp
+__pycache__/
+*.pyc
