@@ -62,6 +62,8 @@ fi
 
 log "MinIO Console public : https://${MINIO_CONSOLE_DOMAIN}"
 log "  Couche 1 : basic auth nginx (${MINIO_CONSOLE_BASIC_AUTH_USER:-minio-console})"
+log "    Mot de passe : MINIO_CONSOLE_BASIC_AUTH_PASSWORD dans ${MINIO_ENV}"
+log "    (≠ MINIO_ROOT_USER / MINIO_ROOT_PASSWORD — identifiants MinIO après la popup)"
 log "  Couche 2 : identifiants MinIO (MINIO_ROOT_USER dans .env.minio)"
 
 if [[ -f "${MINIO_ENV}" ]] && docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then

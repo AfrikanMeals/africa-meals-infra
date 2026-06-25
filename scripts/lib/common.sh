@@ -128,7 +128,9 @@ ensure_minio_console_basic_auth_file() {
     htpasswd -bc "${file}" "${user}" "${pass}"
     chmod 640 "${file}"
     chown root:www-data "${file}" 2>/dev/null || true
-    log "Basic auth MinIO Console : ${user} → ${file}"
+    log "Basic auth MinIO Console : ${user} → ${file} (mot de passe resynchronisé depuis .env.minio)"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth MinIO Console : ${file} (inchangé — définir MINIO_CONSOLE_BASIC_AUTH_PASSWORD pour forcer)"
   fi
 }
 

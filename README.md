@@ -241,8 +241,10 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-console
 | `127.0.0.1:9001` | Console locale (debug) |
 
 **Console publique** (`cdn.wise-eat.com`) — double authentification :
-1. **nginx basic auth** : utilisateur `minio-console` — mot de passe dans `minio/.env.minio` (`MINIO_CONSOLE_BASIC_AUTH_PASSWORD`)
-2. **Login MinIO** : `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`
+1. **Popup navigateur (nginx basic auth)** : utilisateur `minio-console` — mot de passe **`MINIO_CONSOLE_BASIC_AUTH_PASSWORD`** dans `minio/.env.minio` (pas les identifiants MinIO)
+2. **Formulaire MinIO** : `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`
+
+Si la popup basic auth se répète en boucle : `sudo ./install.sh minio-console` (resynchronise nginx + htpasswd).
 
 **Volume 25 Go** : loop ext4 `/var/lib/wise-eat/minio-data.img` monté sur `/var/lib/wise-eat/minio` (ou `MINIO_DATA_DEVICE` pour un disque dédié).
 
