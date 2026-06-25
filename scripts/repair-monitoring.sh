@@ -22,6 +22,16 @@ else
   bash "${SCRIPT_DIR}/install-redis.sh"
 fi
 
+if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-node-exporter$'; then
+  warn "node_exporter absent — relance monitoring"
+  bash "${SCRIPT_DIR}/install-monitoring.sh"
+fi
+
+if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-cadvisor$'; then
+  warn "cAdvisor absent — relance monitoring"
+  bash "${SCRIPT_DIR}/install-monitoring.sh"
+fi
+
 if docker ps --format '{{.Names}}' | grep -q '^wise-eat-memcached$'; then
   log "Memcached : OK"
 else

@@ -153,63 +153,10 @@ PY
 
 fetch_node_dashboard() {
   local out="${CORE_SYSTEM_DIR}/node-exporter-full.json"
-  curl -fsSL "https://grafana.com/api/dashboards/1860/revisions/latest/download" -o "${out}.tmp"
-  python3 - <<'PY' "${out}.tmp" "${out}"
-import json, sys
-
-src, dst = sys.argv[1], sys.argv[2]
-PROM_UID = "prometheus"
-DS = {"type": "prometheus", "uid": PROM_UID}
-
-with open(src, encoding="utf-8") as f:
-    dash = json.load(f)
-
-dash["id"] = None
-dash["uid"] = "wise-eat-node-1860"
-dash["title"] = "Wise Eat — System (Node Exporter)"
-
-repl = json.dumps(dash)
-repl = repl.replace("${ds_prometheus}", PROM_UID)
-repl = repl.replace('"uid": "${ds_prometheus}"', f'"uid": "{PROM_UID}"')
-repl = repl.replace("${DS_PROMETHEUS}", "Prometheus")
-repl = repl.replace("${DS_PROM}", PROM_UID)
-dash = json.loads(repl)
-
-for key in ("__inputs", "__requires", "__elements"):
-    dash.pop(key, None)
-
-def fix_ds(obj):
-    if isinstance(obj, dict):
-        ds = obj.get("datasource")
-        if ds in ("Prometheus", "${DS_PROMETHEUS}", "${ds_prometheus}"):
-            obj["datasource"] = DS
-        elif isinstance(ds, dict) and ds.get("uid") in ("${ds_prometheus}", "Prometheus"):
-            obj["datasource"] = DS
-        for v in obj.values():
-            fix_ds(v)
-    elif isinstance(obj, list):
-        for item in obj:
-            fix_ds(item)
-
-fix_ds(dash)
-
-# Variable datasource « Prometheus » (uid prometheus) — retrait du sélecteur ds_prometheus.
-templating = dash.get("templating", {}).get("list", [])
-dash["templating"]["list"] = [
-    v for v in templating if v.get("name") != "ds_prometheus"
-]
-for var in dash["templating"]["list"]:
-    if var.get("datasource"):
-        var["datasource"] = DS
-    q = var.get("query")
-    if isinstance(q, dict) and "datasource" in q:
-        q["datasource"] = DS
-
-with open(dst, "w", encoding="utf-8") as f:
-    json.dump(dash, f, indent=2)
-    f.write("\n")
-PY
-  rm -f "${out}.tmp"
+  local tmp="${out}.tmp"
+  curl -fsSL "https://grafana.com/api/dashboards/1860/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-node-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
   log "Dashboard Node Exporter → ${out} (Grafana.com #1860)"
 }
 

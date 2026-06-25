@@ -142,10 +142,30 @@ r=d.get('data',{}).get('result',[])
 if not r:
     print('  (aucune série — job cadvisor non scrapé)')
 else:
-    print(f'  {len(r)} série(s) container_cpu_usage_seconds_total')
+  cadvisor=[s for s in r if s.get('metric',{}).get('instance')=='wise-eat:8080']
+  print(f'  {len(r)} série(s) total, {len(cadvisor)} sur instance wise-eat:8080')
 "
 else
   warn "FAIL requête Prometheus container_cpu_usage_seconds_total"
+  fail=1
+fi
+
+log "=== requête up{job=\"cadvisor\"} ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22cadvisor%22%7D' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22cadvisor%22%7D' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — wise-eat-cadvisor arrêté ?)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus up{job=\"cadvisor\"}"
   fail=1
 fi
 
@@ -165,6 +185,25 @@ else:
 "
 else
   warn "FAIL requête Prometheus node_uname_info"
+  fail=1
+fi
+
+log "=== requête up{job=\"node\"} ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22node%22%7D' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22node%22%7D' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — wise-eat-node-exporter arrêté ?)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus up{job=\"node\"}"
   fail=1
 fi
 
