@@ -117,8 +117,10 @@ sync_component() {
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
       --exclude '.env.memcached' --exclude '.env.minio' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
+      --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
       --exclude 'minio/data/' --exclude 'data/' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
+      --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
       "${src}/" "${dst}/"
   fi
 }
@@ -140,4 +142,49 @@ ensure_wise_eat_infra_network() {
   fi
   docker network create wise-eat-infra >/dev/null
   log "Réseau Docker wise-eat-infra créé"
+}
+
+env_truthy() {
+  local raw="${1:-}"
+  raw="$(echo "${raw}" | tr '[:upper:]' '[:lower:]')"
+  [[ "${raw}" == "1" || "${raw}" == "true" || "${raw}" == "yes" || "${raw}" == "on" ]]
+}
+
+read_env_var_from_file() {
+  local file="$1" key="$2"
+  [[ -f "${file}" ]] || return 1
+  local line
+  line="$(grep -E "^${key}=" "${file}" | tail -n 1 || true)"
+  [[ -n "${line}" ]] || return 1
+  echo "${line#*=}"
+}
+
+redis_cluster_b_enabled() {
+  local raw
+  raw="$(read_env_var_from_file "${REDIS_ENV}" REDIS_CLUSTER_B_ENABLED || true)"
+  [[ -z "${raw}" ]] && raw="true"
+  env_truthy "${raw}"
+}
+
+memcached_cluster_b_enabled() {
+  local file="${MEMCACHED_DIR}/.env.memcached"
+  local raw
+  raw="$(read_env_var_from_file "${file}" MEMCACHED_CLUSTER_B_ENABLED || true)"
+  [[ -z "${raw}" ]] && raw="true"
+  env_truthy "${raw}"
+}
+
+wise_eat_compose_profiles() {
+  local profiles=()
+  if redis_cluster_b_enabled; then
+    profiles+=(cluster-b)
+  fi
+  if memcached_cluster_b_enabled; then
+    profiles+=(cluster-b)
+  fi
+  if [[ "${#profiles[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  # Déduplique cluster-b
+  echo "cluster-b"
 }

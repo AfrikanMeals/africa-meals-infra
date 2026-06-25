@@ -4,6 +4,10 @@ redis/cache-users.acl
 redis/bull-users.acl
 redis/data-cache/
 redis/data-bullmq/
+redis/data-cache-replica/
+redis/data-bullmq-replica/
+redis/cache-replica.generated.conf
+redis/bull-replica.generated.conf
 
 monitoring/.env.monitoring
 

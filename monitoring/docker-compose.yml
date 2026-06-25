@@ -51,6 +51,48 @@ services:
     ports:
       - "127.0.0.1:9150:9150"
 
+  redis-exporter-cache-replica:
+    profiles: ["cluster-b"]
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: wise-eat-redis-exporter-cache-replica
+    restart: unless-stopped
+    networks:
+      - wise-eat-infra
+    environment:
+      REDIS_ADDR: redis://wise-eat-redis-cache-replica:6379
+      REDIS_USER: wise-eat-cache
+      REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
+    ports:
+      - "127.0.0.1:9123:9121"
+
+  redis-exporter-bullmq-replica:
+    profiles: ["cluster-b"]
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: wise-eat-redis-exporter-bullmq-replica
+    restart: unless-stopped
+    networks:
+      - wise-eat-infra
+    environment:
+      REDIS_ADDR: redis://wise-eat-redis-bullmq-replica:6379
+      REDIS_USER: wise-eat-bull
+      REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
+    ports:
+      - "127.0.0.1:9124:9121"
+
+  memcached-exporter-b:
+    profiles: ["cluster-b"]
+    image: prom/memcached-exporter:v0.15.3
+    container_name: wise-eat-memcached-exporter-b
+    restart: unless-stopped
+    networks:
+      - wise-eat-infra
+    command:
+      - '--memcached.address=wise-eat-memcached-b:11211'
+    ports:
+      - "127.0.0.1:9151:9150"
+
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: wise-eat-prometheus

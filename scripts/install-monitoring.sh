@@ -59,18 +59,24 @@ fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"
 
-docker compose --env-file .env.monitoring pull
-docker compose --env-file .env.monitoring up -d
+COMPOSE_ARGS=(--env-file .env.monitoring)
+if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
+  COMPOSE_ARGS+=(--profile cluster-b)
+  log "Monitoring cluster B : exporters :9123 :9124 :9151"
+fi
+
+docker compose "${COMPOSE_ARGS[@]}" pull
+docker compose "${COMPOSE_ARGS[@]}" up -d
 sleep 5
 
-docker compose --env-file .env.monitoring ps
+docker compose "${COMPOSE_ARGS[@]}" ps
 echo ""
 
 if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
   log "Prometheus config rechargée"
 else
   warn "Prometheus reload HTTP indisponible — redémarrage conteneur"
-  docker compose --env-file .env.monitoring restart prometheus
+  docker compose "${COMPOSE_ARGS[@]}" restart prometheus
   sleep 3
 fi
 

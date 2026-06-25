@@ -32,8 +32,8 @@ Usage:
   sudo $0 all
 
 Composants:
-  redis         Redis Docker (cache :6379 + BullMQ :6380), secrets + ACL
-  memcached     Memcached Docker (cache applicatif :11211)
+  redis         Redis Docker cluster A (:6379/:6380) + cluster B réplicas (:6371/:6390)
+  memcached     Memcached cluster A (:11211) + cluster B (:11213)
   minio         MinIO Docker (S3-compatible :9000, console :9001)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot

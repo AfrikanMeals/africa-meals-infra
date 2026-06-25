@@ -1,5 +1,6 @@
-# Wise Eat — Memcached (cache applicatif alternatif à Redis)
-# Install : sudo ./install.sh memcached
+# Wise Eat — Memcached (cluster A + cluster B optionnel)
+# Cluster B : MEMCACHED_CLUSTER_B_ENABLED=true dans .env.memcached
+# Apps multi-pool : MEMCACHED_SERVERS=127.0.0.1:11211,127.0.0.1:11213
 
 networks:
   wise-eat-infra:
@@ -21,4 +22,21 @@ services:
       - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
     ports:
       - "127.0.0.1:${MEMCACHED_PORT:-11211}:11211"
+    restart: unless-stopped
+
+  memcached-b:
+    profiles: ["cluster-b"]
+    image: memcached:1.6-alpine
+    container_name: wise-eat-memcached-b
+    networks:
+      - wise-eat-infra
+    command:
+      - -m
+      - "${MEMCACHED_B_MEMORY_MB:-128}"
+      - -I
+      - "${MEMCACHED_MAX_ITEM_MB:-2}m"
+      - -c
+      - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
+    ports:
+      - "127.0.0.1:${MEMCACHED_B_PORT:-11213}:11211"
     restart: unless-stopped

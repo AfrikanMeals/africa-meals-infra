@@ -1,6 +1,8 @@
-# Wise Eat — Redis dual-instance (cache + BullMQ)
-# Install : sudo ./install.sh redis  (depuis la racine du dépôt)
-# Permissions ACL : sudo ./install.sh permissions
+# Wise Eat — Redis (cluster A primary + cluster B réplicas optionnels)
+# Install : sudo ./install.sh redis
+# Cluster B (réplicas lecture, bascule manuelle apps) :
+#   REDIS_CLUSTER_B_ENABLED=true dans .env.redis
+#   docker compose --profile cluster-b up -d
 
 networks:
   wise-eat-infra:
@@ -8,6 +10,7 @@ networks:
     external: true
 
 services:
+  # --- Cluster A (primary — apps par défaut) ---
   redis-cache:
     image: redis:7-alpine
     container_name: wise-eat-redis-cache
@@ -33,6 +36,20 @@ services:
       - ./data-cache:/data
       - ./cache-users.acl:/etc/redis/users.acl:ro
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "--user",
+          "wise-eat-cache",
+          "--pass",
+          "${CACHE_REDIS_PASSWORD}",
+          "ping",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   redis-bullmq:
     image: redis:7-alpine
@@ -57,5 +74,60 @@ services:
       - "127.0.0.1:6380:6379"
     volumes:
       - ./data-bullmq:/data
+      - ./bull-users.acl:/etc/redis/users.acl:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "--user",
+          "wise-eat-bull",
+          "--pass",
+          "${BULL_REDIS_PASSWORD}",
+          "ping",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # --- Cluster B (réplicas async — lecture / failover manuel) ---
+  redis-cache-replica:
+    profiles: ["cluster-b"]
+    image: redis:7-alpine
+    container_name: wise-eat-redis-cache-replica
+    networks:
+      - wise-eat-infra
+    depends_on:
+      redis-cache:
+        condition: service_healthy
+    command:
+      - redis-server
+      - /etc/redis/replica.conf
+    ports:
+      - "127.0.0.1:${CACHE_REDIS_REPLICA_PORT:-6371}:6379"
+    volumes:
+      - ./data-cache-replica:/data
+      - ./cache-replica.generated.conf:/etc/redis/replica.conf:ro
+      - ./cache-users.acl:/etc/redis/users.acl:ro
+    restart: unless-stopped
+
+  redis-bullmq-replica:
+    profiles: ["cluster-b"]
+    image: redis:7-alpine
+    container_name: wise-eat-redis-bullmq-replica
+    networks:
+      - wise-eat-infra
+    depends_on:
+      redis-bullmq:
+        condition: service_healthy
+    command:
+      - redis-server
+      - /etc/redis/replica.conf
+    ports:
+      - "127.0.0.1:${BULL_REDIS_REPLICA_PORT:-6390}:6379"
+    volumes:
+      - ./data-bullmq-replica:/data
+      - ./bull-replica.generated.conf:/etc/redis/replica.conf:ro
       - ./bull-users.acl:/etc/redis/users.acl:ro
     restart: unless-stopped
