@@ -91,6 +91,6 @@ if [[ "${running}" -lt 3 ]]; then
 fi
 
 bash "${SCRIPT_DIR}/bootstrap-emqx-auth.sh" 2>/dev/null || true
-bash "${SCRIPT_DIR}/repair-emqx-prometheus.sh" 2>/dev/null || true
+bash "${SCRIPT_DIR}/repair-emqx-prometheus.sh" || warn "Scrape Prometheus — relancer : sudo ./install.sh repair-emqx-prometheus"
 
 log "Cluster EMQX OK — 3 conteneurs (primary :1883 + 2 réplicas cluster)"

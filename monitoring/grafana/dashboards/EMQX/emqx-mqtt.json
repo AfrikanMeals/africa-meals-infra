@@ -101,7 +101,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(up{job=\"emqx\"}) or vector(0)",
+          "expr": "max(up{job=\"emqx\"}) or vector(0)",
           "instant": true,
           "legendFormat": "Prometheus scrape EMQX",
           "refId": "A"
@@ -111,10 +111,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "expr": "count(up{job=\"emqx\"} == 1)",
+          "instant": true,
+          "legendFormat": "N\u0153uds scrap\u00e9s",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "max(emqx_cluster_nodes_running{job=\"emqx\"})",
           "instant": true,
           "legendFormat": "N\u0153uds cluster actifs",
-          "refId": "B"
+          "refId": "C"
         }
       ],
       "title": "EMQX \u2014 scrape & cluster",

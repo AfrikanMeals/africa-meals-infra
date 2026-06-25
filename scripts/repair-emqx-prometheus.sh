@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Répare le scrape Prometheus → EMQX (Grafana EMQX « No data »).
+# Répare le scrape Prometheus → EMQX (Grafana EMQX « No data » / scrape DOWN).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -24,32 +24,29 @@ if [[ -f "${EMQX_ENV}" ]]; then
   EMQX_DASH_PORT="${EMQX_DASHBOARD_PORT:-18083}"
 fi
 
-log "Attente métriques EMQX primary (:${EMQX_DASH_PORT})…"
-for _ in $(seq 1 30); do
-  if curl -sf "http://127.0.0.1:${EMQX_DASH_PORT}/api/v5/prometheus/stats" \
-    | grep -qE '(^|\n)emqx_'; then
-    break
-  fi
-  sleep 2
-done
+probe_emqx_metrics() {
+  local target="$1"
+  docker run --rm --network wise-eat-infra curlimages/curl:8.5.0 \
+    -sf --max-time 10 "http://${target}/api/v5/prometheus/stats" 2>/dev/null \
+    | grep -q 'emqx_connections_count'
+}
 
+log "Test métriques EMQX (host + réseau Docker)"
 if ! curl -sf "http://127.0.0.1:${EMQX_DASH_PORT}/api/v5/prometheus/stats" \
-  | grep -qE '(^|\n)emqx_connections_count'; then
-  warn "Métriques EMQX absentes sur 127.0.0.1:${EMQX_DASH_PORT}"
-  docker logs --tail=40 wise-eat-emqx-1 2>&1 || true
-  die "EMQX n'expose pas /api/v5/prometheus/stats — vérifier docker logs wise-eat-emqx-1"
-fi
-log "OK  EMQX primary expose emqx_* sur :${EMQX_DASH_PORT}"
-
-log "Test réseau Docker wise-eat-infra → wise-eat-emqx-1:18083"
-if ! docker run --rm --network wise-eat-infra curlimages/curl:8.5.0 \
-  -sf --max-time 10 "http://wise-eat-emqx-1:18083/api/v5/prometheus/stats" \
   | grep -q 'emqx_connections_count'; then
-  warn "wise-eat-emqx-1 injoignable depuis wise-eat-infra"
-  docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
-  die "Prometheus ne peut pas joindre wise-eat-emqx-1:18083 — réseau Docker"
+  docker logs --tail=30 wise-eat-emqx-1 2>&1 || true
+  die "EMQX primary n'expose pas /api/v5/prometheus/stats sur :${EMQX_DASH_PORT}"
 fi
-log "OK  wise-eat-infra → wise-eat-emqx-1:18083"
+log "OK  host → 127.0.0.1:${EMQX_DASH_PORT}"
+
+for n in 1 2 3; do
+  target="wise-eat-emqx-${n}:18083"
+  if probe_emqx_metrics "${target}"; then
+    log "OK  wise-eat-infra → ${target}"
+  else
+    warn "FAIL wise-eat-infra → ${target} (Prometheus target DOWN)"
+  fi
+done
 
 sync_component monitoring
 cd "${MON_DIR}"
@@ -58,7 +55,14 @@ if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-prometheus$'; then
   bash "${SCRIPT_DIR}/install-monitoring.sh"
 fi
 
-docker compose --env-file .env.monitoring up -d prometheus
+if ! docker inspect wise-eat-prometheus --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+  | grep -q 'wise-eat-infra'; then
+  log "Connexion wise-eat-prometheus → wise-eat-infra"
+  docker network connect wise-eat-infra wise-eat-prometheus || true
+fi
+
+log "Recréation Prometheus (config emqx job)"
+docker compose --env-file .env.monitoring up -d --force-recreate prometheus
 
 if ! wait_for_prometheus_ready 60; then
   docker compose --env-file .env.monitoring logs --tail=30 prometheus || true
@@ -73,42 +77,54 @@ else
   wait_for_prometheus_ready 60 || die "Prometheus injoignable après restart"
 fi
 
-log "Attente scrape Prometheus (20s)…"
-sleep 20
+log "Test scrape depuis conteneur Prometheus"
+if docker exec wise-eat-prometheus wget -qO- -T 8 \
+  'http://wise-eat-emqx-1:18083/api/v5/prometheus/stats' 2>/dev/null \
+  | grep -q 'emqx_connections_count'; then
+  log "OK  wise-eat-prometheus → wise-eat-emqx-1:18083"
+else
+  warn "FAIL wise-eat-prometheus → wise-eat-emqx-1:18083"
+  docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
+fi
+
+log "Attente scrape Prometheus (25s)…"
+sleep 25
 
 prom_out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
   --data-urlencode 'query=up{job="emqx"}' || true)"
 if [[ -z "${prom_out}" ]]; then
-  warn "Prometheus API vide — http://127.0.0.1:9090/targets"
-else
-  echo "${prom_out}" | python3 -c "
+  die "Prometheus API vide — voir http://127.0.0.1:9090/targets"
+fi
+
+echo "${prom_out}" | python3 -c "
 import json,sys
-raw=sys.stdin.read().strip()
-if not raw:
-    print('  (réponse vide)'); raise SystemExit(1)
-d=json.loads(raw)
+d=json.loads(sys.stdin.read())
 r=d.get('data',{}).get('result',[])
 if not r:
-    print('  (vide — job emqx DOWN dans /targets)')
-    raise SystemExit(1)
+    print('  (vide — job emqx absent)'); raise SystemExit(1)
+ups=[float(s.get('value',[0,0])[1]) for s in r]
 for s in r:
     m=s.get('metric',{})
     print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
+print(f'  max(up)={max(ups) if ups else 0} count(up=1)={sum(1 for u in ups if u==1)}/{len(ups)}')
+if max(ups) < 1:
+    raise SystemExit(1)
 "
-fi
 
 conn_out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-  --data-urlencode 'query=emqx_connections_count{job=\"emqx\"}' || true)"
+  --data-urlencode 'query=emqx_connections_count{job="emqx"}' || true)"
 if [[ -n "${conn_out}" ]]; then
   echo "${conn_out}" | python3 -c "
 import json,sys
 d=json.loads(sys.stdin.read())
 r=d.get('data',{}).get('result',[])
 print(f'  emqx_connections_count: {len(r)} série(s)')
+if not r:
+    raise SystemExit(1)
 "
 fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
-docker compose --env-file .env.monitoring up -d --force-recreate grafana 2>/dev/null || true
+docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 
-log "Terminé — Grafana dossier EMQX → Wise Eat — EMQX"
+log "Terminé — Grafana EMQX : max(up{job=\"emqx\"}) doit être 1 (au moins 1 nœud scrapé)"

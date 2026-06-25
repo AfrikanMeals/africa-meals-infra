@@ -153,7 +153,6 @@ scrape_configs:
     scheme: http
     scrape_interval: 15s
     scrape_timeout: 10s
-    honor_labels: true
     static_configs:
       - targets: ['wise-eat-emqx-1:18083']
         labels:

@@ -114,17 +114,24 @@ def main() -> None:
         "targets": [
             {
                 "datasource": DS,
-                "expr": f'min(up{{job="{EMQX_JOB}"}}) or vector(0)',
+                "expr": f'max(up{{job="{EMQX_JOB}"}}) or vector(0)',
                 "instant": True,
                 "legendFormat": "Prometheus scrape EMQX",
                 "refId": "A",
             },
             {
                 "datasource": DS,
+                "expr": f'count(up{{job="{EMQX_JOB}"}} == 1)',
+                "instant": True,
+                "legendFormat": "Nœuds scrapés",
+                "refId": "B",
+            },
+            {
+                "datasource": DS,
                 "expr": f'max(emqx_cluster_nodes_running{{job="{EMQX_JOB}"}})',
                 "instant": True,
                 "legendFormat": "Nœuds cluster actifs",
-                "refId": "B",
+                "refId": "C",
             },
         ],
         "title": "EMQX — scrape & cluster",
