@@ -11,6 +11,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
       MINIO_SERVER_URL: ${MINIO_SERVER_URL:-https://storage.wise-eat.com}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://cdn.wise-eat.com}
       # Métriques Prometheus (réseau Docker wise-eat-infra uniquement)
       MINIO_PROMETHEUS_AUTH_TYPE: public
     ports:

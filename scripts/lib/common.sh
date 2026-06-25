@@ -29,6 +29,11 @@ PROMETHEUS_HTASSWD_FILE="${PROMETHEUS_HTASSWD_FILE:-/etc/nginx/htpasswd/promethe
 MINIO_STORAGE_DOMAIN="${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}"
 MINIO_BACKEND_HOST="${MINIO_BACKEND_HOST:-127.0.0.1}"
 MINIO_BACKEND_PORT="${MINIO_BACKEND_PORT:-9000}"
+MINIO_CONSOLE_DOMAIN="${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com}"
+MINIO_CONSOLE_BACKEND_HOST="${MINIO_CONSOLE_BACKEND_HOST:-127.0.0.1}"
+MINIO_CONSOLE_BACKEND_PORT="${MINIO_CONSOLE_BACKEND_PORT:-9001}"
+MINIO_CONSOLE_BASIC_AUTH_USER="${MINIO_CONSOLE_BASIC_AUTH_USER:-minio-console}"
+MINIO_CONSOLE_HTASSWD_FILE="${MINIO_CONSOLE_HTASSWD_FILE:-/etc/nginx/htpasswd/minio-console}"
 MINIO_DATA_DIR="${MINIO_DATA_DIR:-/var/lib/wise-eat/minio}"
 MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-25}"
 MINIO_BACKUP_DIR="${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"
@@ -98,6 +103,32 @@ ensure_prometheus_basic_auth_file() {
     chmod 640 "${file}"
     chown root:www-data "${file}" 2>/dev/null || true
     log "Basic auth Prometheus : ${user} → ${file}"
+  fi
+}
+
+# Basic auth nginx pour MinIO Console public (cdn.wise-eat.com).
+ensure_minio_console_basic_auth_file() {
+  local user="${MINIO_CONSOLE_BASIC_AUTH_USER:-minio-console}"
+  local pass="${MINIO_CONSOLE_BASIC_AUTH_PASSWORD:-}"
+  local file="${MINIO_CONSOLE_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${MINIO_ENV}" ]]; then
+    pass="$(read_env_var_from_file "${MINIO_ENV}" MINIO_CONSOLE_BASIC_AUTH_PASSWORD || true)"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "MINIO_CONSOLE_BASIC_AUTH_PASSWORD requis dans ${MINIO_ENV} (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth MinIO Console : ${user} → ${file}"
   fi
 }
 

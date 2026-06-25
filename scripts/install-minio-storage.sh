@@ -60,4 +60,4 @@ if [[ -n "${STUNNEL_TLS_EMAIL}" ]] && [[ ! -f "/etc/letsencrypt/live/${MINIO_STO
 fi
 
 log "MinIO public : https://${MINIO_STORAGE_DOMAIN}/${MINIO_BUCKET:-wise-eat}/"
-log "Console MinIO : http://127.0.0.1:${MINIO_CONSOLE_PORT:-9001} (localhost uniquement)"
+log "Console MinIO : https://${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com} (basic auth nginx)"

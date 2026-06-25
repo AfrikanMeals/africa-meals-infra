@@ -113,6 +113,7 @@ persist_minio_env_paths() {
     "MINIO_DATA_DIR=${MINIO_DATA_DIR}" \
     "MINIO_STORAGE_GB=${MINIO_STORAGE_GB}" \
     "MINIO_STORAGE_DOMAIN=${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}" \
+    "MINIO_CONSOLE_DOMAIN=${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com}" \
     "MINIO_BACKUP_DIR=${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"; do
     local key="${pair%%=*}" val="${pair#*=}"
     if grep -q "^${key}=" "${env_file}"; then
@@ -123,9 +124,15 @@ persist_minio_env_paths() {
   done
 
   local server_url="https://${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}"
+  local console_url="https://${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com}"
   if grep -q '^MINIO_SERVER_URL=' "${env_file}"; then
     sed -i "s|^MINIO_SERVER_URL=.*|MINIO_SERVER_URL=${server_url}|" "${env_file}"
   else
     echo "MINIO_SERVER_URL=${server_url}" >> "${env_file}"
+  fi
+  if grep -q '^MINIO_BROWSER_REDIRECT_URL=' "${env_file}"; then
+    sed -i "s|^MINIO_BROWSER_REDIRECT_URL=.*|MINIO_BROWSER_REDIRECT_URL=${console_url}|" "${env_file}"
+  else
+    echo "MINIO_BROWSER_REDIRECT_URL=${console_url}" >> "${env_file}"
   fi
 }

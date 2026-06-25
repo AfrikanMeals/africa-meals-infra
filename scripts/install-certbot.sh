@@ -13,6 +13,7 @@ CERTBOT_METHOD="${CERTBOT_METHOD:-webroot}"
 INSTALL_GRAFANA_CERT="${INSTALL_GRAFANA_CERT:-1}"
 INSTALL_PROMETHEUS_CERT="${INSTALL_PROMETHEUS_CERT:-1}"
 INSTALL_MINIO_STORAGE_CERT="${INSTALL_MINIO_STORAGE_CERT:-1}"
+INSTALL_MINIO_CONSOLE_CERT="${INSTALL_MINIO_CONSOLE_CERT:-1}"
 
 [[ -n "${STUNNEL_TLS_EMAIL}" ]] || \
   die "STUNNEL_TLS_EMAIL requis — ex. STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot"
@@ -43,6 +44,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || true
   fi
+  if [[ "${INSTALL_MINIO_CONSOLE_CERT}" == "1" ]]; then
+    bash "${SCRIPT_DIR}/install-minio-console.sh" 2>/dev/null || true
+  fi
 fi
 
 # --- Certificats ---
@@ -63,8 +67,13 @@ if [[ "${INSTALL_PROMETHEUS_CERT}" == "1" ]]; then
 fi
 
 if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
-  log "=== Certificat MinIO (${MINIO_STORAGE_DOMAIN}) ==="
+  log "=== Certificat MinIO S3 (${MINIO_STORAGE_DOMAIN}) ==="
   issue_le_cert "${MINIO_STORAGE_DOMAIN}"
+fi
+
+if [[ "${INSTALL_MINIO_CONSOLE_CERT}" == "1" ]]; then
+  log "=== Certificat MinIO Console (${MINIO_CONSOLE_DOMAIN}) ==="
+  issue_le_cert "${MINIO_CONSOLE_DOMAIN}"
 fi
 
 install_certbot_renewal_hook
@@ -79,6 +88,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${MINIO_STORAGE_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-minio-storage-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${MINIO_CONSOLE_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-minio-console-ssl.sh" 2>/dev/null || true
   fi
 elif systemctl is-active apache2 >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/enable-apache-ssl.sh"

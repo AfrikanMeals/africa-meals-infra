@@ -65,6 +65,7 @@ sudo ./install.sh verify-tls
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 | `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
+| `cdn.wise-eat.com` | 80 / 443 | MinIO Console (basic auth nginx) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -81,6 +82,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `GRAFANA_CONSOLE_DOMAIN` | `console.wise-eat.com` | Grafana public (nginx ou tunnel) |
 | `PROMETHEUS_LOGS_DOMAIN` | `logs.wise-eat.com` | Prometheus public (nginx + basic auth) |
 | `MINIO_STORAGE_DOMAIN` | `storage.wise-eat.com` | MinIO S3 public (nginx + TLS) |
+| `MINIO_CONSOLE_DOMAIN` | `cdn.wise-eat.com` | MinIO Console public (nginx + basic auth) |
 | `MINIO_STORAGE_GB` | `25` | Taille volume données MinIO (loop ext4) |
 | `MINIO_DATA_DIR` | `/var/lib/wise-eat/minio` | Montage objets S3 |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
@@ -99,7 +101,7 @@ Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans 
 | `stunnel` | Redis TLS :6381/:6382 (cert LE requis en prod) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
-| `redis` / `memcached` / `minio` / `minio-storage` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
 
@@ -228,13 +230,19 @@ Stockage S3-compatible pour médias (`STORAGE_ENGINE=minio`).
 ```bash
 sudo ./install.sh minio
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-storage
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-console
 ```
 
 | Port / URL | Service |
 |------------|---------|
 | `https://storage.wise-eat.com` | API S3 publique (nginx + TLS) |
+| `https://cdn.wise-eat.com` | Console MinIO (nginx + TLS + basic auth) |
 | `127.0.0.1:9000` | API locale (PM2 sur le VPS) |
-| `127.0.0.1:9001` | Console web (localhost uniquement) |
+| `127.0.0.1:9001` | Console locale (debug) |
+
+**Console publique** (`cdn.wise-eat.com`) — double authentification :
+1. **nginx basic auth** : utilisateur `minio-console` — mot de passe dans `minio/.env.minio` (`MINIO_CONSOLE_BASIC_AUTH_PASSWORD`)
+2. **Login MinIO** : `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`
 
 **Volume 25 Go** : loop ext4 `/var/lib/wise-eat/minio-data.img` monté sur `/var/lib/wise-eat/minio` (ou `MINIO_DATA_DEVICE` pour un disque dédié).
 

@@ -1,0 +1,33 @@
+# HTTP — Certbot webroot + proxy MinIO Console (avant TLS) + basic auth
+map $http_upgrade $minio_console_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${MINIO_CONSOLE_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        auth_basic "MinIO Console";
+        auth_basic_user_file ${MINIO_CONSOLE_HTASSWD_FILE};
+
+        proxy_pass http://${MINIO_CONSOLE_BACKEND_HOST}:${MINIO_CONSOLE_BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $minio_console_connection_upgrade;
+        proxy_buffering off;
+        proxy_read_timeout 600;
+        proxy_send_timeout 600;
+    }
+}

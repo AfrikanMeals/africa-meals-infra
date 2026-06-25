@@ -35,7 +35,8 @@ Composants:
   redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
   memcached     Memcached 1 primary (:11211) + 2 réplicas
   minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
-  minio-storage nginx reverse-proxy → MinIO (storage.wise-eat.com)
+  minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
+  minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
@@ -95,6 +96,9 @@ run_component() {
       ;;
     minio-storage)
       bash "${SCRIPTS}/install-minio-storage.sh"
+      ;;
+    minio-console)
+      bash "${SCRIPTS}/install-minio-console.sh"
       ;;
     minio-backup)
       bash "${SCRIPTS}/install-minio-backup.sh"
