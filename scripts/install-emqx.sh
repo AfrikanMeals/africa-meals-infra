@@ -59,6 +59,8 @@ log "OK data-emqx-1 data-emqx-2 data-emqx-3 → 1000:1000"
 
 COMPOSE_ARGS=(--env-file .env.emqx)
 
+prepare_emqx_compose_stack .env.emqx
+
 log "Démarrage EMQX Docker (3 nœuds)"
 docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
 sleep 12

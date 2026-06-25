@@ -266,6 +266,32 @@ ensure_emqx_on_wise_eat_infra() {
   return 0
 }
 
+# Arrête compose EMQX et supprime conteneurs orphelins (Docker Desktop / ancien projet « emqx »).
+prepare_emqx_compose_stack() {
+  local env_file="${1:-${EMQX_DIR}/.env.emqx}"
+  local compose_args=()
+  [[ -f "${env_file}" ]] && compose_args=(--env-file "${env_file}")
+
+  log "Arrêt stack EMQX (compose wise-eat-emqx + legacy emqx)"
+  if [[ -d "${EMQX_DIR}" ]]; then
+    (
+      cd "${EMQX_DIR}"
+      docker compose "${compose_args[@]}" down --remove-orphans 2>/dev/null || true
+      docker compose -p emqx "${compose_args[@]}" down --remove-orphans 2>/dev/null || true
+      docker compose -p wise-eat-emqx "${compose_args[@]}" down --remove-orphans 2>/dev/null || true
+    )
+  fi
+
+  local name n
+  for n in 1 2 3; do
+    name="wise-eat-emqx-${n}"
+    if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
+      warn "Suppression conteneur EMQX orphelin : ${name}"
+      docker rm -f "${name}" >/dev/null
+    fi
+  done
+}
+
 _infra_minio_curl() {
   local url="$1"
   shift

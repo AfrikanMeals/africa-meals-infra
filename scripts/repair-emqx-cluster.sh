@@ -40,6 +40,8 @@ export EMQX_CLUSTER_STATIC_SEEDS='[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emq
 mkdir -p data-emqx-1 data-emqx-2 data-emqx-3
 chown -R 1000:1000 data-emqx-1 data-emqx-2 data-emqx-3
 
+prepare_emqx_compose_stack .env.emqx
+
 log "Recréation cluster EMQX (wise-eat-emqx-1/2/3)…"
 docker compose --env-file .env.emqx up -d --force-recreate --remove-orphans
 
