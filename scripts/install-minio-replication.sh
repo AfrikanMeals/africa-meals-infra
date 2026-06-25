@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 # shellcheck source=lib/minio-storage.sh
 source "${SCRIPT_DIR}/lib/minio-storage.sh"
+# shellcheck source=lib/minio-replication.sh
+source "${SCRIPT_DIR}/lib/minio-replication.sh"
 
 require_root
 sync_component minio
@@ -60,37 +62,7 @@ if ! wait_for_minio_local "${MINIO_REPLICA_2_API_PORT}" 45; then
 fi
 
 ensure_minio_on_wise_eat_infra || true
-
-log "Configuration site replication (mc admin replicate)"
-docker run --rm --network wise-eat-minio \
-  --entrypoint /bin/sh \
-  -e MINIO_ROOT_USER \
-  -e MINIO_ROOT_PASSWORD \
-  -e MINIO_BUCKET \
-  -e MINIO_PUBLIC_READ="${MINIO_PUBLIC_READ:-true}" \
-  minio/mc:RELEASE.2024-10-08T09-37-26Z \
-  -c '
-    set -e
-    mc alias set primary http://wise-eat-minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
-    mc alias set replica1 http://wise-eat-minio-replica-1:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
-    mc alias set replica2 http://wise-eat-minio-replica-2:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
-
-    for site in primary replica1 replica2; do
-      mc mb --ignore-existing "${site}/${MINIO_BUCKET}"
-      if [ "${MINIO_PUBLIC_READ}" = "true" ]; then
-        mc anonymous set download "${site}/${MINIO_BUCKET}" || true
-      fi
-    done
-
-    if mc admin replicate info primary 2>/dev/null | grep -qiE "enabled|replica"; then
-      echo "Site replication déjà active"
-      mc admin replicate info primary || true
-    else
-      mc admin replicate add primary replica1 replica2 \
-        || { mc admin replicate add primary replica1; mc admin replicate add primary replica2; }
-      mc admin replicate info primary
-    fi
-  '
+configure_minio_site_replication_mc
 
 API_PORT="${MINIO_API_PORT:-9000}"
 REPLICA_ENDPOINTS="http://127.0.0.1:${MINIO_REPLICA_1_API_PORT},http://127.0.0.1:${MINIO_REPLICA_2_API_PORT}"
