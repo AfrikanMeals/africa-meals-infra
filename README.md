@@ -122,6 +122,27 @@ Après `./install.sh stunnel` (cert LE sur `cache.wise-eat.com` requis).
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
 
+#### Grafana vide (Redis DOWN / Memcached DOWN / No data)
+
+Cause fréquente : les exporters Docker ne joignaient pas Redis/Memcached car ces services n’écoutent que sur `127.0.0.1` (inaccessible via `host.docker.internal`). Le stack utilise désormais le réseau Docker partagé `wise-eat-infra`.
+
+Sur le VPS :
+
+```bash
+cd /opt/wise-eat/infra   # ou le chemin du dépôt
+sudo ./install.sh repair-monitoring
+```
+
+Vérifications manuelles :
+
+```bash
+curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '
+curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '
+curl -s 'http://127.0.0.1:9090/api/v1/query?query=redis_up'
+```
+
+Attendu : `redis_up 1` et `memcached_up 1`. Si `redis_up 0`, aligner `CACHE_REDIS_PASSWORD` / `BULL_REDIS_PASSWORD` entre `redis/.env.redis` et `monitoring/.env.monitoring`, puis relancer `repair-monitoring`.
+
 ### Grafana public (`console.wise-eat.com`)
 
 | Mode | Commande |

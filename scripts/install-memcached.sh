@@ -8,6 +8,7 @@ require_root
 sync_component memcached
 cd "${MEMCACHED_DIR}"
 ensure_docker
+ensure_wise_eat_infra_network
 
 if [[ ! -f .env.memcached ]]; then
   cp .env.example .env.memcached

@@ -91,7 +91,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "memcached_up{job=\"$job\"}",
+          "expr": "memcached_up{job=~\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -185,7 +185,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "memcached_uptime_seconds{job=\"$job\"}",
+          "expr": "memcached_uptime_seconds{job=~\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A"
@@ -269,7 +269,7 @@
           "displayAliasType": "Warning / Critical",
           "displayType": "Regular",
           "displayValueWithAlias": "Never",
-          "expr": "memcached_current_bytes{job=\"$job\"}/memcached_limit_bytes{job=\"$job\"}",
+          "expr": "memcached_current_bytes{job=~\"$job\"}/memcached_limit_bytes{job=~\"$job\"}",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -337,7 +337,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (memcached_commands_total{command=\"get\",job=\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=\"$job\"}))",
+          "expr": "sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\"}))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Get",
@@ -346,7 +346,7 @@
           "target": ""
         },
         {
-          "expr": "sum (memcached_commands_total{command=\"set\",job=\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=\"$job\"}))",
+          "expr": "sum (memcached_commands_total{command=\"set\",job=~\"$job\"}) / (sum (memcached_commands_total{command=\"get\",job=~\"$job\"}) + sum (memcached_commands_total{command=\"set\",job=~\"$job\"}))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Set",
@@ -452,7 +452,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",}) / sum (memcached_commands_total{command=\"get\",job=\"$job\"})",
+          "expr": "sum (memcached_commands_total{status=\"hit\",command=\"get\",}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -461,7 +461,7 @@
           "step": 5
         },
         {
-          "expr": "sum (memcached_commands_total{status=\"miss\",command=\"get\",job=\"$job\"}) / sum (memcached_commands_total{command=\"get\",job=\"$job\"})",
+          "expr": "sum (memcached_commands_total{status=\"miss\",command=\"get\",job=~\"$job\"}) / sum (memcached_commands_total{command=\"get\",job=~\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "miss",
@@ -582,7 +582,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum (memcached_items_evicted_total{job=\"$job\"})",
+          "expr": "sum (memcached_items_evicted_total{job=~\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A",
@@ -671,7 +671,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum (memcached_items_reclaimed_total{job=\"$job\"})",
+          "expr": "sum (memcached_items_reclaimed_total{job=~\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A",
@@ -749,7 +749,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_items_evicted_total{job=\"$job\"}[5m]))",
+          "expr": "sum (irate (memcached_items_evicted_total{job=~\"$job\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "evicts",
@@ -758,7 +758,7 @@
           "target": ""
         },
         {
-          "expr": "sum (irate (memcached_items_reclaimed_total{job=\"$job\"}[5m]))",
+          "expr": "sum (irate (memcached_items_reclaimed_total{job=~\"$job\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "reclaims",
@@ -856,7 +856,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_connections{job=\"$job\"}",
+          "expr": "memcached_current_connections{job=~\"$job\"}",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
@@ -956,7 +956,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_commands_total{status=\"hit\",command=\"get\",job=\"$job\"}[5m])) / sum (irate (memcached_commands_total{command=\"get\",job=\"$job\"}[5m]\n))",
+          "expr": "sum (irate (memcached_commands_total{status=\"hit\",command=\"get\",job=~\"$job\"}[5m])) / sum (irate (memcached_commands_total{command=\"get\",job=~\"$job\"}[5m]\n))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Hit",
@@ -1056,7 +1056,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "delta(memcached_read_bytes_total{job=\"$job\"}[1m])",
+          "expr": "delta(memcached_read_bytes_total{job=~\"$job\"}[1m])",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
@@ -1064,7 +1064,7 @@
           "refId": "A"
         },
         {
-          "expr": "delta(memcached_written_bytes_total{job=\"$job\"}[1m])",
+          "expr": "delta(memcached_written_bytes_total{job=~\"$job\"}[1m])",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
@@ -1161,7 +1161,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_bytes{job=\"$job\"}/memcached_limit_bytes{job=\"$job\"}",
+          "expr": "memcached_current_bytes{job=~\"$job\"}/memcached_limit_bytes{job=~\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Memory",
@@ -1255,7 +1255,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "memcached_current_items{job=\"$job\"}",
+          "expr": "memcached_current_items{job=~\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Items",
@@ -1356,7 +1356,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (irate (memcached_commands_total{job=\"$job\"}[5m])) by (command)",
+          "expr": "sum (irate (memcached_commands_total{job=~\"$job\"}[5m])) by (command)",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{command}}",
@@ -1455,7 +1455,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(delta(memcached_commands_total{job=\"$job\"}[30s]))/30",
+          "expr": "sum(delta(memcached_commands_total{job=~\"$job\"}[30s]))/30",
           "format": "time_series",
           "interval": "15s",
           "intervalFactor": 1,
@@ -1554,7 +1554,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (delta(memcached_commands_total{job=\"$job\", status=\"hit\"}[1m]))  / sum (delta(memcached_commands_total{job=\"$job\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
@@ -1653,7 +1653,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (delta(memcached_commands_total{job=\"$job\", status=\"hit\",command=\"get\"}[1m]))  / sum (delta(memcached_commands_total{job=\"$job\",command=\"get\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\",command=\"get\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\",command=\"get\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,
@@ -1661,7 +1661,7 @@
           "refId": "A"
         },
         {
-          "expr": "sum (delta(memcached_commands_total{job=\"$job\", status=\"hit\",command=\"delete\"}[1m]))  / sum (delta(memcached_commands_total{job=\"$job\",command=\"delete\"}[1m])) * 100",
+          "expr": "sum (delta(memcached_commands_total{job=~\"$job\", status=\"hit\",command=\"delete\"}[1m]))  / sum (delta(memcached_commands_total{job=~\"$job\",command=\"delete\"}[1m])) * 100",
           "format": "time_series",
           "interval": "1m",
           "intervalFactor": 1,

@@ -132,3 +132,12 @@ ensure_docker() {
   command -v docker >/dev/null 2>&1 || die "Docker requis — apt install docker-ce"
   docker compose version >/dev/null 2>&1 || die "Docker Compose plugin requis"
 }
+
+# Réseau partagé Redis / Memcached / exporters (évite host.docker.internal → 127.0.0.1 injoignable).
+ensure_wise_eat_infra_network() {
+  if docker network inspect wise-eat-infra >/dev/null 2>&1; then
+    return 0
+  fi
+  docker network create wise-eat-infra >/dev/null
+  log "Réseau Docker wise-eat-infra créé"
+}

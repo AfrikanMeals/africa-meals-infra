@@ -43,6 +43,7 @@ Composants:
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
   monitoring    Prometheus + Grafana + redis_exporter
+  repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
@@ -114,6 +115,9 @@ run_component() {
       ;;
     monitoring)
       bash "${SCRIPTS}/install-monitoring.sh"
+      ;;
+    repair-monitoring)
+      bash "${SCRIPTS}/repair-monitoring.sh"
       ;;
     grafana-console)
       bash "${SCRIPTS}/install-grafana-console.sh"

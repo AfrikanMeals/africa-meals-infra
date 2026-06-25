@@ -2,10 +2,17 @@
 # Install : sudo ./install.sh redis  (depuis la racine du dépôt)
 # Permissions ACL : sudo ./install.sh permissions
 
+networks:
+  wise-eat-infra:
+    name: wise-eat-infra
+    driver: bridge
+
 services:
   redis-cache:
     image: redis:7-alpine
     container_name: wise-eat-redis-cache
+    networks:
+      - wise-eat-infra
     command:
       - redis-server
       - --appendonly
@@ -30,6 +37,8 @@ services:
   redis-bullmq:
     image: redis:7-alpine
     container_name: wise-eat-redis-bullmq
+    networks:
+      - wise-eat-infra
     command:
       - redis-server
       - --appendonly

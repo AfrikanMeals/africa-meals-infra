@@ -8,6 +8,7 @@ require_root
 sync_component monitoring
 cd "${MON_DIR}"
 ensure_docker
+ensure_wise_eat_infra_network
 
 if [[ ! -f .env.monitoring ]]; then
   cp .env.example .env.monitoring
@@ -16,8 +17,26 @@ fi
 
 if [[ -f "${REDIS_ENV}" ]]; then
   set -a && source "${REDIS_ENV}" && set +a
-  sed -i "s|^CACHE_REDIS_PASSWORD=.*|CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD}|" .env.monitoring
-  sed -i "s|^BULL_REDIS_PASSWORD=.*|BULL_REDIS_PASSWORD=${BULL_REDIS_PASSWORD}|" .env.monitoring
+  for key in CACHE_REDIS_PASSWORD BULL_REDIS_PASSWORD; do
+    if [[ -n "${!key:-}" ]]; then
+      if grep -q "^${key}=" .env.monitoring; then
+        sed -i "s|^${key}=.*|${key}=${!key}|" .env.monitoring
+      else
+        echo "${key}=${!key}" >> .env.monitoring
+      fi
+    fi
+  done
+fi
+
+MEMCACHED_ENV="${MEMCACHED_DIR}/.env.memcached"
+if [[ -f "${MEMCACHED_ENV}" ]]; then
+  set -a && source "${MEMCACHED_ENV}" && set +a
+  port="${MEMCACHED_PORT:-11211}"
+  if grep -q '^MEMCACHED_PORT=' .env.monitoring; then
+    sed -i "s|^MEMCACHED_PORT=.*|MEMCACHED_PORT=${port}|" .env.monitoring
+  else
+    echo "MEMCACHED_PORT=${port}" >> .env.monitoring
+  fi
 fi
 
 set -a && source .env.monitoring && set +a

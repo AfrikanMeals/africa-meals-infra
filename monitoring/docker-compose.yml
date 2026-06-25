@@ -1,20 +1,28 @@
 # Wise Eat — monitoring (Prometheus + Grafana + redis_exporter + memcached_exporter)
 # Install : sudo ./install.sh monitoring
+#
+# Les exporters joignent Redis/Memcached via le réseau Docker wise-eat-infra
+# (host.docker.internal:6379 échoue quand Redis n’écoute que sur 127.0.0.1).
+
+networks:
+  wise-eat-infra:
+    name: wise-eat-infra
+    external: true
 
 services:
   redis-exporter-cache:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-cache
     restart: unless-stopped
+    networks:
+      - wise-eat-infra
     environment:
-      REDIS_ADDR: redis://host.docker.internal:6379
+      REDIS_ADDR: redis://wise-eat-redis-cache:6379
       REDIS_USER: wise-eat-cache
       REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
       REDIS_EXPORTER_CHECK_KEYS: ""
       REDIS_EXPORTER_IS_TILE38: "false"
-    extra_hosts:
-      - host.docker.internal:host-gateway
     ports:
       - "127.0.0.1:9121:9121"
 
@@ -22,13 +30,13 @@ services:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-bullmq
     restart: unless-stopped
+    networks:
+      - wise-eat-infra
     environment:
-      REDIS_ADDR: redis://host.docker.internal:6380
+      REDIS_ADDR: redis://wise-eat-redis-bullmq:6379
       REDIS_USER: wise-eat-bull
       REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    extra_hosts:
-      - host.docker.internal:host-gateway
     ports:
       - "127.0.0.1:9122:9121"
 
@@ -36,10 +44,10 @@ services:
     image: prom/memcached-exporter:v0.15.3
     container_name: wise-eat-memcached-exporter
     restart: unless-stopped
+    networks:
+      - wise-eat-infra
     command:
-      - '--memcached.address=host.docker.internal:${MEMCACHED_PORT:-11211}'
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      - '--memcached.address=wise-eat-memcached:11211'
     ports:
       - "127.0.0.1:9150:9150"
 
@@ -47,6 +55,8 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: wise-eat-prometheus
     restart: unless-stopped
+    networks:
+      - wise-eat-infra
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -68,6 +78,8 @@ services:
     image: grafana/grafana:11.2.2
     container_name: wise-eat-grafana
     restart: unless-stopped
+    networks:
+      - wise-eat-infra
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD requis}

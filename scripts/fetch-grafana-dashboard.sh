@@ -115,6 +115,20 @@ def fix_ds(obj):
 
 fix_ds(dash)
 
+# Les variables Grafana « All » nécessitent un matcher regex (=~) dans les panneaux.
+def fix_job_filters(obj):
+    if isinstance(obj, dict):
+        for key, val in list(obj.items()):
+            if key == "expr" and isinstance(val, str):
+                obj[key] = val.replace('job="$job"', 'job=~"$job"')
+            else:
+                fix_job_filters(val)
+    elif isinstance(obj, list):
+        for item in obj:
+            fix_job_filters(item)
+
+fix_job_filters(dash)
+
 dash["templating"] = {
     "list": [
         {

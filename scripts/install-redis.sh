@@ -8,6 +8,7 @@ require_root
 sync_component redis
 cd "${REDIS_DIR}"
 ensure_docker
+ensure_wise_eat_infra_network
 stop_valkey_if_present
 
 if [[ ! -f .env.redis ]]; then
