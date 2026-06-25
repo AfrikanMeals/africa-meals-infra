@@ -537,21 +537,59 @@ nginx_stream_needs_load_module() {
   nginx -V 2>&1 | grep -q 'with-stream=dynamic'
 }
 
+find_nginx_stream_module_so() {
+  local so
+  if [[ -f /usr/lib/nginx/modules/ngx_stream_module.so ]]; then
+    echo /usr/lib/nginx/modules/ngx_stream_module.so
+    return 0
+  fi
+  while IFS= read -r so; do
+    if [[ -f "${so}" ]]; then
+      echo "${so}"
+      return 0
+    fi
+  done < <(dpkg -L libnginx-mod-stream 2>/dev/null | grep 'ngx_stream_module\.so$' || true)
+  return 1
+}
+
+create_nginx_stream_module_conf_if_missing() {
+  local so load_line conf="/etc/nginx/modules-available/mod-stream.conf"
+  [[ -f "${conf}" ]] && return 0
+  [[ -f /usr/share/nginx/modules-available/mod-stream.conf ]] && return 0
+
+  so="$(find_nginx_stream_module_so || true)"
+  [[ -n "${so}" ]] || return 1
+
+  if [[ "${so}" == /usr/lib/nginx/modules/ngx_stream_module.so ]]; then
+    load_line="load_module modules/ngx_stream_module.so;"
+  else
+    load_line="load_module ${so};"
+  fi
+
+  mkdir -p /etc/nginx/modules-available
+  printf '%s\n' "${load_line}" > "${conf}"
+  log "Création ${conf} (${load_line})"
+}
+
 enable_nginx_stream_module_conf() {
-  local candidate base
+  local candidate enabled_name="/etc/nginx/modules-enabled/50-mod-stream.conf"
   for candidate in \
+    /usr/share/nginx/modules-available/mod-stream.conf \
     /etc/nginx/modules-available/mod-stream.conf \
     /etc/nginx/modules-available/50-mod-stream.conf; do
     if [[ -f "${candidate}" ]]; then
-      base="$(basename "${candidate}")"
-      if [[ ! -e "/etc/nginx/modules-enabled/${base}" ]]; then
-        ln -sf "${candidate}" "/etc/nginx/modules-enabled/${base}"
-        log "Module stream activé : ${base}"
+      if [[ ! -e "${enabled_name}" ]] || [[ "$(readlink -f "${enabled_name}" 2>/dev/null)" != "$(readlink -f "${candidate}" 2>/dev/null)" ]]; then
+        ln -sf "${candidate}" "${enabled_name}"
+        log "Module stream activé : 50-mod-stream.conf → ${candidate}"
       fi
       return 0
     fi
   done
-  return 1
+
+  create_nginx_stream_module_conf_if_missing || return 1
+  ln -sf /etc/nginx/modules-available/mod-stream.conf "${enabled_name}"
+  log "Module stream activé : 50-mod-stream.conf → /etc/nginx/modules-available/mod-stream.conf"
+  return 0
 }
 
 ensure_nginx_stream_module() {
@@ -563,20 +601,22 @@ ensure_nginx_stream_module() {
     return 0
   fi
 
-  if nginx_stream_needs_load_module; then
-    if enable_nginx_stream_module_conf; then
-      return 0
-    fi
-    log "Installation module nginx stream (libnginx-mod-stream)…"
-    apt install -y libnginx-mod-stream 2>/dev/null || apt install -y nginx-full 2>/dev/null || true
-    enable_nginx_stream_module_conf || \
-      warn "mod-stream.conf introuvable — vérifier : dpkg -L libnginx-mod-stream"
+  if enable_nginx_stream_module_conf; then
     return 0
   fi
 
   log "Installation module nginx stream (libnginx-mod-stream)…"
-  apt install -y libnginx-mod-stream 2>/dev/null || apt install -y nginx-full 2>/dev/null || true
-  enable_nginx_stream_module_conf || true
+  apt install -y libnginx-mod-stream nginx-common 2>/dev/null \
+    || apt install -y libnginx-mod-stream 2>/dev/null \
+    || apt install -y nginx-full 2>/dev/null || true
+
+  if enable_nginx_stream_module_conf; then
+    return 0
+  fi
+
+  apt install -y --reinstall libnginx-mod-stream 2>/dev/null || true
+  enable_nginx_stream_module_conf || \
+    die "Module stream introuvable — vérifier : dpkg -L libnginx-mod-stream | grep stream"
 }
 
 ensure_nginx_stream_include() {

@@ -9,13 +9,7 @@ require_root
 
 log "=== Repair nginx stream (EMQX MQTTS) ==="
 
-# Symlink erroné créé manuellement (Ubuntu Noble : mod-stream.conf, pas 50-mod-stream.conf)
-if [[ -L /etc/nginx/modules-enabled/50-mod-stream.conf ]] \
-  && [[ ! -e /etc/nginx/modules-enabled/50-mod-stream.conf ]]; then
-  warn "Suppression symlink cassé : modules-enabled/50-mod-stream.conf"
-  rm -f /etc/nginx/modules-enabled/50-mod-stream.conf
-fi
-
+remove_broken_nginx_module_symlinks
 ensure_nginx_stream_module
 
 if nginx -t 2>/dev/null; then
@@ -35,9 +29,11 @@ if nginx -t; then
 else
   warn "nginx -V stream :"
   nginx -V 2>&1 | tr ' ' '\n' | grep stream | sed 's/^/[wise-eat]      /' || true
-  warn "modules-available :"
-  ls -la /etc/nginx/modules-available/ 2>/dev/null | sed 's/^/[wise-eat]      /' || true
-  warn "modules-enabled :"
+  warn "share/modules-available :"
+  ls -la /usr/share/nginx/modules-available/ 2>/dev/null | sed 's/^/[wise-eat]      /' || true
+  warn "etc/modules-enabled :"
   ls -la /etc/nginx/modules-enabled/ 2>/dev/null | sed 's/^/[wise-eat]      /' || true
+  warn "ngx_stream_module.so :"
+  find_nginx_stream_module_so 2>/dev/null | sed 's/^/[wise-eat]      /' || warn "      (introuvable)"
   die "Correction manuelle requise — voir ci-dessus"
 fi
