@@ -158,13 +158,22 @@ scrape_configs:
         labels:
           namespace: wise-eat
           emqx_role: primary
+          emqx_scrape: wise-eat-emqx-1
       - targets: ['wise-eat-emqx-2:18083']
         labels:
           namespace: wise-eat
           emqx_role: replica
           emqx_replica: '1'
+          emqx_scrape: wise-eat-emqx-2
       - targets: ['wise-eat-emqx-3:18083']
         labels:
           namespace: wise-eat
           emqx_role: replica
           emqx_replica: '2'
+          emqx_scrape: wise-eat-emqx-3
+    metric_relabel_configs:
+      # Unifie instance pour Grafana (sinon emqx~IP vs wise-eat-emqx-N:18083).
+      - source_labels: [emqx_scrape]
+        target_label: instance
+        regex: (.+)
+        replacement: ${1}:18083

@@ -10,6 +10,8 @@ from pathlib import Path
 PROM_UID = "prometheus"
 DS = {"type": "prometheus", "uid": PROM_UID}
 EMQX_JOB = "emqx"
+# node_exporter VPS (prometheus.yml relabel instance=wise-eat:9100)
+NODE_INSTANCE = "wise-eat:9100"
 
 
 def fix_ds(obj) -> None:
@@ -28,12 +30,27 @@ def fix_ds(obj) -> None:
 
 def patch_expr(expr: str) -> str:
     expr = expr.replace('job="emqx"', f'job="{EMQX_JOB}"')
-    expr = re.sub(
-        r'instance=~"\.?"\*?"',
-        'instance=~"$instance"',
-        expr,
-    )
-    expr = expr.replace('instance=~".*"', 'instance=~"$instance"')
+
+    # System / hôte : node_exporter VPS (pas les targets EMQX).
+    if "node_" in expr:
+        expr = re.sub(
+            r'instance=~"\$instance"|instance=~"\.\*"',
+            f'instance="{NODE_INSTANCE}"',
+            expr,
+        )
+        if expr.strip().startswith("100 - (avg(irate(node_cpu_seconds_total"):
+            expr = (
+                f'100 - (avg(irate(node_cpu_seconds_total{{instance="{NODE_INSTANCE}",mode="idle"}}[5m])) * 100)'
+            )
+
+    # EMQX : agrégation sur job=emqx uniquement (label instance interne emqx~IP).
+    if "emqx_" in expr or "erlang_" in expr:
+        expr = re.sub(
+            r"\{[^{}]*job=\"emqx\"[^{}]*\}",
+            f'{{job="{EMQX_JOB}"}}',
+            expr,
+        )
+
     return expr
 
 
@@ -58,7 +75,8 @@ def main() -> None:
     dash["title"] = "Wise Eat — EMQX"
     dash["description"] = (
         "Broker MQTT EMQX 5 (cluster 1 primary + 2 réplicas). "
-        "Scrape Prometheus job=emqx → /api/v5/prometheus/stats."
+        "Métriques EMQX : job=emqx (sans filtre instance — label interne emqx~IP). "
+        "System : node_exporter wise-eat:9100."
     )
 
     repl = json.dumps(dash)
@@ -77,14 +95,8 @@ def main() -> None:
         "fieldConfig": {
             "defaults": {
                 "mappings": [
-                    {
-                        "options": {"0": {"text": "DOWN", "color": "red"}},
-                        "type": "value",
-                    },
-                    {
-                        "options": {"1": {"text": "UP", "color": "green"}},
-                        "type": "value",
-                    },
+                    {"options": {"0": {"text": "DOWN", "color": "red"}}, "type": "value"},
+                    {"options": {"1": {"text": "UP", "color": "green"}}, "type": "value"},
                 ],
                 "thresholds": {
                     "mode": "absolute",
@@ -103,11 +115,7 @@ def main() -> None:
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "horizontal",
-            "reduceOptions": {
-                "calcs": ["lastNotNull"],
-                "fields": "",
-                "values": False,
-            },
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
             "textMode": "value_and_name",
         },
         "pluginVersion": "10.3.3",
@@ -145,14 +153,16 @@ def main() -> None:
             gp["y"] = gp["y"] + 4
     dash["panels"] = [health_panel] + panels
 
+    # Variable EMQX : label interne emqx~IP (pas le target Prometheus).
     dash["templating"] = {
         "list": [
             {
-                "name": "instance",
+                "name": "emqx_instance",
+                "label": "EMQX node",
                 "type": "query",
                 "datasource": DS,
-                "definition": f'label_values(up{{job="{EMQX_JOB}"}}, instance)',
-                "query": f'label_values(up{{job="{EMQX_JOB}"}}, instance)',
+                "definition": f'label_values(emqx_connections_count{{job="{EMQX_JOB}"}}, instance)',
+                "query": f'label_values(emqx_connections_count{{job="{EMQX_JOB}"}}, instance)',
                 "refresh": 2,
                 "includeAll": True,
                 "multi": True,

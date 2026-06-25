@@ -21,7 +21,7 @@
       }
     ]
   },
-  "description": "Broker MQTT EMQX 5 (cluster 1 primary + 2 r\u00e9plicas). Scrape Prometheus job=emqx \u2192 /api/v5/prometheus/stats.",
+  "description": "Broker MQTT EMQX 5 (cluster 1 primary + 2 r\u00e9plicas). M\u00e9triques EMQX : job=emqx (sans filtre instance \u2014 label interne emqx~IP). System : node_exporter wise-eat:9100.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 17446,
@@ -195,7 +195,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_connections_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_connections_count{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -255,7 +255,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(emqx_topics_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "max(emqx_topics_count{job=\"emqx\"})",
           "interval": "",
           "legendFormat": "Active Topics",
           "range": true,
@@ -317,7 +317,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_suboptions_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_suboptions_count{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -421,7 +421,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(emqx_connections_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_connections_count{job=\"emqx\"})",
           "legendFormat": "Connections",
           "range": true,
           "refId": "A"
@@ -540,7 +540,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "emqx_topics_count{instance=~\"$instance\",job=\"emqx\"}",
+          "expr": "emqx_topics_count{job=\"emqx\"}",
           "legendFormat": "Topics",
           "range": true,
           "refId": "A"
@@ -644,7 +644,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(emqx_suboptions_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_suboptions_count{job=\"emqx\"})",
           "legendFormat": "Subscriptions",
           "range": true,
           "refId": "A"
@@ -862,7 +862,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(emqx_messages_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_messages_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_received{job=\"emqx\"}[$__rate_interval]))",
           "interval": "20s",
           "legendFormat": "Messages Received",
           "range": true,
@@ -874,7 +874,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_messages_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_messages_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_sent{job=\"emqx\"}[$__rate_interval]))",
           "hide": true,
           "interval": "20s",
           "legendFormat": "Messages Sent",
@@ -887,7 +887,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_messages_dropped{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_dropped{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_messages_dropped{job=\"emqx\"}[$__rate_interval]) or irate(emqx_messages_dropped{job=\"emqx\"}[$__rate_interval]))",
           "hide": true,
           "interval": "20s",
           "legendFormat": "Messages Dropped",
@@ -950,7 +950,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_messages_sent{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_messages_sent{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -1009,7 +1009,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_messages_received{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_messages_received{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -1137,7 +1137,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(emqx_bytes_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_bytes_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_bytes_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_bytes_received{job=\"emqx\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "interval": "20s",
@@ -1151,7 +1151,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_bytes_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_bytes_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_bytes_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_bytes_sent{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "interval": "20s",
           "legendFormat": "Bytes sent",
@@ -1213,7 +1213,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_retained_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_retained_count{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -1272,7 +1272,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(emqx_messages_dropped{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_messages_dropped{job=\"emqx\"})",
           "refId": "A"
         }
       ],
@@ -1346,7 +1346,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(count(node_cpu_seconds_total{instance=~\"$instance\"}) by (cpu))",
+          "expr": "count(count(node_cpu_seconds_total{instance=\"wise-eat:9100\"}) by (cpu))",
           "refId": "A"
         }
       ],
@@ -1408,7 +1408,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_total_bytes{instance=~\"$instance\"}",
+          "expr": "node_memory_total_bytes{instance=\"wise-eat:9100\"}",
           "refId": "A"
         }
       ],
@@ -1470,7 +1470,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_filesystem_size_bytes{instance=~\"$instance\",mountpoint=\"/\",fstype!=\"rootfs\"}",
+          "expr": "node_filesystem_size_bytes{instance=\"wise-eat:9100\",mountpoint=\"/\",fstype!=\"rootfs\"}",
           "refId": "A"
         }
       ],
@@ -1532,7 +1532,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_time_seconds{instance=~\"$instance\"} - node_boot_time_seconds{instance=~\"$instance\"}",
+          "expr": "node_time_seconds{instance=\"wise-eat:9100\"} - node_boot_time_seconds{instance=\"wise-eat:9100\"}",
           "refId": "A"
         }
       ],
@@ -1632,7 +1632,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(emqx_cluster_nodes_running{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "max(emqx_cluster_nodes_running{job=\"emqx\"})",
           "legendFormat": "EMQX Nodes running",
           "range": true,
           "refId": "A"
@@ -1643,7 +1643,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(emqx_cluster_nodes_stopped{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "max(emqx_cluster_nodes_stopped{job=\"emqx\"})",
           "hide": false,
           "legendFormat": "EMQX Nodes stopped",
           "range": true,
@@ -1738,7 +1738,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "100 - (avg(irate(node_cpu_seconds_total{instance=\"wise-eat:9100\",mode=\"idle\"}[5m])) * 100)",
           "legendFormat": "CPU Usage",
           "range": true,
           "refId": "A"
@@ -1827,7 +1827,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(emqx_vm_used_memory{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(emqx_vm_used_memory{job=\"emqx\"})",
           "legendFormat": "VM Memory Used",
           "range": true,
           "refId": "A"
@@ -1919,7 +1919,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_mnesia_memory_usage_bytes{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(erlang_mnesia_memory_usage_bytes{job=\"emqx\"})",
           "legendFormat": "Mnesia (built-in database) Memory Usage",
           "range": true,
           "refId": "A"
@@ -2010,7 +2010,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_vm_process_count{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(erlang_vm_process_count{job=\"emqx\"})",
           "legendFormat": "Process Count",
           "range": true,
           "refId": "A"
@@ -2021,7 +2021,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_vm_statistics_run_queues_length_total{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(erlang_vm_statistics_run_queues_length_total{job=\"emqx\"})",
           "hide": false,
           "legendFormat": "Run Queue Length",
           "range": true,
@@ -2109,7 +2109,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_vm_threads{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(erlang_vm_threads{job=\"emqx\"})",
           "legendFormat": "Threads",
           "range": true,
           "refId": "A"
@@ -2120,7 +2120,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(erlang_vm_thread_pool_size{instance=~\"$instance\",job=\"emqx\"})",
+          "expr": "sum(erlang_vm_thread_pool_size{job=\"emqx\"})",
           "hide": false,
           "legendFormat": "Thread Pool size",
           "range": true,
@@ -2277,7 +2277,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_connect{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connect{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_connect{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connect{job=\"emqx\"}[$__rate_interval]))",
           "legendFormat": "Packets Connect",
           "range": true,
           "refId": "A"
@@ -2288,7 +2288,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_connack_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connack_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_connack_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connack_sent{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Connack Sent",
           "range": true,
@@ -2300,7 +2300,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_connack_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connack_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_connack_error{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_connack_error{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Connack Error",
           "range": true,
@@ -2474,7 +2474,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_disconnect_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_disconnect_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_disconnect_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_disconnect_sent{job=\"emqx\"}[$__rate_interval]))",
           "legendFormat": "Packets Disconnect Sent",
           "range": true,
           "refId": "A"
@@ -2485,7 +2485,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_disconnect_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_disconnect_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_disconnect_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_disconnect_received{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Disconnect Received",
           "range": true,
@@ -2670,7 +2670,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_publish_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_publish_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_sent{job=\"emqx\"}[$__rate_interval]))",
           "legendFormat": "Packets Publish Sent",
           "range": true,
           "refId": "A"
@@ -2681,7 +2681,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_publish_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_publish_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_received{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Publish Received",
           "range": true,
@@ -2693,7 +2693,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_publish_dropped{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_dropped{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_publish_dropped{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_dropped{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Publish Dropped",
           "range": true,
@@ -2705,7 +2705,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_publish_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_publish_error{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_publish_error{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Publish Error",
           "range": true,
@@ -2920,7 +2920,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_subscribe_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_subscribe_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_subscribe_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_subscribe_received{job=\"emqx\"}[$__rate_interval]))",
           "legendFormat": "Packets Subscribe Received",
           "range": true,
           "refId": "A"
@@ -2931,7 +2931,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_suback_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_suback_sent{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_suback_sent{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_suback_sent{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Suback Sent",
           "range": true,
@@ -2943,7 +2943,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_subscribe_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_subscribe_error{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_subscribe_error{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_subscribe_error{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Subscribe Error",
           "range": true,
@@ -2955,7 +2955,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_unsubscribe_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_unsubscribe_received{instance=~\"$instance\",job=\"emqx\"}[$__rate_interval]))",
+          "expr": "sum(rate(emqx_packets_unsubscribe_received{job=\"emqx\"}[$__rate_interval]) or irate(emqx_packets_unsubscribe_received{job=\"emqx\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "Packets Unsubscribe Received",
           "range": true,
@@ -2967,7 +2967,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(emqx_packets_unsubscribe_error{instance=~\"$instance\",job=\"emqx\"}[$__interval]) or irate(emqx_packets_unsubscribe_error{instance=~\"$instance\",job=\"emqx\"}[$__interval]))",
+          "expr": "sum(rate(emqx_packets_unsubscribe_error{job=\"emqx\"}[$__interval]) or irate(emqx_packets_unsubscribe_error{job=\"emqx\"}[$__interval]))",
           "hide": false,
           "legendFormat": "Packets Unsubscribe Error",
           "range": true,
@@ -2988,14 +2988,15 @@
   "templating": {
     "list": [
       {
-        "name": "instance",
+        "name": "emqx_instance",
+        "label": "EMQX node",
         "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=\"emqx\"}, instance)",
-        "query": "label_values(up{job=\"emqx\"}, instance)",
+        "definition": "label_values(emqx_connections_count{job=\"emqx\"}, instance)",
+        "query": "label_values(emqx_connections_count{job=\"emqx\"}, instance)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
