@@ -355,10 +355,17 @@ MQTT_BROKER_PASSWORD=<MQTT_ADMIN_PASSWORD depuis .env.emqx>
 
 DNS A `broker.wise-eat.com` → VPS. Ports **8883** et **8884** : **DNS only** sur Cloudflare (comme Redis Stunnel).
 
-Cluster : `EMQX_CLUSTER_B_ENABLED=true` dans `emqx/.env.emqx` (défaut). Les 3 nœuds partagent sessions/topics ; seul le primary expose les ports locaux.
+Cluster : **3 conteneurs toujours déployés** (`wise-eat-emqx-1` primary + `wise-eat-emqx-2/3` réplicas). Sessions/topics répliqués ; seul le primary expose `:1883/:8083/:18083` en local.
 
+Si Docker Desktop n’affiche qu’**1 container** :
 ```bash
+sudo ./install.sh repair-emqx-cluster
 docker exec wise-eat-emqx-1 emqx ctl cluster status
 ```
 
-**Grafana** : dossier **EMQX** → **Wise Eat — EMQX** (connexions, messages, packets, cluster, VM Erlang). Prérequis : EMQX installé + `sudo ./install.sh repair-monitoring` (scrape Prometheus `job=emqx`).
+**Grafana** : dossier **EMQX** → **Wise Eat — EMQX** (connexions, messages, packets, cluster, VM Erlang). Prérequis : EMQX installé + scrape Prometheus.
+
+Si Grafana affiche **No data** :
+```bash
+sudo ./install.sh repair-emqx-prometheus
+```

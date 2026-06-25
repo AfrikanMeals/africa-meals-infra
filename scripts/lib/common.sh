@@ -245,6 +245,27 @@ ensure_minio_on_wise_eat_infra() {
   docker network connect wise-eat-infra wise-eat-minio
 }
 
+ensure_emqx_on_wise_eat_infra() {
+  ensure_wise_eat_infra_network
+  local name connected=1
+  for name in wise-eat-emqx-1 wise-eat-emqx-2 wise-eat-emqx-3; do
+    if ! docker ps --format '{{.Names}}' | grep -qx "${name}"; then
+      continue
+    fi
+    if docker inspect "${name}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+      | grep -q 'wise-eat-infra'; then
+      continue
+    fi
+    log "Connexion ${name} → réseau wise-eat-infra"
+    docker network connect wise-eat-infra "${name}"
+    connected=0
+  done
+  if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-emqx-1'; then
+    return 1
+  fi
+  return 0
+}
+
 _infra_minio_curl() {
   local url="$1"
   shift

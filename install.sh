@@ -40,6 +40,8 @@ Composants:
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
+  repair-emqx-prometheus   Répare scrape Prometheus → EMQX (Grafana No data)
+  repair-emqx-cluster      Force 3 nœuds EMQX (primary + 2 réplicas)
   minio-backup  Cron sauvegarde incrémentale MinIO (mc mirror)
   minio-replication  MinIO + 2 réplicas site replication (:9002, :9004)
   minio-replica-storage  nginx + TLS LE pour dr1/dr2-storage.wise-eat.com
@@ -114,6 +116,12 @@ run_component() {
       ;;
     repair-minio-prometheus)
       bash "${SCRIPTS}/repair-minio-prometheus.sh"
+      ;;
+    repair-emqx-prometheus)
+      bash "${SCRIPTS}/repair-emqx-prometheus.sh"
+      ;;
+    repair-emqx-cluster)
+      bash "${SCRIPTS}/repair-emqx-cluster.sh"
       ;;
     minio-backup)
       bash "${SCRIPTS}/install-minio-backup.sh"

@@ -101,7 +101,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(up{job=\"emqx\"})",
+          "expr": "min(up{job=\"emqx\"}) or vector(0)",
           "instant": true,
           "legendFormat": "Prometheus scrape EMQX",
           "refId": "A"
@@ -2990,6 +2990,7 @@
         "includeAll": true,
         "multi": true,
         "hide": 0,
+        "allValue": ".*",
         "current": {
           "selected": true,
           "text": "All",

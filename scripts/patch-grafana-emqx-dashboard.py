@@ -114,7 +114,7 @@ def main() -> None:
         "targets": [
             {
                 "datasource": DS,
-                "expr": f'min(up{{job="{EMQX_JOB}"}})',
+                "expr": f'min(up{{job="{EMQX_JOB}"}}) or vector(0)',
                 "instant": True,
                 "legendFormat": "Prometheus scrape EMQX",
                 "refId": "A",
@@ -150,6 +150,7 @@ def main() -> None:
                 "includeAll": True,
                 "multi": True,
                 "hide": 0,
+                "allValue": ".*",
                 "current": {"selected": True, "text": "All", "value": "$__all"},
             },
         ]

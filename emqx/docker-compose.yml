@@ -1,6 +1,7 @@
-# Wise Eat — EMQX : 1 nœud primary + 2 réplicas (profile cluster-b)
+# Wise Eat — EMQX : 1 primary + 2 réplicas (cluster static, toujours 3 conteneurs)
 # Install : sudo ./install.sh emqx
-# EMQX_CLUSTER_B_ENABLED=true dans .env.emqx
+
+name: wise-eat-emqx
 
 networks:
   wise-eat-infra:
@@ -11,6 +12,8 @@ x-emqx-env: &emqx-env
   EMQX_NODE__COOKIE: ${EMQX_ERLANG_COOKIE:?EMQX_ERLANG_COOKIE requis}
   EMQX_CLUSTER__DISCOVERY_STRATEGY: static
   EMQX_CLUSTER__STATIC__SEEDS: ${EMQX_CLUSTER_STATIC_SEEDS:?EMQX_CLUSTER_STATIC_SEEDS requis}
+  EMQX_CLUSTER__AUTOHEAL: "on"
+  EMQX_CLUSTER__AUTOHEAL__EVICT_AFTER: 30s
   EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
   EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?EMQX_DASHBOARD_PASSWORD requis}
   EMQX_AUTHENTICATION__1__MECHANISM: password_based
@@ -49,7 +52,6 @@ services:
       start_period: 45s
 
   emqx-2:
-    profiles: ["cluster-b"]
     image: emqx/emqx:5.8.6
     container_name: wise-eat-emqx-2
     hostname: wise-eat-emqx-2
@@ -74,7 +76,6 @@ services:
       start_period: 60s
 
   emqx-3:
-    profiles: ["cluster-b"]
     image: emqx/emqx:5.8.6
     container_name: wise-eat-emqx-3
     hostname: wise-eat-emqx-3

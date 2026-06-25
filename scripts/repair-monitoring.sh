@@ -65,6 +65,8 @@ fi
 
 if docker ps --format '{{.Names}}' | grep -q '^wise-eat-emqx-1$'; then
   log "EMQX : OK"
+  ensure_emqx_on_wise_eat_infra || \
+    warn "EMQX hors wise-eat-infra — sudo ./install.sh repair-emqx-prometheus"
 else
   warn "EMQX absent — installation EMQX (métriques Grafana)"
   bash "${SCRIPT_DIR}/install-emqx.sh"

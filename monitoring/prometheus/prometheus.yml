@@ -147,21 +147,25 @@ scrape_configs:
       - target_label: instance
         replacement: wise-eat-minio:9000
 
-  # EMQX — /api/v5/prometheus/stats (primary + réplicas cluster, réseau wise-eat-infra)
+  # EMQX — /api/v5/prometheus/stats (primary + réplicas, réseau wise-eat-infra)
   - job_name: emqx
     metrics_path: /api/v5/prometheus/stats
     scheme: http
     scrape_interval: 15s
     scrape_timeout: 10s
+    honor_labels: true
     static_configs:
-      - targets:
-          - wise-eat-emqx-1:18083
-          - wise-eat-emqx-2:18083
-          - wise-eat-emqx-3:18083
+      - targets: ['wise-eat-emqx-1:18083']
         labels:
           namespace: wise-eat
-          mqtt_broker: emqx
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: '${1}'
+          emqx_role: primary
+      - targets: ['wise-eat-emqx-2:18083']
+        labels:
+          namespace: wise-eat
+          emqx_role: replica
+          emqx_replica: '1'
+      - targets: ['wise-eat-emqx-3:18083']
+        labels:
+          namespace: wise-eat
+          emqx_role: replica
+          emqx_replica: '2'

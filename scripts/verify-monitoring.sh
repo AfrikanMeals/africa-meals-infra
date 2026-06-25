@@ -378,7 +378,7 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  2. Memcached : sudo ./install.sh memcached puis vérifier curl :11211"
   echo "  3. MinIO Prometheus : sudo ./install.sh repair-minio-prometheus"
   echo "  4. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
-  echo "  5. EMQX : sudo ./install.sh emqx (réseau wise-eat-infra + EMQX_PROMETHEUS__ENABLE=true)"
+  echo "  5. EMQX : sudo ./install.sh repair-emqx-prometheus"
   echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
   echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
   echo "  8. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
