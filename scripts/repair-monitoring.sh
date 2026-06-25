@@ -41,11 +41,8 @@ fi
 
 if docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
   log "MinIO : OK"
-  if ! docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
-    | grep -q 'wise-eat-infra'; then
-    warn "MinIO hors réseau wise-eat-infra — connexion pour scrape Prometheus"
-    docker network connect wise-eat-infra wise-eat-minio 2>/dev/null || true
-  fi
+  ensure_minio_on_wise_eat_infra || \
+    warn "MinIO hors wise-eat-infra — sudo ./install.sh repair-minio-prometheus"
 else
   warn "MinIO absent — installation MinIO (métriques Grafana)"
   bash "${SCRIPT_DIR}/install-minio.sh"

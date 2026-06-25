@@ -185,6 +185,64 @@ ensure_wise_eat_infra_network() {
   log "Réseau Docker wise-eat-infra créé"
 }
 
+wait_for_container_running() {
+  local name="$1"
+  local max="${2:-45}"
+  for _ in $(seq 1 "$max"); do
+    if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
+      local status
+      status="$(docker inspect -f '{{.State.Status}}' "${name}" 2>/dev/null || echo dead)"
+      if [[ "${status}" == "running" ]]; then
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_prometheus_ready() {
+  local max="${1:-45}"
+  for _ in $(seq 1 "$max"); do
+    if curl -sf 'http://127.0.0.1:9090/-/ready' >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_minio_local() {
+  local port="${1:-9000}"
+  local max="${2:-45}"
+  for _ in $(seq 1 "$max"); do
+    if curl -sf "http://127.0.0.1:${port}/minio/health/live" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+ensure_minio_on_wise_eat_infra() {
+  ensure_wise_eat_infra_network
+  if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-minio'; then
+    return 1
+  fi
+  if docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+    | grep -q 'wise-eat-infra'; then
+    return 0
+  fi
+  log "Connexion wise-eat-minio → réseau wise-eat-infra"
+  docker network connect wise-eat-infra wise-eat-minio
+}
+
+probe_minio_from_infra_network() {
+  docker run --rm --network wise-eat-infra curlimages/curl:8.5.0 \
+    -sf --max-time 10 'http://wise-eat-minio:9000/minio/v2/metrics/cluster' 2>/dev/null \
+    | head -5 | grep -q 'minio_'
+}
+
 env_truthy() {
   local raw="${1:-}"
   raw="$(echo "${raw}" | tr '[:upper:]' '[:lower:]')"

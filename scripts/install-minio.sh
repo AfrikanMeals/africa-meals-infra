@@ -53,27 +53,11 @@ docker compose --env-file .env.minio down 2>/dev/null || true
 docker compose --env-file .env.minio pull
 docker compose --env-file .env.minio up -d
 
-if ! docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
-  | grep -q 'wise-eat-infra'; then
-  log "Connexion wise-eat-minio → wise-eat-infra (scrape Prometheus)"
-  docker network connect wise-eat-infra wise-eat-minio 2>/dev/null || \
-    docker compose --env-file .env.minio up -d --force-recreate minio
-fi
-
-wait_for_minio() {
-  local port="${MINIO_API_PORT:-9000}"
-  for _ in $(seq 1 45); do
-    if curl -sf "http://127.0.0.1:${port}/minio/health/live" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 1
-  done
-  return 1
-}
-
-if ! wait_for_minio; then
+if ! wait_for_minio_local "${MINIO_API_PORT:-9000}" 45; then
   die "MinIO ne répond pas sur :${MINIO_API_PORT:-9000} — voir docker logs wise-eat-minio"
 fi
+
+ensure_minio_on_wise_eat_infra || true
 
 log "Initialisation bucket MinIO (${MINIO_BUCKET})"
 docker run --rm --network wise-eat-minio \

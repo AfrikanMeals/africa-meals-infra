@@ -21,8 +21,11 @@ services:
       - ${MINIO_DATA_DIR:-./data}:/data
     restart: unless-stopped
     networks:
-      - wise-eat-minio
-      - wise-eat-infra
+      wise-eat-minio: {}
+      wise-eat-infra:
+        aliases:
+          - wise-eat-minio
+          - minio
 
 networks:
   wise-eat-minio:
