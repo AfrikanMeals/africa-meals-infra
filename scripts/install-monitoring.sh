@@ -59,6 +59,8 @@ fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"
 
+remove_legacy_monitoring_exporter_containers
+
 COMPOSE_ARGS=(--env-file .env.monitoring)
 if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
   COMPOSE_ARGS+=(--profile cluster-b)
@@ -66,7 +68,7 @@ if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
 fi
 
 docker compose "${COMPOSE_ARGS[@]}" pull
-docker compose "${COMPOSE_ARGS[@]}" up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
 sleep 5
 
 docker compose "${COMPOSE_ARGS[@]}" ps

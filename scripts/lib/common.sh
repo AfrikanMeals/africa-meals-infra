@@ -178,6 +178,27 @@ memcached_cluster_b_enabled() {
   env_truthy "${raw}"
 }
 
+# Anciens exporters réplicas (1 seul conteneur / suffixe -b) — bloquent :9123/:9124/:9151.
+remove_legacy_monitoring_exporter_containers() {
+  local legacy=(
+    wise-eat-redis-exporter-cache-replica
+    wise-eat-redis-exporter-bullmq-replica
+    wise-eat-memcached-exporter-b
+    wise-eat-memcached-exporter-replica
+  )
+  local name removed=0
+  for name in "${legacy[@]}"; do
+    if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
+      warn "Suppression conteneur monitoring obsolète : ${name}"
+      docker rm -f "${name}" >/dev/null
+      removed=1
+    fi
+  done
+  if [[ "${removed}" -eq 1 ]]; then
+    log "Exporters legacy supprimés — relance compose avec --remove-orphans"
+  fi
+}
+
 wise_eat_compose_profiles() {
   local profiles=()
   if redis_cluster_b_enabled; then
