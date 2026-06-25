@@ -459,7 +459,62 @@ emqx_prometheus_metric_present() {
 emqx_container_has_prometheus_collector_env() {
   local container="${1:-wise-eat-emqx-1}"
   docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-    | grep -qE '^EMQX_PROMETHEUS__COLLECTORS__VM_MEMORY=enabled$'
+    | grep -qE '^EMQX_PROMETHEUS__(VM_MEMORY_COLLECTOR|COLLECTORS__VM_MEMORY)=enabled$'
+}
+
+fix_emqx_cluster_hocon_prometheus() {
+  local py="${INFRA_ROOT}/scripts/fix-emqx-cluster-hocon-prometheus.py"
+  local f n
+  [[ -f "${py}" ]] || return 0
+  for n in 1 2 3; do
+    f="${EMQX_DIR}/data-emqx-${n}/configs/cluster.hocon"
+    [[ -f "${f}" ]] || continue
+    if grep -qE '[[:space:]]collectors[[:space:]]*\{' "${f}" 2>/dev/null; then
+      log "Retrait prometheus.collectors invalide → ${f}"
+      python3 "${py}" "${f}" || warn "Patch cluster.hocon échoué : ${f}"
+    fi
+  done
+}
+
+ensure_emqx_prometheus_collectors() {
+  local force="${EMQX_FORCE_RECREATE:-0}"
+  local env_file="${EMQX_DIR}/.env.emqx"
+  local compose_args=(--env-file "${env_file}")
+
+  [[ -d "${EMQX_DIR}" ]] || return 0
+  [[ -f "${env_file}" ]] || die ".env.emqx absent — sudo ./install.sh emqx"
+
+  # Anciennes vars (crash-loop schema) — recréation obligatoire après git pull.
+  if docker inspect wise-eat-emqx-1 --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+    | grep -qE '^EMQX_PROMETHEUS__(ENABLE=|COLLECTORS__)'; then
+    warn "Variables Prometheus obsolètes détectées — recréation EMQX"
+    force=1
+  fi
+
+  if [[ "${force}" == "1" ]]; then
+    log "EMQX_FORCE_RECREATE=1 — recréation stack EMQX"
+  elif ! emqx_container_has_prometheus_collector_env; then
+    log "Collecteurs Erlang VM / Mnesia absents du conteneur — recréation EMQX"
+    force=1
+  else
+    log "Collecteurs Prometheus EMQX déjà configurés"
+    return 0
+  fi
+
+  (
+    cd "${EMQX_DIR}"
+    docker compose "${compose_args[@]}" stop emqx-1 emqx-2 emqx-3 2>/dev/null || true
+  )
+  fix_emqx_cluster_hocon_prometheus
+
+  (
+    cd "${EMQX_DIR}"
+    docker compose "${compose_args[@]}" up -d --force-recreate
+  )
+
+  ensure_emqx_on_wise_eat_infra || true
+  wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 90 \
+    || die "EMQX API injoignable après mise à jour collecteurs — lancer : sudo ./install.sh repair-emqx-boot"
 }
 
 wait_for_emqx_prometheus_metrics() {
@@ -494,40 +549,6 @@ wait_for_emqx_prometheus_metrics() {
     sleep 5
   done
   return 1
-}
-
-ensure_emqx_prometheus_collectors() {
-  local force="${EMQX_FORCE_RECREATE:-0}"
-  local env_file="${EMQX_DIR}/.env.emqx"
-  local compose_args=(--env-file "${env_file}")
-
-  [[ -d "${EMQX_DIR}" ]] || return 0
-  [[ -f "${env_file}" ]] || die ".env.emqx absent — sudo ./install.sh emqx"
-
-  if [[ "${force}" == "1" ]]; then
-    log "EMQX_FORCE_RECREATE=1 — recréation stack EMQX"
-  elif ! emqx_container_has_prometheus_collector_env; then
-    log "Collecteurs Erlang VM / Mnesia absents du conteneur — recréation EMQX"
-    force=1
-  elif ! emqx_prometheus_metric_present erlang_vm_process_count; then
-    log "Métriques erlang_* absentes — docker compose up -d EMQX"
-  else
-    log "Collecteurs Prometheus EMQX déjà actifs"
-    return 0
-  fi
-
-  (
-    cd "${EMQX_DIR}"
-    if [[ "${force}" == "1" ]]; then
-      docker compose "${compose_args[@]}" up -d --force-recreate
-    else
-      docker compose "${compose_args[@]}" up -d
-    fi
-  )
-
-  ensure_emqx_on_wise_eat_infra || true
-  wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 90 \
-    || die "EMQX API injoignable après mise à jour collecteurs — voir docker logs wise-eat-emqx-1"
 }
 
 _infra_minio_curl() {

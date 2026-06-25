@@ -151,7 +151,7 @@ if ! emqx_prometheus_metric_present erlang_vm_process_count "${metrics_sample}";
       if emqx_prometheus_metric_present "${needle}" "${metrics_sample}"; then
         log "OK  métrique ${needle}"
       else
-        warn "ABSENT ${needle} — vérifier EMQX_PROMETHEUS__COLLECTORS__* (ou EMQX_FORCE_RECREATE=1)"
+        warn "ABSENT ${needle} — vérifier EMQX_PROMETHEUS__*_COLLECTOR dans docker-compose.yml"
       fi
     done
   else

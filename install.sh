@@ -42,6 +42,7 @@ Composants:
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
   repair-emqx-prometheus   Répare scrape Prometheus → EMQX (Grafana No data)
+  repair-emqx-boot         Recovery EMQX crash-loop (502 worker / schema prometheus)
   repair-emqx-cluster      Force 3 nœuds EMQX (primary + 2 réplicas)
   repair-emqx-auth       Répare users MQTT + ACL EMQX (not authorised)
   repair-nginx-stream      Module nginx stream (fix « unknown directive stream »)
@@ -127,6 +128,9 @@ run_component() {
       ;;
     repair-emqx-prometheus)
       bash "${SCRIPTS}/repair-emqx-prometheus.sh"
+      ;;
+    repair-emqx-boot)
+      bash "${SCRIPTS}/repair-emqx-boot.sh"
       ;;
     repair-emqx-cluster)
       bash "${SCRIPTS}/repair-emqx-cluster.sh"

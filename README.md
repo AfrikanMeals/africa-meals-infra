@@ -418,15 +418,15 @@ docker exec wise-eat-emqx-1 emqx ctl cluster status
 
 Panneau **System** (RAM, Mnesia, processus Erlang) :
 - **RAM Total** : requête `node_memory_MemTotal_bytes` (node_exporter récent) avec repli `emqx_vm_total_memory`.
-- **Mnesia / Erlang VM** : collecteurs `EMQX_PROMETHEUS__COLLECTORS__*` activés dans `emqx/docker-compose.yml` (`vm_memory`, `vm_system_info`, `vm_statistics`, `mnesia`).
+- **Mnesia / Erlang VM** : collecteurs legacy `EMQX_PROMETHEUS__*_COLLECTOR` dans `emqx/docker-compose.yml` (`vm_memory`, `vm_system_info`, `vm_statistics`, `mnesia`). Ne pas utiliser `EMQX_PROMETHEUS__ENABLE` + `EMQX_PROMETHEUS__COLLECTORS__*` (conflit schéma EMQX 5.8).
 
 Si Grafana affiche **No data** :
 ```bash
 sudo ./install.sh repair-emqx-prometheus
 ```
 
-Après une **recréation EMQX** (collecteurs Prometheus), le dashboard `worker.wise-eat.com` peut afficher **502** pendant ~2 min (healthcheck EMQX). Le script attend l’API avant de recharger nginx. En cas de 502 persistant :
+Si EMQX **crash-loop** (`unknown => "collectors"`, 502 sur `worker.wise-eat.com`) :
 ```bash
-curl -sf http://127.0.0.1:18083/api/v5/status && sudo ./install.sh emqx-worker
+cd /opt/wise-eat && git pull
+sudo ./install.sh repair-emqx-boot
 ```
-Recréation forcée des conteneurs EMQX (rare) : `EMQX_FORCE_RECREATE=1 sudo ./install.sh repair-emqx-prometheus`

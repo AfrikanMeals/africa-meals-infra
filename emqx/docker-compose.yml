@@ -13,7 +13,6 @@ x-emqx-env: &emqx-env
   EMQX_CLUSTER__DISCOVERY_STRATEGY: static
   EMQX_CLUSTER__STATIC__SEEDS: "[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emqx@wise-eat-emqx-3]"
   EMQX_CLUSTER__AUTOHEAL: "true"
-  EMQX_CLUSTER__AUTOHEAL__EVICT_AFTER: 30s
   EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
   EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?EMQX_DASHBOARD_PASSWORD requis}
   EMQX_AUTHENTICATION__1__MECHANISM: password_based
@@ -23,12 +22,13 @@ x-emqx-env: &emqx-env
   EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME: sha256
   EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION: suffix
   EMQX_LOG__CONSOLE__LEVEL: warning
-  EMQX_PROMETHEUS__ENABLE: "true"
-  # Collecteurs Erlang VM / Mnesia (désactivés par défaut — requis pour Grafana System)
-  EMQX_PROMETHEUS__COLLECTORS__VM_MEMORY: enabled
-  EMQX_PROMETHEUS__COLLECTORS__VM_SYSTEM_INFO: enabled
-  EMQX_PROMETHEUS__COLLECTORS__VM_STATISTICS: enabled
-  EMQX_PROMETHEUS__COLLECTORS__MNESIA: enabled
+  # Collecteurs Erlang VM / Mnesia — format legacy (compatible cluster.hocon existant).
+  # Ne pas utiliser EMQX_PROMETHEUS__ENABLE ni EMQX_PROMETHEUS__COLLECTORS__* :
+  # le schéma EMQX 5.8 rejette collectors si enable/interval est déjà en legacy.
+  EMQX_PROMETHEUS__VM_MEMORY_COLLECTOR: enabled
+  EMQX_PROMETHEUS__VM_SYSTEM_INFO_COLLECTOR: enabled
+  EMQX_PROMETHEUS__VM_STATISTICS_COLLECTOR: enabled
+  EMQX_PROMETHEUS__MNESIA_COLLECTOR: enabled
 
 services:
   emqx-1:
