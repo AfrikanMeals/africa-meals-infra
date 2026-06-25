@@ -292,6 +292,49 @@ prepare_emqx_compose_stack() {
   done
 }
 
+reset_emqx_replica_data_dirs() {
+  log "Réinitialisation data réplicas (data-emqx-2, data-emqx-3)"
+  rm -rf "${EMQX_DIR}/data-emqx-2" "${EMQX_DIR}/data-emqx-3"
+  mkdir -p "${EMQX_DIR}/data-emqx-2" "${EMQX_DIR}/data-emqx-3"
+  chown -R 1000:1000 "${EMQX_DIR}/data-emqx-2" "${EMQX_DIR}/data-emqx-3"
+}
+
+reset_emqx_primary_data_dir() {
+  local backup="${EMQX_DIR}/data-emqx-1.bak.$(date +%Y%m%d%H%M%S)"
+  if [[ -d "${EMQX_DIR}/data-emqx-1" ]]; then
+    warn "Sauvegarde primary EMQX → ${backup}"
+    mv "${EMQX_DIR}/data-emqx-1" "${backup}"
+  fi
+  mkdir -p "${EMQX_DIR}/data-emqx-1"
+  chown -R 1000:1000 "${EMQX_DIR}/data-emqx-1"
+}
+
+wait_for_emqx_api() {
+  local port="${1:-18083}"
+  local max="${2:-120}"
+  for _ in $(seq 1 "$max"); do
+    if curl -sf "http://127.0.0.1:${port}/api/v5/status" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+diagnose_emqx_container() {
+  local name="${1:-wise-eat-emqx-1}"
+  warn "Diagnostic ${name} :"
+  docker inspect "${name}" --format '  status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}} exit={{.State.ExitCode}}' 2>/dev/null || true
+  if docker inspect "${name}" --format '{{if .State.Health}}{{range .State.Health.Log}}  health: {{.ExitCode}} {{.Output}}{{end}}{{end}}' 2>/dev/null | tail -3; then
+    true
+  fi
+  docker logs --tail=50 "${name}" 2>&1 | sed 's/^/[wise-eat]      /' || true
+}
+
+emqx_primary_ready() {
+  wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 3
+}
+
 _infra_minio_curl() {
   local url="$1"
   shift

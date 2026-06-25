@@ -19,40 +19,60 @@ if [[ ! -f .env.emqx ]]; then
 fi
 
 ensure_emqx_cluster_env() {
-  local seeds='[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emqx@wise-eat-emqx-3]'
   if grep -q '^EMQX_CLUSTER_B_ENABLED=' .env.emqx; then
     sed -i 's|^EMQX_CLUSTER_B_ENABLED=.*|EMQX_CLUSTER_B_ENABLED=true|' .env.emqx
   else
     echo 'EMQX_CLUSTER_B_ENABLED=true' >> .env.emqx
-  fi
-  if grep -q '^EMQX_CLUSTER_STATIC_SEEDS=' .env.emqx; then
-    sed -i "s|^EMQX_CLUSTER_STATIC_SEEDS=.*|EMQX_CLUSTER_STATIC_SEEDS=${seeds}|" .env.emqx
-  else
-    echo "EMQX_CLUSTER_STATIC_SEEDS=${seeds}" >> .env.emqx
   fi
 }
 
 ensure_emqx_cluster_env
 
 set -a && source .env.emqx && set +a
-export EMQX_CLUSTER_STATIC_SEEDS='[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emqx@wise-eat-emqx-3]'
 
 mkdir -p data-emqx-1 data-emqx-2 data-emqx-3
 chown -R 1000:1000 data-emqx-1 data-emqx-2 data-emqx-3
 
 prepare_emqx_compose_stack .env.emqx
+reset_emqx_replica_data_dirs
 
-log "Recréation cluster EMQX (wise-eat-emqx-1/2/3)…"
-docker compose --env-file .env.emqx up -d --force-recreate --remove-orphans
+COMPOSE=(docker compose --env-file .env.emqx)
 
-sleep 12
+start_emqx_primary() {
+  log "Démarrage primary EMQX (wise-eat-emqx-1)…"
+  "${COMPOSE[@]}" up -d --force-recreate --no-deps emqx-1
+}
+
+log "Étape 1/2 — primary EMQX"
+start_emqx_primary
+
+if wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 90; then
+  log "OK  primary EMQX API :${EMQX_DASHBOARD_PORT:-18083}"
+else
+  warn "Primary EMQX injoignable — diagnostic puis reset data-emqx-1"
+  diagnose_emqx_container wise-eat-emqx-1
+  prepare_emqx_compose_stack .env.emqx
+  reset_emqx_primary_data_dir
+  reset_emqx_replica_data_dirs
+  start_emqx_primary
+  if ! wait_for_emqx_api "${EMQX_DASHBOARD_PORT:-18083}" 120; then
+    diagnose_emqx_container wise-eat-emqx-1
+    die "Primary EMQX ne démarre pas — voir logs ci-dessus (ports 1883/18083 libres ?)"
+  fi
+  log "OK  primary EMQX après reset data-emqx-1"
+fi
+
+log "Étape 2/2 — réplicas EMQX (wise-eat-emqx-2/3)"
+"${COMPOSE[@]}" up -d --force-recreate emqx-2 emqx-3
+
+sleep 15
 
 for n in 1 2 3; do
   if wait_for_container_running "wise-eat-emqx-${n}" 120; then
-    log "OK  wise-eat-emqx-${n}"
+    log "OK  wise-eat-emqx-${n} running"
   else
-    warn "FAIL wise-eat-emqx-${n} — docker logs wise-eat-emqx-${n}"
-    docker logs --tail=30 "wise-eat-emqx-${n}" 2>&1 || true
+    warn "FAIL wise-eat-emqx-${n}"
+    diagnose_emqx_container "wise-eat-emqx-${n}"
   fi
 done
 
@@ -62,12 +82,13 @@ if docker exec wise-eat-emqx-1 /opt/emqx/bin/emqx ctl cluster status 2>/dev/null
   log "Cluster EMQX :"
   docker exec wise-eat-emqx-1 /opt/emqx/bin/emqx ctl cluster status 2>/dev/null | sed 's/^/[wise-eat]      /'
 else
-  warn "Cluster pas encore formé — attendre 30s puis : docker exec wise-eat-emqx-1 emqx ctl cluster status"
+  warn "Cluster en formation — réessayer dans 30s : docker exec wise-eat-emqx-1 emqx ctl cluster status"
 fi
 
 running="$(docker ps --format '{{.Names}}' | grep -c '^wise-eat-emqx-' || true)"
 if [[ "${running}" -lt 3 ]]; then
-  die "Seulement ${running}/3 nœuds EMQX — voir docker compose ps && docker logs"
+  "${COMPOSE[@]}" ps || true
+  die "Seulement ${running}/3 nœuds EMQX actifs"
 fi
 
 bash "${SCRIPT_DIR}/bootstrap-emqx-auth.sh" 2>/dev/null || true

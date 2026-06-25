@@ -11,7 +11,7 @@ networks:
 x-emqx-env: &emqx-env
   EMQX_NODE__COOKIE: ${EMQX_ERLANG_COOKIE:?EMQX_ERLANG_COOKIE requis}
   EMQX_CLUSTER__DISCOVERY_STRATEGY: static
-  EMQX_CLUSTER__STATIC__SEEDS: ${EMQX_CLUSTER_STATIC_SEEDS:?EMQX_CLUSTER_STATIC_SEEDS requis}
+  EMQX_CLUSTER__STATIC__SEEDS: "[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emqx@wise-eat-emqx-3]"
   EMQX_CLUSTER__AUTOHEAL: "on"
   EMQX_CLUSTER__AUTOHEAL__EVICT_AFTER: 30s
   EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
@@ -45,11 +45,11 @@ services:
       - ./data-emqx-1:/opt/emqx/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
-      interval: 15s
-      timeout: 10s
-      retries: 8
-      start_period: 45s
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:18083/api/v5/status >/dev/null || /opt/emqx/bin/emqx ctl status"]
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 120s
 
   emqx-2:
     image: emqx/emqx:5.8.6
@@ -61,7 +61,7 @@ services:
           - wise-eat-emqx-2
     depends_on:
       emqx-1:
-        condition: service_healthy
+        condition: service_started
     environment:
       <<: *emqx-env
       EMQX_NODE__NAME: emqx@wise-eat-emqx-2
@@ -69,11 +69,11 @@ services:
       - ./data-emqx-2:/opt/emqx/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
-      interval: 15s
-      timeout: 10s
-      retries: 8
-      start_period: 60s
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:18083/api/v5/status >/dev/null || /opt/emqx/bin/emqx ctl status"]
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 120s
 
   emqx-3:
     image: emqx/emqx:5.8.6
@@ -85,7 +85,7 @@ services:
           - wise-eat-emqx-3
     depends_on:
       emqx-1:
-        condition: service_healthy
+        condition: service_started
     environment:
       <<: *emqx-env
       EMQX_NODE__NAME: emqx@wise-eat-emqx-3
@@ -93,8 +93,8 @@ services:
       - ./data-emqx-3:/opt/emqx/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
-      interval: 15s
-      timeout: 10s
-      retries: 8
-      start_period: 60s
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:18083/api/v5/status >/dev/null || /opt/emqx/bin/emqx ctl status"]
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 120s
