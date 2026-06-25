@@ -9,7 +9,18 @@ from pathlib import Path
 
 PROM_UID = "prometheus"
 DS = {"type": "prometheus", "uid": PROM_UID}
-MINIO_JOB = "minio"
+# Jobs Prometheus (minio-cluster + minio-node ; « minio » = rétrocompat relabel)
+MINIO_JOBS = "minio-cluster|minio-node|minio"
+MINIO_JOB_FILTER = f'job=~"{MINIO_JOBS}"'
+
+# Panneaux jauge affichés en stat (timeseries trop petits → « No data » Grafana 10)
+GAUGE_STAT_TITLES = frozenset(
+    {
+        "Open FDs ",
+        "Goroutines",
+        "Open FDs",
+    }
+)
 
 
 def fix_ds(obj) -> None:
@@ -31,22 +42,94 @@ def fix_ds(obj) -> None:
 
 
 def patch_expr(expr: str) -> str:
-    # Job fixe — évite variable scrape_jobs vide quand Prometheus ne scrape pas encore.
-    expr = expr.replace('job=~"$scrape_jobs"', f'job="{MINIO_JOB}"')
+    expr = expr.replace('job=~"$scrape_jobs"', MINIO_JOB_FILTER)
+    expr = re.sub(r'job=~\s*"\$scrape_jobs"', MINIO_JOB_FILTER, expr)
+    expr = re.sub(r'job="minio"', MINIO_JOB_FILTER, expr)
+
+    # Capacity : agrégation cluster (label server), pas topk/sum by instance
     expr = re.sub(
-        r'job=~\s*"\$scrape_jobs"',
-        f'job="{MINIO_JOB}"',
+        r"topk\(1, sum\(minio_cluster_capacity_usable_total_bytes\{([^}]+)\}\)"
+        r" by \(instance\)\)\s*-\s*topk\(1, sum\(minio_cluster_capacity_usable_free_bytes\{([^}]+)\}\)"
+        r" by \(instance\)\)",
+        r"max(minio_cluster_capacity_usable_total_bytes{\1})"
+        r" - max(minio_cluster_capacity_usable_free_bytes{\2})",
         expr,
     )
+    expr = re.sub(
+        r"topk\(1, sum\(minio_cluster_capacity_usable_free_bytes\{([^}]+)\}\)"
+        r" by \(instance\)\)\s*",
+        r"max(minio_cluster_capacity_usable_free_bytes{\1})",
+        expr,
+    )
+
+    # S3 traffic (compteurs cluster) — max plus fiable que sum by (instance)
+    if "minio_s3_traffic_received_bytes" in expr or "minio_s3_traffic_sent_bytes" in expr:
+        expr = re.sub(
+            r"sum by \(instance\) \(",
+            "max(",
+            expr,
+            count=1,
+        )
+
+    # Jauges node : max() si requête nue (une série par server)
+    for metric in (
+        "minio_node_file_descriptor_open_total",
+        "minio_node_go_routine_total",
+    ):
+        m = re.fullmatch(rf"{metric}\{{(.+)\}}", expr.strip())
+        if m and not expr.strip().startswith("max("):
+            expr = f"max({metric}{{{m.group(1)}}})"
+            break
+
     return expr
+
+
+def patch_target(target: dict, *, panel_type: str, panel_title: str) -> None:
+    if "expr" in target and isinstance(target["expr"], str):
+        target["expr"] = patch_expr(target["expr"])
+
+    if panel_type == "stat" or panel_title in GAUGE_STAT_TITLES:
+        target["instant"] = True
+        target["format"] = "time_series"
+        if panel_type == "timeseries" and panel_title in GAUGE_STAT_TITLES:
+            target.pop("intervalFactor", None)
+            target.pop("step", None)
+
+    if panel_type == "piechart":
+        target["instant"] = True
+        target["format"] = "time_series"
+
+
+def patch_panels(panels: list) -> None:
+    for panel in panels:
+        ptype = panel.get("type", "")
+        title = panel.get("title", "")
+        for target in panel.get("targets") or []:
+            if isinstance(target, dict):
+                patch_target(target, panel_type=ptype, panel_title=title)
+
+        if title in GAUGE_STAT_TITLES and ptype == "timeseries":
+            panel["type"] = "stat"
+            opts = panel.setdefault("options", {})
+            opts.setdefault("reduceOptions", {})
+            opts["reduceOptions"].setdefault("calcs", ["lastNotNull"])
+            opts.setdefault("colorMode", "value")
+            opts.setdefault("graphMode", "none")
+            opts.setdefault("textMode", "auto")
+
+        if ptype == "row" and panel.get("panels"):
+            patch_panels(panel["panels"])
 
 
 def patch_dashboard(obj) -> None:
     if isinstance(obj, dict):
         if "expr" in obj and isinstance(obj["expr"], str):
             obj["expr"] = patch_expr(obj["expr"])
-        if "query" in obj and isinstance(obj["query"], str):
-            obj["query"] = patch_expr(obj["query"])
+        q = obj.get("query")
+        if isinstance(q, str):
+            obj["query"] = patch_expr(q)
+        elif isinstance(q, dict) and isinstance(q.get("query"), str):
+            q["query"] = patch_expr(q["query"])
         for v in obj.values():
             patch_dashboard(v)
     elif isinstance(obj, list):
@@ -93,13 +176,17 @@ def health_panel() -> dict:
         "targets": [
             {
                 "datasource": DS,
-                "expr": f'up{{job="{MINIO_JOB}", instance="wise-eat-minio:9000"}}',
+                "expr": f'min(up{{{MINIO_JOB_FILTER}, instance="wise-eat-minio:9000"}})',
+                "instant": True,
+                "format": "time_series",
                 "legendFormat": "Prometheus scrape minio",
                 "refId": "A",
             },
             {
                 "datasource": DS,
-                "expr": f'minio_cluster_health_status{{job="{MINIO_JOB}"}}',
+                "expr": f"max(minio_cluster_health_status{{{MINIO_JOB_FILTER}}})",
+                "instant": True,
+                "format": "time_series",
                 "legendFormat": "cluster health",
                 "refId": "B",
             },
@@ -121,9 +208,9 @@ def main() -> None:
     dash["uid"] = "wise-eat-minio-20826"
     dash["title"] = "Wise Eat — MinIO Storage"
     dash["description"] = (
-        "Métriques cluster MinIO (Prometheus). Équivalent du dashboard Grafana #20826 "
-        "(InfluxDB 2.0) — job Prometheus : minio — scrape "
-        "/minio/v2/metrics/cluster + /minio/v2/metrics/node."
+        "Métriques MinIO (Prometheus). Jobs : minio-cluster + minio-node. "
+        "Capacité / objets : remplis après le premier scan MinIO (quelques minutes). "
+        "KMS : N/A si chiffrement KMS désactivé."
     )
 
     repl = json.dumps(dash)
@@ -140,6 +227,7 @@ def main() -> None:
     panels = dash.get("panels", [])
     bump_grid_y(panels, 4)
     panels.insert(0, health_panel())
+    patch_panels(panels)
     dash["panels"] = panels
 
     dash["templating"] = {
@@ -149,19 +237,17 @@ def main() -> None:
                 "label": "Prometheus job",
                 "type": "query",
                 "datasource": DS,
-                "definition": f'label_values(up{{job="{MINIO_JOB}"}}, job)',
+                "definition": f'label_values(up{{{MINIO_JOB_FILTER}}}, job)',
                 "query": {
-                    "query": f'label_values(up{{job="{MINIO_JOB}"}}, job)',
+                    "query": f'label_values(up{{{MINIO_JOB_FILTER}}}, job)',
                     "refId": "StandardVariableQuery",
                 },
                 "refresh": 1,
-                "includeAll": False,
-                "multi": False,
+                "includeAll": True,
+                "multi": True,
                 "hide": 0,
-                "current": {"selected": True, "text": MINIO_JOB, "value": MINIO_JOB},
-                "options": [
-                    {"selected": True, "text": MINIO_JOB, "value": MINIO_JOB},
-                ],
+                "regex": "",
+                "current": {"selected": True, "text": "All", "value": "$__all"},
             }
         ]
     }

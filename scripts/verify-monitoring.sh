@@ -105,7 +105,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio', 'minio-cluster', 'minio-node'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -227,8 +227,10 @@ else
 fi
 
 log "=== requête minio_cluster_health_status (dashboard MinIO #20826) ==="
-if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=minio_cluster_health_status{job="minio"}' | grep -q '"status":"success"'; then
-  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=minio_cluster_health_status{job="minio"}' \
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=minio_cluster_health_status{job=~"minio-cluster|minio-node|minio"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=minio_cluster_health_status{job=~"minio-cluster|minio-node|minio"}' \
     | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
@@ -245,9 +247,11 @@ else
   fail=1
 fi
 
-log "=== requête up{job=\"minio\"} ==="
-if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=up{job="minio"}' | grep -q '"status":"success"'; then
-  curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=up{job="minio"}' \
+log "=== requête up{job=~\"minio-cluster|minio-node\"} ==="
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio"}' | grep -q '"status":"success"'; then
+  curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio"}' \
     | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
@@ -260,7 +264,7 @@ else:
         print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
 "
 else
-  warn "FAIL requête Prometheus up{job=\"minio\"}"
+  warn "FAIL requête Prometheus up{job=~\"minio-cluster|minio-node\"}"
   fail=1
 fi
 

@@ -82,8 +82,9 @@ fi
 log "Attente scrape Prometheus (20s)…"
 sleep 20
 
-log "Requête Prometheus up{job=\"minio\"}"
-prom_out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=up{job="minio"}' || true)"
+log "Requête Prometheus up{job=~\"minio-cluster|minio-node\"}"
+prom_out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio"}' || true)"
 if [[ -z "${prom_out}" ]]; then
   warn "Prometheus API vide — http://127.0.0.1:9090/targets"
 else
@@ -106,7 +107,7 @@ else:
 fi
 
 prom_health="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-  --data-urlencode 'query=minio_cluster_health_status{job="minio"}' || true)"
+  --data-urlencode 'query=minio_cluster_health_status{job=~"minio-cluster|minio-node|minio"}' || true)"
 if [[ -n "${prom_health}" ]]; then
   echo "${prom_health}" | python3 -c "
 import json,sys

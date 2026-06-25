@@ -118,31 +118,31 @@ scrape_configs:
 
   # MinIO — scrape via réseau Docker (NE PAS utiliser host.docker.internal:9000 :
   # l'API Nest écoute sur 0.0.0.0:9000 et répond 404 à /minio/v2/metrics/cluster).
-  # job_name unique requis par Prometheus ; label job=minio via relabel pour Grafana.
+  # Deux jobs distincts (noms uniques Prometheus) ; Grafana filtre minio-cluster|minio-node.
   - job_name: minio-cluster
     metrics_path: /minio/v2/metrics/cluster
     scheme: http
+    scrape_interval: 30s
+    scrape_timeout: 25s
     static_configs:
       - targets: ['wise-eat-minio:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
     relabel_configs:
-      - target_label: job
-        replacement: minio
       - target_label: instance
         replacement: wise-eat-minio:9000
 
   - job_name: minio-node
     metrics_path: /minio/v2/metrics/node
     scheme: http
+    scrape_interval: 30s
+    scrape_timeout: 25s
     static_configs:
       - targets: ['wise-eat-minio:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
     relabel_configs:
-      - target_label: job
-        replacement: minio
       - target_label: instance
         replacement: wise-eat-minio:9000

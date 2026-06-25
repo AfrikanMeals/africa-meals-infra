@@ -304,7 +304,7 @@ diagnose_minio_infra_probe() {
 prometheus_minio_scrape_up() {
   local out
   out="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-    --data-urlencode 'query=up{job="minio"}' 2>/dev/null || true)"
+    --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio"}' 2>/dev/null || true)"
   [[ -n "${out}" ]] && printf '%s' "${out}" | grep -qE '"value"\s*:\s*\[[^]]+,\s*"1"\]'
 }
 
