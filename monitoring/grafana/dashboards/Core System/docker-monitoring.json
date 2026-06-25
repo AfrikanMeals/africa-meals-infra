@@ -113,7 +113,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(container_last_seen{instance=\"wise-eat:8080\",name=~\".*wise-eat.*\"})",
+          "expr": "count(count by (name) (container_last_seen{instance=\"wise-eat:8080\",container_label_com_docker_compose_project!=\"\",image!=\"\"}))",
           "instant": true,
           "format": "time_series",
           "legendFormat": "conteneurs wise-eat",
@@ -189,7 +189,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(container_last_seen{instance=\"wise-eat:8080\",name=~\".*wise-eat.*\",image!=\"\"})",
+          "expr": "count(count by (name) (container_last_seen{instance=\"wise-eat:8080\",container_label_com_docker_compose_project!=\"\",image!=\"\"}))",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -544,7 +544,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "min((node_filesystem_size_bytes{fstype=~\"xfs|ext4\",instance=\"wise-eat:9100\"} - node_filesystem_free_bytes{fstype=~\"xfs|ext4\",instance=\"wise-eat:9100\"} )/ node_filesystem_size_bytes{fstype=~\"xfs|ext4\",instance=\"wise-eat:9100\"})",
+          "expr": "1 - (node_filesystem_avail_bytes{instance=\"wise-eat:9100\",mountpoint=\"/\",fstype=~\"ext4|xfs|btrfs\"} / node_filesystem_size_bytes{instance=\"wise-eat:9100\",mountpoint=\"/\",fstype=~\"ext4|xfs|btrfs\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -1090,7 +1090,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_network_receive_bytes_total{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}[3m])) by (name)",
+          "expr": "sum(rate(container_network_receive_bytes_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[3m])) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -1184,7 +1184,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_network_transmit_bytes_total{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}[5m])) by (name)",
+          "expr": "sum(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[5m])) by (name)",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{name}}",
@@ -1275,7 +1275,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}[5m])) by (name) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}[5m])) by (name) * 100",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -1367,7 +1367,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_rss{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}) by (name)",
+          "expr": "sum(container_memory_rss{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
@@ -1458,7 +1458,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_swap{name=~\".*wise-eat.*\",instance=\"wise-eat:8080\"}) by (name)",
+          "expr": "sum(container_memory_swap{container_label_com_docker_compose_project!=\"\",image!=\"\",instance=\"wise-eat:8080\"}) by (name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,

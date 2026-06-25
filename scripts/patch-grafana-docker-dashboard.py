@@ -15,8 +15,17 @@ CADVISOR_INSTANCE = "wise-eat:8080"
 INSTANCE_MIXED = "wise-eat:(9100|8080)"
 INSTANCE_MIXED_RE = rf'instance=~"{re.escape(INSTANCE_MIXED)}"'
 
-# cAdvisor : name=/wise-eat-redis-cache — plus fiable que compose.project seul
-CONTAINER_FILTER = 'name=~".*wise-eat.*"'
+# cAdvisor : filtrer conteneurs Docker réels (pas le filtre name=~wise-eat — compose project ≠ nom conteneur)
+CONTAINER_FILTER = 'container_label_com_docker_compose_project!="", image!=""'
+CONTAINER_COUNT_EXPR = (
+    f'count(count by (name) (container_last_seen{{instance="{CADVISOR_INSTANCE}", '
+    f'{CONTAINER_FILTER}}}))'
+)
+DISK_USED_EXPR = (
+    f'1 - (node_filesystem_avail_bytes{{instance="{NODE_INSTANCE}", mountpoint="/", '
+    f'fstype=~"ext4|xfs|btrfs"}} / node_filesystem_size_bytes{{instance="{NODE_INSTANCE}", '
+    f'mountpoint="/", fstype=~"ext4|xfs|btrfs"}})'
+)
 
 METRIC_RENAMES = [
     ("node_network_transmit_bytes", "node_network_transmit_bytes_total"),
@@ -65,9 +74,12 @@ def patch_expr(expr: str) -> str:
     # #4271 : rate() sur container_last_seen (gauge) → N/A ; compter les séries directement.
     expr = re.sub(
         r"count\s*\(\s*rate\s*\(\s*container_last_seen[^)]*\)\s*\)",
-        f'count(container_last_seen{{instance="{CADVISOR_INSTANCE}", {CONTAINER_FILTER}, image!=""}})',
+        CONTAINER_COUNT_EXPR,
         expr,
     )
+    # #4271 : min() sur tous les FS inclut loops MinIO vides → 0 % ; racine / uniquement.
+    if "node_filesystem" in expr and "min(" in expr:
+        expr = DISK_USED_EXPR
 
     expr = expr.replace(
         "container_label_namespace",
@@ -87,6 +99,11 @@ def patch_expr(expr: str) -> str:
         'container_label_com_docker_compose_project=~".+"',
         CONTAINER_FILTER,
     )
+
+    # Remplace anciens filtres name=~".*wise-eat.*" (0 série si labels cAdvisor différents)
+    expr = expr.replace('name=~".*wise-eat.*",', f"{CONTAINER_FILTER},")
+    expr = expr.replace('{name=~".*wise-eat.*",', f'{{{CONTAINER_FILTER},')
+    expr = expr.replace(',name=~".*wise-eat.*"', "")
 
     if "container_" in expr:
         expr = re.sub(
@@ -197,8 +214,8 @@ def health_panel() -> dict:
             {
                 "datasource": DS,
                 "expr": (
-                    f'count(container_last_seen{{instance="{CADVISOR_INSTANCE}",'
-                    f'{CONTAINER_FILTER}}})'
+                    f'count(count by (name) (container_last_seen{{instance="{CADVISOR_INSTANCE}", '
+                    f'{CONTAINER_FILTER}}}))'
                 ),
                 "instant": True,
                 "format": "time_series",

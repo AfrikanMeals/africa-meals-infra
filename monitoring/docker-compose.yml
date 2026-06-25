@@ -36,8 +36,10 @@ services:
       - --docker_only=true
       - --store_container_labels=true
       - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service,com.docker.compose.config-hash
+      - --enable_metrics=cpu,memory,network,disk,process,oom_event
     volumes:
       - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro

@@ -29,10 +29,16 @@ else
 fi
 
 log "=== cAdvisor (conteneurs Docker) ==="
-if curl -sf "http://127.0.0.1:8088/metrics" | grep -q '^container_cpu_usage_seconds_total'; then
+cadvisor_metrics_ok() {
+  curl -sf "http://127.0.0.1:8088/metrics" 2>/dev/null | grep -q '^container_cpu_usage_seconds_total'
+}
+if cadvisor_metrics_ok; then
   log "OK  cAdvisor (:8088) — métriques conteneurs présentes"
+elif docker exec wise-eat-cadvisor wget -qO- http://127.0.0.1:8080/metrics 2>/dev/null \
+  | grep -q '^container_cpu_usage_seconds_total'; then
+  log "OK  cAdvisor (réseau Docker) — métriques conteneurs présentes (:8088 host injoignable)"
 else
-  warn "FAIL cAdvisor (:8088) — conteneur wise-eat-cadvisor arrêté ?"
+  warn "FAIL cAdvisor — pas de container_cpu_usage_seconds_total (recréer : sudo ./install.sh repair-monitoring)"
   fail=1
 fi
 
@@ -133,7 +139,7 @@ else
 fi
 
 log "=== requête container_cpu (dashboard Docker #4271) ==="
-CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",name=~".*wise-eat.*"}'
+CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",container_label_com_docker_compose_project!=""}'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" \
     | python3 -c "
@@ -171,7 +177,7 @@ else
 fi
 
 log "=== requête count conteneurs (dashboard Docker #4271 — panel Containers) ==="
-CONTAINER_COUNT_Q='count(container_last_seen{instance="wise-eat:8080",name=~".*wise-eat.*",image!=""})'
+CONTAINER_COUNT_Q='count(count by (name) (container_last_seen{instance="wise-eat:8080",container_label_com_docker_compose_project!="",image!=""}))'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" \
     | python3 -c "
