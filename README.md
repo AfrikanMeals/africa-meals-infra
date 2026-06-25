@@ -267,9 +267,10 @@ MinIO rejoint le réseau Docker `wise-eat-infra` pour le scrape Prometheus (`job
 ```env
 MINIO_ENDPOINT=https://storage.wise-eat.com
 MINIO_PUBLIC_BASE_URL=https://storage.wise-eat.com/wise-eat
+MINIO_REPLICA_ENDPOINTS=https://dr1-storage.wise-eat.com,https://dr2-storage.wise-eat.com
 MINIO_FORCE_PATH_STYLE=true
 ```
 
-Sur le **même VPS** que MinIO, l’API peut aussi utiliser `MINIO_ENDPOINT=http://127.0.0.1:9000` (sans TLS interne).
+DNS A (ou CNAME) requis pour `dr1-storage.wise-eat.com` et `dr2-storage.wise-eat.com` → même VPS. `install.sh minio-replication` configure nginx + TLS (Certbot si `STUNNEL_TLS_EMAIL` défini).
 
 > **Port 9000** : l’API Nest (`NODE_PORT=9000`) écoute sur `0.0.0.0:9000` ; MinIO sur `127.0.0.1:9000` uniquement. Prometheus scrape **wise-eat-minio:9000** via le réseau Docker — jamais `host:9000` (sinon 404 sur l’API).

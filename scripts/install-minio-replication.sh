@@ -64,21 +64,42 @@ fi
 ensure_minio_on_wise_eat_infra || true
 configure_minio_site_replication_mc
 
+MINIO_REPLICA_1_STORAGE_DOMAIN="${MINIO_REPLICA_1_STORAGE_DOMAIN:-dr1-storage.wise-eat.com}"
+MINIO_REPLICA_2_STORAGE_DOMAIN="${MINIO_REPLICA_2_STORAGE_DOMAIN:-dr2-storage.wise-eat.com}"
+MINIO_REPLICA_1_SERVER_URL="${MINIO_REPLICA_1_SERVER_URL:-https://${MINIO_REPLICA_1_STORAGE_DOMAIN}}"
+MINIO_REPLICA_2_SERVER_URL="${MINIO_REPLICA_2_SERVER_URL:-https://${MINIO_REPLICA_2_STORAGE_DOMAIN}}"
+
+if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
+  log "nginx reverse-proxy réplicas MinIO (${MINIO_REPLICA_1_STORAGE_DOMAIN}, ${MINIO_REPLICA_2_STORAGE_DOMAIN})"
+  MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_1_STORAGE_DOMAIN}" \
+    MINIO_BACKEND_PORT="${MINIO_REPLICA_1_API_PORT}" \
+    bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || \
+    warn "nginx ${MINIO_REPLICA_1_STORAGE_DOMAIN} non configuré — DNS A + sudo STUNNEL_TLS_EMAIL=... ./install.sh minio-replication"
+  MINIO_STORAGE_DOMAIN="${MINIO_REPLICA_2_STORAGE_DOMAIN}" \
+    MINIO_BACKEND_PORT="${MINIO_REPLICA_2_API_PORT}" \
+    bash "${SCRIPT_DIR}/install-minio-storage.sh" 2>/dev/null || \
+    warn "nginx ${MINIO_REPLICA_2_STORAGE_DOMAIN} non configuré"
+fi
+
 API_PORT="${MINIO_API_PORT:-9000}"
-REPLICA_ENDPOINTS="http://127.0.0.1:${MINIO_REPLICA_1_API_PORT},http://127.0.0.1:${MINIO_REPLICA_2_API_PORT}"
+PUBLIC_BASE="${MINIO_SERVER_URL:-https://storage.wise-eat.com}"
+REPLICA_ENDPOINTS="${MINIO_REPLICA_1_SERVER_URL},${MINIO_REPLICA_2_SERVER_URL}"
 
 cat <<EOF
 
 MinIO site replication — primaire + 2 réplicas actifs.
 
-API / africa-meals-api (.env prod VPS, même machine) :
-  MINIO_ENDPOINT=http://127.0.0.1:${API_PORT}
+API / africa-meals-api (.env prod) :
+  MINIO_ENDPOINT=${PUBLIC_BASE}
   MINIO_REPLICA_ENDPOINTS=${REPLICA_ENDPOINTS}
-  MINIO_PUBLIC_BASE_URL=${MINIO_SERVER_URL:-https://storage.wise-eat.com}/${MINIO_BUCKET}
+  MINIO_PUBLIC_BASE_URL=${PUBLIC_BASE}/${MINIO_BUCKET}
 
-Réplicas locaux :
-  réplica 1 API : http://127.0.0.1:${MINIO_REPLICA_1_API_PORT} (console :9012)
-  réplica 2 API : http://127.0.0.1:${MINIO_REPLICA_2_API_PORT} (console :9014)
+Réplicas publics :
+  ${MINIO_REPLICA_1_STORAGE_DOMAIN} → 127.0.0.1:${MINIO_REPLICA_1_API_PORT}
+  ${MINIO_REPLICA_2_STORAGE_DOMAIN} → 127.0.0.1:${MINIO_REPLICA_2_API_PORT}
+
+Réplicas locaux (debug) :
+  http://127.0.0.1:${MINIO_REPLICA_1_API_PORT}  http://127.0.0.1:${MINIO_REPLICA_2_API_PORT}
 
 Volumes :
   primaire : ${MINIO_DATA_DIR:-/var/lib/wise-eat/minio}
