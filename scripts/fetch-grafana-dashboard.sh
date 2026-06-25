@@ -6,7 +6,8 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 DASH_ROOT="${MON_DIR}/grafana/dashboards"
 CORE_SYSTEM_DIR="${DASH_ROOT}/Core System"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}"
+MINIO_DIR_DASH="${DASH_ROOT}/MinIO"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -221,10 +222,21 @@ fetch_docker_dashboard() {
   log "Dashboard Docker → ${out} (Grafana.com #4271)"
 }
 
+fetch_minio_dashboard() {
+  local out="${MINIO_DIR_DASH}/minio-storage.json"
+  local tmp="${out}.tmp"
+  # #25202 = version Prometheus du dashboard #20826 (InfluxDB 2.0)
+  curl -fsSL "https://grafana.com/api/dashboards/25202/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-minio-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard MinIO → ${out} (Grafana.com #25202, équivalent Prometheus de #20826)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
 fetch_docker_dashboard
+fetch_minio_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"

@@ -8,6 +8,7 @@ require_root
 sync_component minio
 cd "${MINIO_DIR}"
 ensure_docker
+ensure_wise_eat_infra_network
 
 if [[ ! -f .env.minio ]]; then
   MINIO_ROOT_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)
@@ -83,5 +84,7 @@ API / africa-meals-api (.env) :
   MINIO_PUBLIC_BASE_URL=${PUBLIC_BASE}
 
 Console MinIO : http://127.0.0.1:${CONSOLE_PORT}
+Métriques Prometheus : http://wise-eat-minio:9000/minio/v2/metrics/cluster (réseau wise-eat-infra)
+Grafana : dossier MinIO / dashboard « Wise Eat — MinIO Storage »
 MinIO installé dans ${MINIO_DIR}
 EOF

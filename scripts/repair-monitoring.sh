@@ -29,6 +29,13 @@ else
   bash "${SCRIPT_DIR}/install-memcached.sh"
 fi
 
+if docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
+  log "MinIO : OK"
+else
+  warn "MinIO absent — installation MinIO (métriques Grafana)"
+  bash "${SCRIPT_DIR}/install-minio.sh"
+fi
+
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
 log "Attente démarrage Prometheus (15s max)…"

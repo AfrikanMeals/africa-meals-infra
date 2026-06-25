@@ -68,6 +68,21 @@ else
   fail=1
 fi
 
+log "=== MinIO (métriques cluster) ==="
+MINIO_PORT="${MINIO_API_PORT:-9000}"
+if curl -sf "http://127.0.0.1:${MINIO_PORT}/minio/health/live" >/dev/null 2>&1; then
+  if curl -sf "http://127.0.0.1:${MINIO_PORT}/minio/v2/metrics/cluster" | grep -q '^minio_cluster_health_status'; then
+    log "OK  MinIO (:${MINIO_PORT}) — métriques Prometheus exposées"
+  else
+    warn "FAIL MinIO (:${MINIO_PORT}) — endpoint /minio/v2/metrics/cluster sans minio_cluster_health_status"
+    warn "      Recréer MinIO : sudo ./install.sh minio (MINIO_PROMETHEUS_AUTH_TYPE=public)"
+    fail=1
+  fi
+else
+  warn "FAIL MinIO (:${MINIO_PORT}) — conteneur wise-eat-minio arrêté ?"
+  fail=1
+fi
+
 log "=== Prometheus targets ==="
 if curl -sf 'http://127.0.0.1:9090/api/v1/targets' | grep -q '"health":"up"'; then
   curl -sf 'http://127.0.0.1:9090/api/v1/targets' \
@@ -76,7 +91,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -158,14 +173,34 @@ else
   fail=1
 fi
 
+log "=== requête minio_cluster_health_status (dashboard MinIO #20826) ==="
+if curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_cluster_health_status' | grep -q '"status":"success"'; then
+  curl -sf 'http://127.0.0.1:9090/api/v1/query?query=minio_cluster_health_status' \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+r=d.get('data',{}).get('result',[])
+if not r:
+    print('  (aucune série — job minio DOWN ou MinIO non sur wise-eat-infra)')
+else:
+    for s in r:
+        m=s.get('metric',{})
+        print(f\"  job={m.get('job')} instance={m.get('instance')} value={s.get('value',[None,-1])[1]}\")
+"
+else
+  warn "FAIL requête Prometheus minio_cluster_health_status"
+  fail=1
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   echo ""
   warn "Correctifs fréquents :"
   echo "  1. Redis : aligner mots de passe dans monitoring/.env.monitoring"
   echo "  2. Memcached : sudo ./install.sh memcached puis vérifier curl :11211"
-  echo "  3. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate"
-  echo "  4. curl -X POST http://127.0.0.1:9090/-/reload"
+  echo "  3. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
+  echo "  4. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate"
+  echo "  5. curl -X POST http://127.0.0.1:9090/-/reload"
   exit 1
 fi
 
-log "Stack monitoring OK — Grafana : Core System / Redis / Memcached"
+log "Stack monitoring OK — Grafana : Core System / Redis / Memcached / MinIO"

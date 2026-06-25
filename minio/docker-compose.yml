@@ -10,6 +10,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+      # Métriques Prometheus (réseau Docker wise-eat-infra uniquement)
+      MINIO_PROMETHEUS_AUTH_TYPE: public
     ports:
       - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -18,7 +20,11 @@ services:
     restart: unless-stopped
     networks:
       - wise-eat-minio
+      - wise-eat-infra
 
 networks:
   wise-eat-minio:
     name: wise-eat-minio
+  wise-eat-infra:
+    name: wise-eat-infra
+    external: true

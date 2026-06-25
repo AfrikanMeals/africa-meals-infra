@@ -126,6 +126,8 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
 - **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
 
+**MinIO** : dossier Grafana `MinIO/` avec **Wise Eat — MinIO Storage** (équivalent Prometheus du #20826) — scrape `job: minio` sur `/minio/v2/metrics/cluster`.
+
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
 #### Grafana vide (Redis DOWN / Memcached DOWN / No data)
@@ -228,3 +230,10 @@ sudo ./install.sh minio
 | `9001` | Console web |
 
 Secrets générés dans `minio/.env.minio`. Le script crée le bucket `wise-eat` et affiche les variables `MINIO_*` pour l’API.
+
+MinIO rejoint le réseau Docker `wise-eat-infra` pour le scrape Prometheus (`job: minio`). Grafana : dossier **MinIO** → dashboard **Wise Eat — MinIO Storage** (équivalent Prometheus du [#20826](https://grafana.com/grafana/dashboards/20826) InfluxDB).
+
+```bash
+sudo ./install.sh minio
+sudo ./install.sh repair-monitoring   # recharge dashboards + Prometheus
+```
