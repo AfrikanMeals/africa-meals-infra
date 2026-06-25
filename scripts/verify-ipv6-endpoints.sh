@@ -49,29 +49,33 @@ check_tls_sni() {
     warn "openssl absent — skip TLS ${label}"
     return 0
   fi
-  local target_ip
-  target_ip="$(dig +short AAAA "${host}" 2>/dev/null | head -n 1 || true)"
-  [[ -n "${target_ip}" ]] || target_ip="$(dig +short A "${host}" 2>/dev/null | head -n 1 || true)"
-  if [[ -z "${target_ip}" ]] || ! nc -z -G 2 -w 2 "${target_ip}" "${port}" 2>/dev/null; then
+  local aaaa ipv4 connect_target
+  aaaa="$(dig +short AAAA "${host}" 2>/dev/null | head -n 1 || true)"
+  ipv4="$(dig +short A "${host}" 2>/dev/null | head -n 1 || true)"
+  if [[ -n "${aaaa}" ]] && nc -z -G 2 -w 2 "${aaaa}" "${port}" 2>/dev/null; then
+    connect_target="[${aaaa}]:${port}"
+  elif [[ -n "${ipv4}" ]] && nc -z -G 2 -w 2 "${ipv4}" "${port}" 2>/dev/null; then
+    connect_target="${ipv4}:${port}"
+  else
     warn "SKIP TLS ${label} ${host}:${port} — port fermé"
     fail=1
     return
   fi
   local issuer
   if command -v perl >/dev/null 2>&1; then
-    issuer="$(echo | perl -e 'alarm shift; exec @ARGV' 5 openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
+    issuer="$(echo | perl -e 'alarm shift; exec @ARGV' 5 openssl s_client -connect "${connect_target}" -servername "${host}" 2>/dev/null \
       | openssl x509 -noout -issuer 2>/dev/null || true)"
   else
-    issuer="$(echo | openssl s_client -connect "${host}:${port}" -servername "${host}" 2>/dev/null \
+    issuer="$(echo | openssl s_client -connect "${connect_target}" -servername "${host}" 2>/dev/null \
       | openssl x509 -noout -issuer 2>/dev/null || true)"
   fi
   if [[ -n "${issuer}" ]] && [[ "${issuer}" == *"Let's Encrypt"* ]]; then
-    log "OK  TLS ${label} ${host}:${port} — Let's Encrypt"
+    log "OK  TLS ${label} ${host}:${port} via ${connect_target} — Let's Encrypt"
   elif [[ -n "${issuer}" ]]; then
-    warn "TLS ${label} ${host}:${port} — certificat non-LE"
+    warn "TLS ${label} ${host}:${port} via ${connect_target} — certificat non-LE"
     fail=1
   else
-    warn "FAIL TLS ${label} ${host}:${port}"
+    warn "FAIL TLS ${label} ${host}:${port} via ${connect_target}"
     fail=1
   fi
 }
