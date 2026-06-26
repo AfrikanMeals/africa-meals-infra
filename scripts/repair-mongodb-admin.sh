@@ -19,30 +19,33 @@ set -a && source .env.mongodb && set +a
 
 log "=== Réparation Mongo Express (data.wise-eat.com) ==="
 
-if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-mongo-1'; then
-  die "MongoDB absent — sudo ./install.sh mongodb"
-fi
+# Replica set PRIMARY obligatoire — ne pas recréer mongo-1 ici
+bash "${SCRIPT_DIR}/repair-mongodb-replicaset.sh"
 
-log "Recréation wise-eat-mongo-1 (alias réseau mongo) + mongo-express"
-docker compose --env-file .env.mongodb up -d --force-recreate mongo-1 mongo-express
+log "Recréation mongo-express uniquement"
+docker compose --env-file .env.mongodb up -d --force-recreate mongo-express
 
-for i in $(seq 1 30); do
-  if curl -sf "http://127.0.0.1:${MONGO_EXPRESS_PORT:-8081}/" >/dev/null 2>&1; then
-    log "OK  Mongo Express répond sur :${MONGO_EXPRESS_PORT:-8081}"
+log "Attente Mongo Express (max 90s)…"
+ok=0
+for i in $(seq 1 45); do
+  if docker logs wise-eat-mongo-express 2>&1 | grep -q 'Mongo Express server listening'; then
+    ok=1
     break
   fi
-  if docker logs --tail=5 wise-eat-mongo-express 2>&1 | grep -q 'Mongo Express server listening'; then
-    log "OK  Mongo Express démarré"
+  if curl -sf -o /dev/null -w '%{http_code}' "http://127.0.0.1:${MONGO_EXPRESS_PORT:-8081}/" 2>/dev/null | grep -qE '^(200|302|401)'; then
+    ok=1
     break
   fi
   sleep 2
 done
 
-if ! curl -sf -o /dev/null -w '%{http_code}' "http://127.0.0.1:${MONGO_EXPRESS_PORT:-8081}/" | grep -qE '^(200|302|401)'; then
+if [[ "${ok}" -ne 1 ]]; then
   warn "Mongo Express injoignable — logs :"
-  docker logs --tail=30 wise-eat-mongo-express 2>&1 | sed 's/^/[wise-eat]   /'
-  die "Vérifier ME_CONFIG_MONGODB_URL et rs.status()"
+  docker logs --tail=40 wise-eat-mongo-express 2>&1 | sed 's/^/[wise-eat]   /'
+  die "Échec — vérifier rs.status() et ME_CONFIG_MONGODB_URL"
 fi
+
+log "OK  Mongo Express sur :${MONGO_EXPRESS_PORT:-8081}"
 
 if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/install-mongodb-admin.sh" 2>/dev/null || \

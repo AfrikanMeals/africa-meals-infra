@@ -96,8 +96,8 @@ services:
       mongo-1:
         condition: service_healthy
     environment:
-      # URL explicite — l'entrypoint attend « mongo » par défaut si SERVER absent
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET:-rs0}
+      # Connexion directe au primary — pas de replicaSet= (évite ReplicaSetNoPrimary si RS en cours d'élection)
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /
     ports:

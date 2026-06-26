@@ -494,5 +494,11 @@ Si l'install **bloque sur rs.initiate()** (majorité 2/3 requise) :
 sudo ./install.sh repair-mongodb-replicaset
 ```
 
+Si **data.wise-eat.com** affiche 502 / `ReplicaSetNoPrimary` dans les logs mongo-express :
+```bash
+sudo ./install.sh repair-mongodb-replicaset   # init rs0 + PRIMARY
+sudo ./install.sh repair-mongodb-admin        # ou ce seul script (appelle replicaset)
+```
+
 DNS A + AAAA `db.wise-eat.com` → VPS. Port **27018** : **DNS only** sur Cloudflare (comme Redis Stunnel).
 DNS A `data.wise-eat.com` → VPS (proxy Cloudflare OK pour HTTPS).
