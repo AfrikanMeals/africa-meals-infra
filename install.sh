@@ -36,6 +36,11 @@ Composants:
   memcached     Memcached 1 primary (:11211) + 2 réplicas
   minio         MinIO Docker (S3 :9000, console :9001, volume 25G)
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
+  mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 1 Go RAM)
+  mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
+  mongodb-admin nginx reverse-proxy → Mongo Express (data.wise-eat.com, basic auth)
+  mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
+  repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
@@ -65,7 +70,7 @@ Composants:
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
-  all           redis + permissions + monitoring + memcached + minio + emqx
+  all           redis + permissions + monitoring + memcached + minio + emqx + mongodb
 
 Stack TLS prod (nginx recommandé) :
   sudo $0 nginx
@@ -110,6 +115,21 @@ run_component() {
       ;;
     emqx)
       bash "${SCRIPTS}/install-emqx.sh"
+      ;;
+    mongodb)
+      bash "${SCRIPTS}/install-mongodb.sh"
+      ;;
+    mongodb-tls)
+      bash "${SCRIPTS}/install-mongodb-tls.sh"
+      ;;
+    mongodb-admin)
+      bash "${SCRIPTS}/install-mongodb-admin.sh"
+      ;;
+    mongodb-backup)
+      bash "${SCRIPTS}/install-mongodb-backup.sh"
+      ;;
+    repair-mongodb-prometheus)
+      bash "${SCRIPTS}/repair-mongodb-prometheus.sh"
       ;;
     emqx-broker)
       bash "${SCRIPTS}/install-emqx-broker.sh"
@@ -205,6 +225,7 @@ run_component() {
       bash "${SCRIPTS}/install-memcached.sh"
       bash "${SCRIPTS}/install-minio.sh"
       bash "${SCRIPTS}/install-emqx.sh"
+      bash "${SCRIPTS}/install-mongodb.sh"
       bash "${SCRIPTS}/install-monitoring.sh"
       ;;
     -h|--help|help)

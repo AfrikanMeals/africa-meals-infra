@@ -189,12 +189,23 @@ fetch_emqx_dashboard() {
   log "Dashboard EMQX → ${out} (Grafana.com #17446 — EMQX 5)"
 }
 
+fetch_mongodb_dashboard() {
+  local out="${DASH_ROOT}/MongoDB/mongodb-percona.json"
+  local tmp="${out}.tmp"
+  mkdir -p "${DASH_ROOT}/MongoDB"
+  curl -fsSL "https://grafana.com/api/dashboards/12079/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-mongodb-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard MongoDB → ${out} (Grafana.com #12079 — Percona exporter)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
 fetch_docker_dashboard
 fetch_minio_dashboard
 fetch_emqx_dashboard
+fetch_mongodb_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"

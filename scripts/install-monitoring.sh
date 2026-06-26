@@ -39,6 +39,19 @@ if [[ -f "${MEMCACHED_ENV}" ]]; then
   fi
 fi
 
+if [[ -f "${MONGODB_ENV}" ]]; then
+  set -a && source "${MONGODB_ENV}" && set +a
+  for key in MONGO_ROOT_USER MONGO_ROOT_PASSWORD MONGO_REPLICA_SET; do
+    if [[ -n "${!key:-}" ]]; then
+      if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${!key}|" .env.monitoring
+      else
+        echo "${key}=${!key}" >> .env.monitoring
+      fi
+    fi
+  done
+fi
+
 set -a && source .env.monitoring && set +a
 
 if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
@@ -90,4 +103,4 @@ log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up 
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
 log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
 log "Prometheus: https://logs.wise-eat.com (basic auth — voir .env.monitoring)"
-log "Dashboards : Redis · Memcached · MinIO · EMQX (job=All, instance=All)"
+log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB (job=All, instance=All)"

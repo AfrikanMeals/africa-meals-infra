@@ -28,6 +28,12 @@ emqx/data-emqx-1/
 emqx/data-emqx-2/
 emqx/data-emqx-3/
 
+mongodb/.env.mongodb
+mongodb/keyfile
+mongodb/data-mongo-1/
+mongodb/data-mongo-2/
+mongodb/data-mongo-3/
+
 # OS / éditeur
 .DS_Store
 *.swp

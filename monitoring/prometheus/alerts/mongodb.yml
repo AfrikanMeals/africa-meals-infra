@@ -1,0 +1,33 @@
+groups:
+  - name: mongodb
+    rules:
+      - alert: MongoDBDown
+        expr: mongodb_up{job="mongodb"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB exporter DOWN"
+          description: "mongodb_up=0 sur {{ $labels.instance }}"
+
+      - alert: MongoDBReplicationLag
+        expr: mongodb_mongod_replset_member_replication_lag{job="mongodb", state="SECONDARY"} > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lag réplication MongoDB élevé"
+          description: "Lag {{ $value }}s sur {{ $labels.instance }}"
+
+      - alert: MongoDBDiskUsageHigh
+        expr: |
+          (
+            mongodb_dbstats_dataSize{job="mongodb"}
+            / (5 * 1024 * 1024 * 1024)
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Stockage MongoDB > 85 % du quota 5 Go"
+          description: "dataSize élevée sur {{ $labels.instance }}"

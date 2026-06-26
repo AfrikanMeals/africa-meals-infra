@@ -8,10 +8,12 @@ REDIS_DIR="${REDIS_DIR:-${WISE_EAT_ROOT}/redis}"
 MEMCACHED_DIR="${MEMCACHED_DIR:-${WISE_EAT_ROOT}/memcached}"
 MINIO_DIR="${MINIO_DIR:-${WISE_EAT_ROOT}/minio}"
 EMQX_DIR="${EMQX_DIR:-${WISE_EAT_ROOT}/emqx}"
+MONGODB_DIR="${MONGODB_DIR:-${WISE_EAT_ROOT}/mongodb}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
 MINIO_ENV="${MINIO_ENV:-${MINIO_DIR}/.env.minio}"
 EMQX_ENV="${EMQX_ENV:-${EMQX_DIR}/.env.emqx}"
+MONGODB_ENV="${MONGODB_ENV:-${MONGODB_DIR}/.env.mongodb}"
 EMQX_BROKER_DOMAIN="${EMQX_BROKER_DOMAIN:-broker.wise-eat.com}"
 EMQX_BACKEND_HOST="${EMQX_BACKEND_HOST:-127.0.0.1}"
 EMQX_MQTTS_PORT="${EMQX_MQTTS_PORT:-8883}"
@@ -48,6 +50,16 @@ MINIO_CONSOLE_HTASSWD_FILE="${MINIO_CONSOLE_HTASSWD_FILE:-/etc/nginx/htpasswd/mi
 MINIO_DATA_DIR="${MINIO_DATA_DIR:-/var/lib/wise-eat/minio}"
 MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-25}"
 MINIO_BACKUP_DIR="${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"
+MONGO_TLS_DOMAIN="${MONGO_TLS_DOMAIN:-db.wise-eat.com}"
+MONGO_TLS_PORT="${MONGO_TLS_PORT:-27018}"
+MONGO_ADMIN_DOMAIN="${MONGO_ADMIN_DOMAIN:-data.wise-eat.com}"
+MONGO_ADMIN_BACKEND_HOST="${MONGO_ADMIN_BACKEND_HOST:-127.0.0.1}"
+MONGO_ADMIN_BACKEND_PORT="${MONGO_ADMIN_BACKEND_PORT:-8081}"
+MONGO_ADMIN_BASIC_AUTH_USER="${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin}"
+MONGO_ADMIN_HTASSWD_FILE="${MONGO_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/mongo-admin}"
+MONGO_DATA_DIR="${MONGO_DATA_DIR:-/var/lib/wise-eat/mongodb}"
+MONGO_STORAGE_GB="${MONGO_STORAGE_GB:-5}"
+MONGO_BACKUP_DIR="${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"
 # Hostname présenté par Stunnel (:6381/:6382) — doit correspondre aux apps (REDIS_HOST).
 STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-${REDIS_TLS_DOMAIN}}"
 # IPv6 publique VPS (enregistrements AAAA Cloudflare — Hostinger).
@@ -151,6 +163,34 @@ ensure_minio_console_basic_auth_file() {
   fi
 }
 
+# Basic auth nginx pour MongoDB Admin public (data.wise-eat.com).
+ensure_mongodb_admin_basic_auth_file() {
+  local user="${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin}"
+  local pass="${MONGO_ADMIN_BASIC_AUTH_PASSWORD:-}"
+  local file="${MONGO_ADMIN_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${MONGODB_ENV}" ]]; then
+    pass="$(read_env_var_from_file "${MONGODB_ENV}" MONGO_ADMIN_BASIC_AUTH_PASSWORD || true)"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "MONGO_ADMIN_BASIC_AUTH_PASSWORD requis dans ${MONGODB_ENV} (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth MongoDB Admin : ${user} → ${file}"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth MongoDB Admin : ${file} (inchangé)"
+  fi
+}
+
 # Basic auth nginx pour EMQX Dashboard public (worker.wise-eat.com).
 ensure_emqx_worker_basic_auth_file() {
   local user="${EMQX_WORKER_BASIC_AUTH_USER:-emqx-worker}"
@@ -225,11 +265,14 @@ sync_component() {
     mkdir -p "${dst}"
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
       --exclude '.env.memcached' --exclude '.env.minio' --exclude '.env.emqx' \
+      --exclude '.env.mongodb' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
       --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
       --exclude 'data-cache-replica-1/' --exclude 'data-cache-replica-2/' \
       --exclude 'data-bullmq-replica-1/' --exclude 'data-bullmq-replica-2/' \
       --exclude 'data-emqx-1/' --exclude 'data-emqx-2/' --exclude 'data-emqx-3/' \
+      --exclude 'data-mongo-1/' --exclude 'data-mongo-2/' --exclude 'data-mongo-3/' \
+      --exclude 'keyfile' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
       --exclude 'cache-replica-1.generated.conf' --exclude 'cache-replica-2.generated.conf' \
@@ -307,6 +350,26 @@ ensure_minio_on_wise_eat_infra() {
   fi
   log "Connexion wise-eat-minio → réseau wise-eat-infra"
   docker network connect wise-eat-infra wise-eat-minio
+}
+
+ensure_mongodb_on_wise_eat_infra() {
+  ensure_wise_eat_infra_network
+  local name
+  for name in wise-eat-mongo-1 wise-eat-mongo-2 wise-eat-mongo-3 wise-eat-mongo-express wise-eat-mongodb-exporter; do
+    if ! docker ps --format '{{.Names}}' | grep -qx "${name}"; then
+      continue
+    fi
+    if docker inspect "${name}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+      | grep -q 'wise-eat-infra'; then
+      continue
+    fi
+    log "Connexion ${name} → réseau wise-eat-infra"
+    docker network connect wise-eat-infra "${name}"
+  done
+  if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-mongo-1'; then
+    return 1
+  fi
+  return 0
 }
 
 ensure_emqx_on_wise_eat_infra() {
@@ -880,6 +943,12 @@ stunnel_sync_conf_d() {
   fi
   if [[ -f "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" ]]; then
     cp "${MEMCACHED_STUNNEL_CONF_SRC}/memcached-tls.conf" /etc/stunnel/conf.d/
+  fi
+  if [[ -f "${INFRA_ROOT}/mongodb/stunnel/mongodb-tls.conf" ]] \
+    && [[ -f "/etc/stunnel/mongodb/fullchain.pem" ]]; then
+    cp "${INFRA_ROOT}/mongodb/stunnel/mongodb-tls.conf" /etc/stunnel/conf.d/
+  else
+    rm -f /etc/stunnel/conf.d/mongodb-tls.conf
   fi
   local bindv6only
   bindv6only="$(stunnel_ipv6_bindv6only)"

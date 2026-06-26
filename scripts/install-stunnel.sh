@@ -72,6 +72,10 @@ if command -v ufw >/dev/null 2>&1; then
       ufw_allow_tcp_port "${stunnel_port}" "Stunnel Redis TLS :${stunnel_port}"
     done
     ufw_allow_tcp_port "${MEMCACHED_TLS_PORT}" 'Stunnel Memcached TLS'
+    MONGO_TLS_PORT="${MONGO_TLS_PORT:-27018}"
+    if [[ -f /etc/stunnel/conf.d/mongodb-tls.conf ]]; then
+      ufw_allow_tcp_port "${MONGO_TLS_PORT}" "Stunnel MongoDB TLS :${MONGO_TLS_PORT}"
+    fi
   fi
   ufw reload
 else

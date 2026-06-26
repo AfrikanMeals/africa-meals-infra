@@ -177,3 +177,17 @@ scrape_configs:
         target_label: instance
         regex: (.+)
         replacement: ${1}:18083
+
+  # MongoDB — Percona exporter (primary + réplicas via discovering-mode)
+  - job_name: mongodb
+    scrape_interval: 30s
+    scrape_timeout: 25s
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          namespace: wise-eat
+          mongo_role: cluster
+          mongo_scrape: wise-eat-mongodb-exporter
+    relabel_configs:
+      - target_label: instance
+        replacement: wise-eat-mongo-1:27017

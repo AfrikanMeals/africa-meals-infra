@@ -1,0 +1,104 @@
+# Wise Eat — MongoDB 8 : 1 primary + 2 réplicas (replica set rs0)
+# Install : sudo ./install.sh mongodb
+# RAM : 1 Go / nœud + swap · Stockage : 5 Go (volume dédié)
+
+name: wise-eat-mongo
+
+networks:
+  wise-eat-infra:
+    name: wise-eat-infra
+    external: true
+
+x-mongo-common: &mongo-common
+  image: mongo:8.0
+  restart: unless-stopped
+  networks:
+    - wise-eat-infra
+  command:
+    - mongod
+    - --replSet
+    - ${MONGO_REPLICA_SET:-rs0}
+    - --bind_ip_all
+    - --keyFile
+    - /etc/mongodb/keyfile
+    - --wiredTigerCacheSizeGB
+    - ${MONGO_WIREDTIGER_CACHE_GB:-0.25}
+    - --setParameter
+    - authenticationMechanisms=SCRAM-SHA-256
+  mem_limit: ${MONGO_MEM_LIMIT:-1g}
+  memswap_limit: ${MONGO_MEMSWAP_LIMIT:-2g}
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "mongosh",
+        "--quiet",
+        "--eval",
+        "db.adminCommand('ping').ok",
+      ]
+    interval: 15s
+    timeout: 10s
+    retries: 8
+    start_period: 60s
+
+services:
+  mongo-1:
+    <<: *mongo-common
+    container_name: wise-eat-mongo-1
+    hostname: wise-eat-mongo-1
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?MONGO_ROOT_USER requis}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD requis}
+    ports:
+      - "127.0.0.1:${MONGO_PRIMARY_PORT:-27017}:27017"
+    volumes:
+      - ${MONGO_DATA_1:-./data-mongo-1}:/data/db
+      - ./keyfile:/etc/mongodb/keyfile:ro
+
+  mongo-2:
+    <<: *mongo-common
+    container_name: wise-eat-mongo-2
+    hostname: wise-eat-mongo-2
+    depends_on:
+      mongo-1:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${MONGO_REPLICA_1_PORT:-27027}:27017"
+    volumes:
+      - ${MONGO_DATA_2:-./data-mongo-2}:/data/db
+      - ./keyfile:/etc/mongodb/keyfile:ro
+
+  mongo-3:
+    <<: *mongo-common
+    container_name: wise-eat-mongo-3
+    hostname: wise-eat-mongo-3
+    depends_on:
+      mongo-1:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${MONGO_REPLICA_2_PORT:-27028}:27017"
+    volumes:
+      - ${MONGO_DATA_3:-./data-mongo-3}:/data/db
+      - ./keyfile:/etc/mongodb/keyfile:ro
+
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    container_name: wise-eat-mongo-express
+    restart: unless-stopped
+    networks:
+      - wise-eat-infra
+    depends_on:
+      mongo-1:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_SERVER: wise-eat-mongo-1
+      ME_CONFIG_MONGODB_PORT: "27017"
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USER}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD}
+      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
+      ME_CONFIG_MONGODB_REPLICA_SET_NAME: ${MONGO_REPLICA_SET:-rs0}
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /
+    ports:
+      - "127.0.0.1:${MONGO_EXPRESS_PORT:-8081}:8081"

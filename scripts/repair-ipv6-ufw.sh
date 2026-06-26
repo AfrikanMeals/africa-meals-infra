@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 require_root
 
 log "IPv6 VPS attendu : ${VPS_IPV6_ADDR}"
-log "Domaines DNS-only (A + AAAA) : ${REDIS_TLS_DOMAIN}, ${EMQX_BROKER_DOMAIN}"
+log "Domaines DNS-only (A + AAAA) : ${REDIS_TLS_DOMAIN}, ${EMQX_BROKER_DOMAIN}, ${MONGO_TLS_DOMAIN:-db.wise-eat.com}"
 
 ensure_ufw_ipv6_enabled
 
@@ -20,6 +20,10 @@ done
 ufw_allow_tcp_port "${MEMCACHED_TLS_PORT}" 'Stunnel Memcached TLS'
 ufw_allow_tcp_port "${EMQX_MQTTS_PORT}" "nginx MQTTS ${EMQX_BROKER_DOMAIN}"
 ufw_allow_tcp_port "${EMQX_WSS_PORT}" "nginx WSS ${EMQX_BROKER_DOMAIN}"
+MONGO_TLS_PORT="${MONGO_TLS_PORT:-27018}"
+if [[ -f /etc/stunnel/conf.d/mongodb-tls.conf ]]; then
+  ufw_allow_tcp_port "${MONGO_TLS_PORT}" "Stunnel MongoDB TLS :${MONGO_TLS_PORT}"
+fi
 
 if command -v ufw >/dev/null 2>&1; then
   ufw reload

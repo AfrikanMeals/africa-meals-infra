@@ -1,0 +1,14 @@
+# HTTP — validation Certbot pour MongoDB TLS (Stunnel :27018)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${MONGO_TLS_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 404;
+    }
+}

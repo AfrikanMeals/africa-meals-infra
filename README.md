@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, nginx/apache, Certbot, Stunnel, monitoring.
+Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, nginx/apache, Certbot, Stunnel, monitoring.
 
 ## Structure
 
@@ -70,6 +70,8 @@ sudo ./install.sh verify-tls
 | `cdn.wise-eat.com` | 80 / 443 | MinIO Console (basic auth nginx) | proxy OK |
 | `broker.wise-eat.com` | **80** (ACME) + **8883** (MQTTS) + **8884** (WSS) | EMQX MQTT | **8883/8884 en DNS only** (pas de proxy orange) |
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
+| `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
+| `data.wise-eat.com` | 80 / 443 | Mongo Express admin (basic auth nginx) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -135,6 +137,10 @@ Détails techniques :
 | `EMQX_MQTTS_PORT` | `8883` | MQTTS (nginx stream → EMQX :1883) |
 | `EMQX_WSS_PORT` | `8884` | WSS (nginx → EMQX :8083/mqtt) |
 | `EMQX_WORKER_DOMAIN` | `worker.wise-eat.com` | Dashboard EMQX public (nginx + basic auth) |
+| `MONGO_TLS_DOMAIN` | `db.wise-eat.com` | MongoDB TLS public (Stunnel :27018) |
+| `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
+| `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | Mongo Express admin (nginx + basic auth) |
+| `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
@@ -187,6 +193,8 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 **MinIO** : dossier Grafana `MinIO/` avec **Wise Eat — MinIO Storage** (équivalent Prometheus du #20826) — scrape `minio-cluster` + `minio-node`.
 
 **EMQX** : dossier Grafana `EMQX/` avec **Wise Eat — EMQX** (base Grafana.com #17446) — scrape `job=emqx` sur `/api/v5/prometheus/stats` (primary + réplicas).
+
+**MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (base Grafana.com #12079) — scrape `job=mongodb` via Percona exporter.
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
@@ -430,3 +438,55 @@ Si EMQX **crash-loop** (`unknown => "collectors"`, 502 sur `worker.wise-eat.com`
 cd /opt/wise-eat && git pull
 sudo ./install.sh repair-emqx-boot
 ```
+
+## MongoDB
+
+Base de données self-hosted **MongoDB 8** — replica set **rs0** (1 primary + 2 réplicas), volume **5 Go**, **1 Go RAM** par nœud + swap.
+
+```bash
+sudo ./install.sh mongodb
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
+sudo ./install.sh mongodb-tls
+sudo ./install.sh mongodb-admin
+```
+
+| Port / URL | Service |
+|------------|---------|
+| `mongodb://127.0.0.1:27017` | Primary local (PM2 sur VPS) |
+| `127.0.0.1:27027` / `:27028` | Réplicas locaux |
+| `db.wise-eat.com:27018` | MongoDB TLS public (Stunnel → primary) |
+| `https://data.wise-eat.com` | Mongo Express admin (basic auth nginx) |
+
+**Sécurité** :
+- TLS transport (Stunnel + Let's Encrypt sur `db.wise-eat.com`)
+- Auth SCRAM-SHA-256 + keyfile inter-nœuds
+- Basic auth nginx sur la console admin
+
+**URI applicative** (ex. API / WS) :
+
+```env
+# VPS local (PM2)
+MONGODB_URI=mongodb://wise-eat-app:PASSWORD@127.0.0.1:27017/african_meals_db?authSource=african_meals_db&replicaSet=rs0
+
+# Remote (TLS)
+MONGODB_URI=mongodb://wise-eat-app:PASSWORD@db.wise-eat.com:27018/african_meals_db?authSource=african_meals_db&replicaSet=rs0&tls=true
+```
+
+Secrets dans `mongodb/.env.mongodb` (générés à l’install).
+
+**Sauvegarde** : dump quotidien (override `latest/`) + snapshot hebdomadaire (hardlinks rsync) → `/var/backups/wise-eat-mongodb` (cron 03:30).
+
+```bash
+sudo ./install.sh mongodb-backup
+sudo ./scripts/backup-mongodb.sh   # test manuel
+```
+
+**Grafana** : dossier **MongoDB** → **Wise Eat — MongoDB** (Grafana.com #12079, Percona exporter).
+
+Si Grafana affiche **No data** :
+```bash
+sudo ./install.sh repair-mongodb-prometheus
+```
+
+DNS A + AAAA `db.wise-eat.com` → VPS. Port **27018** : **DNS only** sur Cloudflare (comme Redis Stunnel).
+DNS A `data.wise-eat.com` → VPS (proxy Cloudflare OK pour HTTPS).
