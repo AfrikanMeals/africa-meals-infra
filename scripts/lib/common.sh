@@ -324,6 +324,9 @@ stop_valkey_if_present() {
 ensure_docker() {
   command -v docker >/dev/null 2>&1 || die "Docker requis — apt install docker-ce"
   docker compose version >/dev/null 2>&1 || die "Docker Compose plugin requis"
+  # shellcheck source=lib/vps-swap.sh
+  source "$(dirname "${BASH_SOURCE[0]}")/vps-swap.sh"
+  ensure_vps_memory_tuning
 }
 
 # Réseau partagé Redis / Memcached / exporters (évite host.docker.internal → 127.0.0.1 injoignable).

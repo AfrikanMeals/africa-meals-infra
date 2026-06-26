@@ -77,29 +77,11 @@ ensure_mongodb_data_volume() {
   log "Volume MongoDB ${MONGO_STORAGE_GB}G monté : ${MONGO_DATA_DIR} ($(df -h "${MONGO_DATA_DIR}" | awk 'NR==2{print $2" total, "$3" utilisés"}'))"
 }
 
+# ensure_mongodb_swap — alias rétrocompat (voir scripts/lib/vps-swap.sh)
 ensure_mongodb_swap() {
-  local swap_size="${MONGO_SWAP_SIZE_GB:-2}"
-  if swapon --show 2>/dev/null | grep -q .; then
-    log "Swap déjà actif ($(swapon --show | awk 'NR==2{print $3}'))"
-    return 0
-  fi
-  local swapfile="/swapfile-mongodb"
-  if [[ -f "${swapfile}" ]]; then
-    swapon "${swapfile}" 2>/dev/null || true
-    if swapon --show 2>/dev/null | grep -q "${swapfile}"; then
-      log "Swap réactivé : ${swapfile}"
-      return 0
-    fi
-  fi
-  log "Création swap ${swap_size}G (${swapfile})"
-  fallocate -l "${swap_size}G" "${swapfile}" 2>/dev/null || dd if=/dev/zero of="${swapfile}" bs=1M count=$((swap_size * 1024)) status=progress
-  chmod 600 "${swapfile}"
-  mkswap "${swapfile}"
-  swapon "${swapfile}"
-  if ! grep -qF "${swapfile}" /etc/fstab 2>/dev/null; then
-    echo "${swapfile} none swap sw 0 0" >> /etc/fstab
-  fi
-  log "Swap activé : ${swap_size}G"
+  # shellcheck source=lib/vps-swap.sh
+  source "$(dirname "${BASH_SOURCE[0]}")/vps-swap.sh"
+  ensure_vps_swap
 }
 
 persist_mongodb_env_paths() {

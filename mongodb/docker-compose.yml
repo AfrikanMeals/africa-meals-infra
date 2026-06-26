@@ -22,7 +22,7 @@ x-mongo-common: &mongo-common
     - --keyFile
     - /etc/mongodb/keyfile
     - --wiredTigerCacheSizeGB
-    - ${MONGO_WIREDTIGER_CACHE_GB:-0.125}
+    - ${MONGO_WIREDTIGER_CACHE_GB:-0.25}
     - --setParameter
     - authenticationMechanisms=SCRAM-SHA-256
   mem_limit: ${MONGO_MEM_LIMIT:-512m}
@@ -108,5 +108,6 @@ services:
     volumes:
       - ${MONGO_DBGATE_DATA:-./data-dbgate}:/root/.dbgate
     mem_limit: ${MONGO_DBGATE_MEM_LIMIT:-512m}
+    memswap_limit: ${MONGO_DBGATE_MEMSWAP_LIMIT:-768m}
     ports:
       - "127.0.0.1:${MONGO_DBGATE_PORT:-8081}:3000"

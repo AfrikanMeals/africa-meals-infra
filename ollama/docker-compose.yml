@@ -21,6 +21,7 @@ services:
     volumes:
       - ${OLLAMA_DATA_DIR:-/var/lib/wise-eat/ollama}:/root/.ollama
     mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-4g}
     cpus: ${OLLAMA_CPU_LIMIT:-1.5}
     labels:
       com.wise-eat.service: ollama
