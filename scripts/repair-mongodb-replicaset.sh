@@ -151,8 +151,9 @@ mongosh_admin --eval "
   }
 " 2>/dev/null || warn "Utilisateur applicatif — créer manuellement si besoin"
 
-log "Recréation mongo-express…"
-docker compose --env-file .env.mongodb up -d --force-recreate mongo-express
+log "Recréation DbGate…"
+docker rm -f wise-eat-mongo-express 2>/dev/null || true
+docker compose --env-file .env.mongodb up -d dbgate
 
 log "Terminé — rs.status() :"
 mongosh_admin --eval "rs.status().members.forEach(m => print(m.name + ' ' + m.stateStr))" 2>/dev/null \

@@ -86,9 +86,9 @@ services:
       - ${MONGO_DATA_3:-./data-mongo-3}:/data/db
       - ./keyfile:/etc/mongodb/keyfile:ro
 
-  mongo-express:
-    image: mongo-express:1.0.2-20
-    container_name: wise-eat-mongo-express
+  dbgate:
+    image: dbgate/dbgate:6
+    container_name: wise-eat-dbgate
     restart: unless-stopped
     networks:
       - wise-eat-infra
@@ -96,9 +96,17 @@ services:
       mongo-1:
         condition: service_healthy
     environment:
-      # Connexion directe au primary — pas de replicaSet= (évite ReplicaSetNoPrimary si RS en cours d'élection)
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true
-      ME_CONFIG_BASICAUTH: "false"
-      ME_CONFIG_SITE_BASEURL: /
+      CONNECTIONS: wiseeat
+      LABEL_wiseeat: Wise Eat MongoDB
+      URL_wiseeat: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true
+      ENGINE_wiseeat: mongo@dbgate-plugin-mongo
+      # Auth web gérée par nginx (basic auth) sur data.wise-eat.com
+      SKIP_ALL_AUTH: "1"
+      SHELL_CONNECTION: "0"
+      SHELL_SCRIPTING: "0"
+      LOG_LEVEL: warn
+    volumes:
+      - ${MONGO_DBGATE_DATA:-./data-dbgate}:/root/.dbgate
+    mem_limit: ${MONGO_DBGATE_MEM_LIMIT:-512m}
     ports:
-      - "127.0.0.1:${MONGO_EXPRESS_PORT:-8081}:8081"
+      - "127.0.0.1:${MONGO_DBGATE_PORT:-8081}:3000"

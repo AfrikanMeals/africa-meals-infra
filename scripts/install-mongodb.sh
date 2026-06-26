@@ -65,10 +65,11 @@ if [[ ! -f keyfile ]]; then
   chown 999:999 keyfile
 fi
 
-mkdir -p "${MONGO_DATA_1}" "${MONGO_DATA_2}" "${MONGO_DATA_3}"
+mkdir -p "${MONGO_DATA_1}" "${MONGO_DATA_2}" "${MONGO_DATA_3}" "${MONGO_DBGATE_DATA:-./data-dbgate}"
 chown -R 999:999 "${MONGO_DATA_1}" "${MONGO_DATA_2}" "${MONGO_DATA_3}" keyfile
 
 log "Démarrage MongoDB Docker (replica set ${MONGO_REPLICA_SET})"
+docker rm -f wise-eat-mongo-express 2>/dev/null || true
 docker compose --env-file .env.mongodb pull
 docker compose --env-file .env.mongodb up -d
 
@@ -260,7 +261,7 @@ MongoDB replica set ${MONGO_REPLICA_SET} (3 nœuds) :
 TLS public (Stunnel) :
   ${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT:-27018} → primary
 
-Console admin :
+Console admin (DbGate) :
   https://${MONGO_ADMIN_DOMAIN} (basic auth nginx : ${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin})
 
 URI locale (PM2 sur VPS) :

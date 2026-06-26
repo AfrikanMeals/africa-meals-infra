@@ -272,6 +272,7 @@ sync_component() {
       --exclude 'data-bullmq-replica-1/' --exclude 'data-bullmq-replica-2/' \
       --exclude 'data-emqx-1/' --exclude 'data-emqx-2/' --exclude 'data-emqx-3/' \
       --exclude 'data-mongo-1/' --exclude 'data-mongo-2/' --exclude 'data-mongo-3/' \
+      --exclude 'data-dbgate/' \
       --exclude 'keyfile' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
@@ -355,7 +356,7 @@ ensure_minio_on_wise_eat_infra() {
 ensure_mongodb_on_wise_eat_infra() {
   ensure_wise_eat_infra_network
   local name
-  for name in wise-eat-mongo-1 wise-eat-mongo-2 wise-eat-mongo-3 wise-eat-mongo-express wise-eat-mongodb-exporter; do
+  for name in wise-eat-mongo-1 wise-eat-mongo-2 wise-eat-mongo-3 wise-eat-dbgate wise-eat-mongodb-exporter; do
     if ! docker ps --format '{{.Names}}' | grep -qx "${name}"; then
       continue
     fi

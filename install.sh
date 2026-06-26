@@ -38,11 +38,11 @@ Composants:
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
   mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 1 Go RAM)
   mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
-  mongodb-admin nginx reverse-proxy → Mongo Express (data.wise-eat.com, basic auth)
+  mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
   repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
-  repair-mongodb-admin     Répare Mongo Express + nginx (data.wise-eat.com 502)
+  repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)

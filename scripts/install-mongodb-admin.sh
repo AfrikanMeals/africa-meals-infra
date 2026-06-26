@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reverse-proxy nginx → Mongo Express (data.wise-eat.com) + basic auth + Certbot optionnel.
+# Reverse-proxy nginx → DbGate (data.wise-eat.com) + basic auth + Certbot optionnel.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -14,7 +14,7 @@ STUNNEL_TLS_EMAIL="${STUNNEL_TLS_EMAIL:-}"
 
 if [[ -f "${MONGODB_ENV}" ]]; then
   set -a && source "${MONGODB_ENV}" && set +a
-  MONGO_ADMIN_BACKEND_PORT="${MONGO_EXPRESS_PORT:-${MONGO_ADMIN_BACKEND_PORT}}"
+  MONGO_ADMIN_BACKEND_PORT="${MONGO_DBGATE_PORT:-${MONGO_EXPRESS_PORT:-${MONGO_ADMIN_BACKEND_PORT}}}"
 fi
 
 command -v nginx >/dev/null 2>&1 || die "nginx requis — sudo ./install.sh nginx"

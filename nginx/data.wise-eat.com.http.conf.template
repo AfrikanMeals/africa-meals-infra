@@ -1,4 +1,9 @@
-# HTTP — Certbot webroot + proxy Mongo Express (avant TLS) + basic auth
+# HTTP — Certbot webroot + proxy DbGate (avant TLS) + basic auth
+map $http_upgrade $mongo_admin_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 80;
     listen [::]:80;
@@ -19,6 +24,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $mongo_admin_connection_upgrade;
         proxy_read_timeout 300;
         proxy_send_timeout 300;
     }

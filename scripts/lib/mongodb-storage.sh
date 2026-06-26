@@ -114,7 +114,9 @@ persist_mongodb_env_paths() {
     "MONGO_DATA_3=${MONGO_DATA_DIR}/data-mongo-3" \
     "MONGO_TLS_DOMAIN=${MONGO_TLS_DOMAIN:-db.wise-eat.com}" \
     "MONGO_ADMIN_DOMAIN=${MONGO_ADMIN_DOMAIN:-data.wise-eat.com}" \
-    "MONGO_BACKUP_DIR=${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"; do
+    "MONGO_BACKUP_DIR=${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}" \
+    "MONGO_DBGATE_PORT=${MONGO_DBGATE_PORT:-8081}" \
+    "MONGO_DBGATE_DATA=${MONGODB_DIR}/data-dbgate"; do
     local key="${pair%%=*}" val="${pair#*=}"
     if grep -q "^${key}=" "${env_file}"; then
       sed -i "s|^${key}=.*|${key}=${val}|" "${env_file}"

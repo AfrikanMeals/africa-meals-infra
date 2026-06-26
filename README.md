@@ -71,7 +71,7 @@ sudo ./install.sh verify-tls
 | `broker.wise-eat.com` | **80** (ACME) + **8883** (MQTTS) + **8884** (WSS) | EMQX MQTT | **8883/8884 en DNS only** (pas de proxy orange) |
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
 | `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
-| `data.wise-eat.com` | 80 / 443 | Mongo Express admin (basic auth nginx) | proxy OK |
+| `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -139,7 +139,7 @@ Détails techniques :
 | `EMQX_WORKER_DOMAIN` | `worker.wise-eat.com` | Dashboard EMQX public (nginx + basic auth) |
 | `MONGO_TLS_DOMAIN` | `db.wise-eat.com` | MongoDB TLS public (Stunnel :27018) |
 | `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
-| `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | Mongo Express admin (nginx + basic auth) |
+| `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
 | `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
@@ -455,12 +455,18 @@ sudo ./install.sh mongodb-admin
 | `mongodb://127.0.0.1:27017` | Primary local (PM2 sur VPS) |
 | `127.0.0.1:27027` / `:27028` | Réplicas locaux |
 | `db.wise-eat.com:27018` | MongoDB TLS public (Stunnel → primary) |
-| `https://data.wise-eat.com` | Mongo Express admin (basic auth nginx) |
+| `https://data.wise-eat.com` | DbGate admin MongoDB (basic auth nginx) |
 
 **Sécurité** :
 - TLS transport (Stunnel + Let's Encrypt sur `db.wise-eat.com`)
 - Auth SCRAM-SHA-256 + keyfile inter-nœuds
 - Basic auth nginx sur la console admin
+
+**DbGate** (`data.wise-eat.com`) : panneau web MongoDB (requêtes, export, navigation collections). Connexion préconfigurée vers le primary. Auth nginx uniquement (`SKIP_ALL_AUTH=1` côté DbGate).
+
+```bash
+sudo ./install.sh repair-mongodb-admin   # migration mongo-express → DbGate
+```
 
 **URI applicative** (ex. API / WS) :
 
@@ -494,7 +500,7 @@ Si l'install **bloque sur rs.initiate()** (majorité 2/3 requise) :
 sudo ./install.sh repair-mongodb-replicaset
 ```
 
-Si **data.wise-eat.com** affiche 502 / `ReplicaSetNoPrimary` dans les logs mongo-express :
+Si **data.wise-eat.com** affiche 502 / erreur connexion MongoDB dans les logs DbGate :
 ```bash
 sudo ./install.sh repair-mongodb-replicaset   # init rs0 + PRIMARY
 sudo ./install.sh repair-mongodb-admin        # ou ce seul script (appelle replicaset)

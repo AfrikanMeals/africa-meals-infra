@@ -14,7 +14,7 @@ MONGO_ADMIN_BACKEND_PORT="${MONGO_ADMIN_BACKEND_PORT:-8081}"
 
 if [[ -f "${MONGODB_ENV}" ]]; then
   set -a && source "${MONGODB_ENV}" && set +a
-  MONGO_ADMIN_BACKEND_PORT="${MONGO_EXPRESS_PORT:-${MONGO_ADMIN_BACKEND_PORT}}"
+  MONGO_ADMIN_BACKEND_PORT="${MONGO_DBGATE_PORT:-${MONGO_EXPRESS_PORT:-${MONGO_ADMIN_BACKEND_PORT}}}"
 fi
 
 command -v nginx >/dev/null 2>&1 || die "nginx non installé"
