@@ -241,7 +241,12 @@ Si Grafana Ollama affiche **No data** :
 ```bash
 sudo ./install.sh repair-ollama-monitoring
 curl -s http://127.0.0.1:9400/metrics | grep '^ollama_up '
+
+# Remplir VRAM + métriques requêtes (première fois ou après idle)
+sudo ./install.sh ollama-warmup-metrics
 ```
+
+**Comportement normal** : seul **Ollama Status = UP** tant qu'aucun modèle n'est en VRAM (`/api/ps` vide) et que l'API n'utilise pas le proxy `:9401`. Les panels TPS/latence/requêtes nécessitent `OLLAMA_BASE_URL=http://127.0.0.1:9401` sur le VPS.
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`

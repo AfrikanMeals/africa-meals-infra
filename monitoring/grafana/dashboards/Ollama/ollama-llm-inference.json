@@ -113,7 +113,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_up",
+          "expr": "ollama_up{job=\"ollama\"}",
           "legendFormat": "",
           "refId": "A"
         }
@@ -194,7 +194,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_model_loaded{job=\"ollama\"}",
+          "expr": "max(ollama_model_loaded{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -250,7 +250,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_model_vram_bytes{job=\"ollama\"}",
+          "expr": "sum(ollama_model_vram_bytes{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -306,7 +306,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_tokens_per_second{job=\"ollama\"}",
+          "expr": "sum(ollama_tokens_per_second{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -362,7 +362,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_prompt_tokens_per_second{job=\"ollama\"}",
+          "expr": "sum(ollama_prompt_tokens_per_second{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -418,7 +418,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "increase(ollama_requests_total{job=\"ollama\"}[24h])",
+          "expr": "sum(increase(ollama_requests_total{job=\"ollama\"}[24h])) or on() vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -465,7 +465,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_tokens_per_second{job=\"ollama\"}",
+          "expr": "sum(ollama_tokens_per_second{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "{{model}} {{quant}} decode",
           "refId": "A"
         },
@@ -474,7 +474,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_prompt_tokens_per_second{job=\"ollama\"}",
+          "expr": "sum(ollama_prompt_tokens_per_second{job=\"ollama\"}) or on() vector(0)",
           "legendFormat": "{{model}} {{quant}} prefill",
           "refId": "B"
         }
@@ -829,9 +829,24 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "id": 99,
+      "title": "R\u00e9f\u00e9rence Wise Eat",
+      "type": "text",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Wise Eat \u2014 Ollama\n\n- **Mod\u00e8les** : `nomic-embed-text`, `llama3.2:3b`\n- **API directe** : `http://127.0.0.1:11434`\n- **Proxy m\u00e9triques** : `http://127.0.0.1:9401` \u2192 TPS, latences, requ\u00eates\n- **Exporter** : `http://127.0.0.1:9400/metrics` (`job=ollama`)\n\n**No data** sur VRAM/TPS est normal si aucun mod\u00e8le n'est en VRAM (`ollama ps` vide) et si l'API n'utilise pas le proxy `:9401`.\n\nCharger un mod\u00e8le : `curl -s http://127.0.0.1:11434/api/generate -d '{\"model\":\"llama3.2:3b\",\"prompt\":\"ping\",\"stream\":false}'`\n\nM\u00e9triques requ\u00eates : `OLLAMA_BASE_URL=http://127.0.0.1:9401` (africa-meals-api sur le VPS)."
+      }
     }
   ],
   "id": null,
   "gnetId": 25086,
-  "description": "Ollama dashboard for the ollama-exporter written in go (https://github.com/maravexa/ollama-exporter)"
+  "description": "Grafana #25086 + ollama-exporter (maravexa). Poller : VRAM/mod\u00e8le. Proxy :9401 : TPS/latences/requ\u00eates."
 }

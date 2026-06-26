@@ -40,6 +40,7 @@ Composants:
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
   repair-ollama-monitoring Recréer Ollama + ollama-exporter (Grafana #25086)
+  ollama-warmup-metrics  Charge un modèle + requête proxy (remplir dashboard Ollama)
   mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
@@ -137,6 +138,9 @@ run_component() {
       ;;
     repair-ollama-monitoring)
       bash "${SCRIPTS}/repair-ollama-monitoring.sh"
+      ;;
+    ollama-warmup-metrics)
+      bash "${SCRIPTS}/ollama-warmup-metrics.sh"
       ;;
     mongodb-tls)
       bash "${SCRIPTS}/install-mongodb-tls.sh"
