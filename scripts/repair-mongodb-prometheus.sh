@@ -43,7 +43,8 @@ sync_component monitoring
 cd "${MON_DIR}"
 
 if [[ -f "${MONGODB_ENV}" ]]; then
-  for key in MONGO_ROOT_USER MONGO_ROOT_PASSWORD; do
+  set -a && source "${MONGODB_ENV}" && set +a
+  for key in MONGO_ROOT_USER MONGO_ROOT_PASSWORD MONGO_REPLICA_SET; do
     if [[ -n "${!key:-}" ]]; then
       if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
         sed -i "s|^${key}=.*|${key}=${!key}|" .env.monitoring
@@ -95,6 +96,15 @@ for s in r:
     print(f\"  instance={m.get('instance')} up={s.get('value',[None,-1])[1]}\")
 " || warn "Scrape MongoDB DOWN — vérifier http://127.0.0.1:9090/targets"
 fi
+
+metrics_sample="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+for needle in mongodb_up mongodb_connections mongodb_op_counters_total mongodb_mongod_replset_member_state; do
+  if [[ -n "${metrics_sample}" ]] && printf '%s\n' "${metrics_sample}" | grep -q "^${needle}"; then
+    log "OK  métrique exporter : ${needle}"
+  else
+    warn "ABSENT exporter : ${needle}"
+  fi
+done
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose "${COMPOSE_ARGS[@]}" up -d grafana 2>/dev/null || true

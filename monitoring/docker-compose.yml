@@ -181,9 +181,9 @@ services:
     networks:
       - wise-eat-infra
     command:
-      - '--mongodb.uri=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?replicaSet=${MONGO_REPLICA_SET:-rs0}'
+      - '--mongodb.uri=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true'
+      - '--mongodb.direct-connect'
       - '--collect-all'
-      - '--discovering-mode'
       - '--compatible-mode'
     ports:
       - "127.0.0.1:9216:9216"

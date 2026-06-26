@@ -178,7 +178,7 @@ scrape_configs:
         regex: (.+)
         replacement: ${1}:18083
 
-  # MongoDB — Percona exporter (primary + réplicas via discovering-mode)
+  # MongoDB — Percona exporter (connexion directe au primary)
   - job_name: mongodb
     scrape_interval: 30s
     scrape_timeout: 25s
