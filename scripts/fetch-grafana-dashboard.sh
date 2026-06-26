@@ -199,6 +199,16 @@ fetch_mongodb_dashboard() {
   log "Dashboard MongoDB → ${out} (Grafana.com #12079 — Percona exporter)"
 }
 
+fetch_mongodb_overview_dashboard() {
+  local out="${DASH_ROOT}/MongoDB/mongodb-overview.json"
+  local tmp="${out}.tmp"
+  mkdir -p "${DASH_ROOT}/MongoDB"
+  curl -fsSL "https://grafana.com/api/dashboards/18847/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-mongodb-overview-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard MongoDB Overview → ${out} (Grafana.com #18847 — Percona ss/sys)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
@@ -206,6 +216,7 @@ fetch_docker_dashboard
 fetch_minio_dashboard
 fetch_emqx_dashboard
 fetch_mongodb_dashboard
+fetch_mongodb_overview_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"

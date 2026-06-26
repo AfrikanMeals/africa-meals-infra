@@ -194,7 +194,7 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 
 **EMQX** : dossier Grafana `EMQX/` avec **Wise Eat — EMQX** (base Grafana.com #17446) — scrape `job=emqx` sur `/api/v5/prometheus/stats` (primary + réplicas).
 
-**MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (base Grafana.com #12079) — scrape `job=mongodb` via Percona exporter.
+**MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (#12079, Percona legacy) et **Wise Eat — MongoDB Overview** (#18847, métriques ss/sys) — scrape `job=mongodb` via Percona exporter.
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
@@ -487,7 +487,7 @@ sudo ./install.sh mongodb-backup
 sudo ./scripts/backup-mongodb.sh   # test manuel
 ```
 
-**Grafana** : dossier **MongoDB** → **Wise Eat — MongoDB** (Grafana.com #12079, Percona exporter).
+**Grafana** : dossier **MongoDB** → **Wise Eat — MongoDB** (#12079) et **Wise Eat — MongoDB Overview** (#18847, Percona ss/sys).
 
 Si Grafana affiche **No data** :
 ```bash
