@@ -9,6 +9,7 @@ MEMCACHED_DIR="${MEMCACHED_DIR:-${WISE_EAT_ROOT}/memcached}"
 MINIO_DIR="${MINIO_DIR:-${WISE_EAT_ROOT}/minio}"
 EMQX_DIR="${EMQX_DIR:-${WISE_EAT_ROOT}/emqx}"
 MONGODB_DIR="${MONGODB_DIR:-${WISE_EAT_ROOT}/mongodb}"
+OLLAMA_DIR="${OLLAMA_DIR:-${WISE_EAT_ROOT}/ollama}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
 MINIO_ENV="${MINIO_ENV:-${MINIO_DIR}/.env.minio}"
@@ -60,6 +61,11 @@ MONGO_ADMIN_HTASSWD_FILE="${MONGO_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/mongo-
 MONGO_DATA_DIR="${MONGO_DATA_DIR:-/var/lib/wise-eat/mongodb}"
 MONGO_STORAGE_GB="${MONGO_STORAGE_GB:-5}"
 MONGO_BACKUP_DIR="${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"
+OLLAMA_GATEWAY_DOMAIN="${OLLAMA_GATEWAY_DOMAIN:-ai.wise-eat.com}"
+OLLAMA_BACKEND_HOST="${OLLAMA_BACKEND_HOST:-127.0.0.1}"
+OLLAMA_BACKEND_PORT="${OLLAMA_BACKEND_PORT:-11434}"
+OLLAMA_GATEWAY_BASIC_AUTH_USER="${OLLAMA_GATEWAY_BASIC_AUTH_USER:-ollama}"
+OLLAMA_GATEWAY_HTASSWD_FILE="${OLLAMA_GATEWAY_HTASSWD_FILE:-/etc/nginx/htpasswd/ollama-gateway}"
 # Hostname présenté par Stunnel (:6381/:6382) — doit correspondre aux apps (REDIS_HOST).
 STUNNEL_TLS_DOMAIN="${STUNNEL_TLS_DOMAIN:-${REDIS_TLS_DOMAIN}}"
 # IPv6 publique VPS (enregistrements AAAA Cloudflare — Hostinger).
@@ -132,6 +138,34 @@ ensure_prometheus_basic_auth_file() {
     chmod 640 "${file}"
     chown root:www-data "${file}" 2>/dev/null || true
     log "Basic auth Prometheus : ${user} → ${file}"
+  fi
+}
+
+# Basic auth nginx pour Ollama public (ai.wise-eat.com).
+ensure_ollama_gateway_basic_auth_file() {
+  local user="${OLLAMA_GATEWAY_BASIC_AUTH_USER:-ollama}"
+  local pass="${OLLAMA_GATEWAY_BASIC_AUTH_PASSWORD:-}"
+  local file="${OLLAMA_GATEWAY_HTASSWD_FILE}"
+
+  if [[ -f "${OLLAMA_DIR}/.env.ollama" ]]; then
+    set -a && source "${OLLAMA_DIR}/.env.ollama" && set +a
+    user="${OLLAMA_GATEWAY_BASIC_AUTH_USER:-ollama}"
+    pass="${OLLAMA_GATEWAY_BASIC_AUTH_PASSWORD:-}"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "OLLAMA_GATEWAY_BASIC_AUTH_PASSWORD requis (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth Ollama : ${user} → ${file}"
   fi
 }
 
@@ -265,7 +299,7 @@ sync_component() {
     mkdir -p "${dst}"
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
       --exclude '.env.memcached' --exclude '.env.minio' --exclude '.env.emqx' \
-      --exclude '.env.mongodb' \
+      --exclude '.env.mongodb' --exclude '.env.ollama' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
       --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
       --exclude 'data-cache-replica-1/' --exclude 'data-cache-replica-2/' \
@@ -351,6 +385,31 @@ ensure_minio_on_wise_eat_infra() {
   fi
   log "Connexion wise-eat-minio → réseau wise-eat-infra"
   docker network connect wise-eat-infra wise-eat-minio
+}
+
+ensure_ollama_on_wise_eat_infra() {
+  ensure_wise_eat_infra_network
+  if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-ollama'; then
+    return 1
+  fi
+  if docker inspect wise-eat-ollama --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+    | grep -q 'wise-eat-infra'; then
+    return 0
+  fi
+  log "Connexion wise-eat-ollama → réseau wise-eat-infra"
+  docker network connect wise-eat-infra wise-eat-ollama
+}
+
+wait_for_ollama_api() {
+  local max="${1:-60}"
+  local port="${OLLAMA_BACKEND_PORT:-11434}"
+  for _ in $(seq 1 "$max"); do
+    if curl -sf "http://127.0.0.1:${port}/api/tags" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
 }
 
 ensure_mongodb_on_wise_eat_infra() {

@@ -1,0 +1,29 @@
+# Wise Eat — Ollama (embeddings + copy LLM)
+# Install : sudo ./install.sh ollama
+# API locale : http://127.0.0.1:11434 · Public : https://ai.wise-eat.com (nginx + basic auth)
+
+services:
+  ollama:
+    image: ollama/ollama:0.6.5
+    container_name: wise-eat-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-1}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ${OLLAMA_DATA_DIR:-/var/lib/wise-eat/ollama}:/root/.ollama
+    mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
+    networks:
+      wise-eat-infra:
+        aliases:
+          - wise-eat-ollama
+          - ollama
+
+networks:
+  wise-eat-infra:
+    name: wise-eat-infra
+    external: true

@@ -1,0 +1,47 @@
+# HTTPS — Ollama gateway (ai.wise-eat.com) + basic auth nginx
+# Dual-stack IPv4 / IPv6 — Déployé par : scripts/install-ollama-gateway.sh + Certbot
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${OLLAMA_GATEWAY_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${OLLAMA_GATEWAY_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${OLLAMA_GATEWAY_DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        auth_basic "Ollama API";
+        auth_basic_user_file ${OLLAMA_GATEWAY_HTASSWD_FILE};
+
+        proxy_pass http://${OLLAMA_BACKEND_HOST}:${OLLAMA_BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 600;
+        proxy_send_timeout 600;
+        client_max_body_size 32m;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${OLLAMA_GATEWAY_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

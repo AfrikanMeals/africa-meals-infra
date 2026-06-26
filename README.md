@@ -20,6 +20,7 @@ memcached/
 minio/
 emqx/
 monitoring/
+ollama/
 ```
 
 ## Installation complète (VPS)
@@ -72,6 +73,7 @@ sudo ./install.sh verify-tls
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
 | `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
 | `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
+| `ai.wise-eat.com` | 80 / 443 | Ollama API (basic auth nginx, dual-stack) | proxy OK (A + AAAA) |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -86,6 +88,7 @@ Si votre FAI ou le VPS bloque l’accès **IPv4** depuis votre poste, ajoutez de
 | `cache.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | **DNS only** (:6381–6386, :11212) |
 | `broker.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | **DNS only** (:8883, :8884) |
 | `storage.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | Proxy OK (HTTPS) ou DNS only si uploads >100 Mo |
+| `ai.wise-eat.com` | conserver | `2a02:4780:75:447e::1` | Proxy OK (HTTPS Ollama gateway) |
 | `dr1-storage` / `dr2-storage` | conserver | `2a02:4780:75:447e::1` | DNS only |
 
 **Côté apps (API, WS, mobile)** : aucun changement — garder les **hostnames** dans `.env` (`cache.wise-eat.com`, `broker.wise-eat.com`). Le client résout AAAA automatiquement.
@@ -140,6 +143,7 @@ Détails techniques :
 | `MONGO_TLS_DOMAIN` | `db.wise-eat.com` | MongoDB TLS public (Stunnel :27018) |
 | `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
 | `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
+| `OLLAMA_GATEWAY_DOMAIN` | `ai.wise-eat.com` | Ollama API public (nginx + basic auth) |
 | `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
@@ -158,7 +162,7 @@ Détails techniques :
 | `stunnel` | Redis TLS :6381–6386 (primary + réplicas cluster-b, cert LE requis) |
 | `tls` | certbot + stunnel |
 | `verify-tls` | Contrôle certs LE + Stunnel |
-| `redis` / `memcached` / `minio` / `emqx` / `emqx-broker` / `emqx-worker` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
+| `redis` / `memcached` / `minio` / `emqx` / `ollama` / `ollama-gateway` / `emqx-broker` / `emqx-worker` / `minio-storage` / `minio-console` / `minio-backup` / `monitoring` / `permissions` | voir runbooks |
 
 ## Memcached
 
@@ -186,6 +190,47 @@ Après `./install.sh stunnel` (cert LE sur `cache.wise-eat.com` requis).
 
 Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:9150`, dashboard Grafana **Memcached**.
 
+## Ollama (embeddings + copy LLM)
+
+Stack AI local pour recherche sémantique (`nomic-embed-text`) et génération de copy push/newsletter (`llama3.2:3b`).
+
+**Prérequis DNS** : `ai.wise-eat.com` → A + AAAA vers le VPS (proxy Cloudflare OK pour :443).
+
+```bash
+cd /opt/wise-eat
+git pull
+sudo ./install.sh ollama
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh ollama-gateway
+# ou renouveler tous les certs :
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot
+```
+
+| Port | Service |
+|------|---------|
+| `11434` | Ollama API (localhost uniquement) |
+| `443` | Gateway public `https://ai.wise-eat.com` (nginx + basic auth, IPv4/IPv6) |
+
+**API locale** (PM2 africa-meals-api sur le VPS — sans auth) :
+
+```env
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
+**API distante** (Mac / Cloud Functions — basic auth nginx) :
+
+```env
+OLLAMA_BASE_URL=https://ai.wise-eat.com
+# + Authorization: Basic … (voir ollama/.env.ollama OLLAMA_GATEWAY_BASIC_AUTH_*)
+```
+
+Modèles (re-téléchargement) :
+
+```bash
+sudo ./scripts/pull-ollama-models.sh
+```
+
+Grafana : **Wise Eat — Ollama** (dossier `Ollama/`) — CPU/RAM/réseau du conteneur `wise-eat-ollama`.
+
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
 - **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
@@ -195,6 +240,8 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 **EMQX** : dossier Grafana `EMQX/` avec **Wise Eat — EMQX** (base Grafana.com #17446) — scrape `job=emqx` sur `/api/v5/prometheus/stats` (primary + réplicas).
 
 **MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (#12079, Percona legacy) et **Wise Eat — MongoDB Overview** (#18847, métriques ss/sys) — scrape `job=mongodb` via Percona exporter.
+
+**Ollama** : dossier Grafana `Ollama/` avec **Wise Eat — Ollama** — métriques conteneur `wise-eat-ollama` via cAdvisor (`job=cadvisor`) + RAM hôte (`job=node`).
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 

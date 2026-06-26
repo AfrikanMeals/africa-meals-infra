@@ -18,6 +18,7 @@ INSTALL_EMQX_BROKER_CERT="${INSTALL_EMQX_BROKER_CERT:-1}"
 INSTALL_EMQX_WORKER_CERT="${INSTALL_EMQX_WORKER_CERT:-1}"
 INSTALL_MONGODB_TLS_CERT="${INSTALL_MONGODB_TLS_CERT:-1}"
 INSTALL_MONGODB_ADMIN_CERT="${INSTALL_MONGODB_ADMIN_CERT:-1}"
+INSTALL_OLLAMA_CERT="${INSTALL_OLLAMA_CERT:-1}"
 
 [[ -n "${STUNNEL_TLS_EMAIL}" ]] || \
   die "STUNNEL_TLS_EMAIL requis — ex. STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot"
@@ -63,6 +64,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ "${INSTALL_MONGODB_ADMIN_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-mongodb-admin.sh" 2>/dev/null || true
+  fi
+  if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
+    bash "${SCRIPT_DIR}/install-ollama-gateway.sh" 2>/dev/null || true
   fi
 fi
 
@@ -129,6 +133,11 @@ if [[ "${INSTALL_MONGODB_ADMIN_CERT}" == "1" ]]; then
   issue_le_cert "${MONGO_ADMIN_DOMAIN}"
 fi
 
+if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
+  log "=== Certificat Ollama gateway (${OLLAMA_GATEWAY_DOMAIN}) ==="
+  issue_le_cert "${OLLAMA_GATEWAY_DOMAIN}"
+fi
+
 install_certbot_renewal_hook
 
 if systemctl is-active nginx >/dev/null 2>&1; then
@@ -167,6 +176,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${MONGO_ADMIN_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-mongodb-admin-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${OLLAMA_GATEWAY_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-ollama-gateway-ssl.sh" 2>/dev/null || true
   fi
 elif systemctl is-active apache2 >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/enable-apache-ssl.sh"

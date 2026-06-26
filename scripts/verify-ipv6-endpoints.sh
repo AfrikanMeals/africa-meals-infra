@@ -83,7 +83,7 @@ check_tls_sni() {
 log "=== Vérification IPv6 / dual-stack Wise Eat ==="
 log "IPv6 VPS documenté : ${VPS_IPV6}"
 
-for host in "${REDIS_TLS_DOMAIN}" "${EMQX_BROKER_DOMAIN}" "${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}"; do
+for host in "${REDIS_TLS_DOMAIN}" "${EMQX_BROKER_DOMAIN}" "${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}" "${OLLAMA_GATEWAY_DOMAIN:-ai.wise-eat.com}"; do
   check_aaaa "${host}"
 done
 
@@ -91,9 +91,11 @@ check_tcp6 "${REDIS_TLS_DOMAIN}" 6381 "Redis Stunnel"
 check_tcp6 "${REDIS_TLS_DOMAIN}" 6382 "BullMQ Stunnel"
 check_tcp6 "${EMQX_BROKER_DOMAIN}" "${EMQX_MQTTS_PORT}" "MQTTS"
 check_tcp6 "${EMQX_BROKER_DOMAIN}" "${EMQX_WSS_PORT}" "WSS"
+check_tcp6 "${OLLAMA_GATEWAY_DOMAIN:-ai.wise-eat.com}" 443 "Ollama HTTPS"
 
 check_tls_sni "${REDIS_TLS_DOMAIN}" 6381 "Redis"
 check_tls_sni "${EMQX_BROKER_DOMAIN}" "${EMQX_MQTTS_PORT}" "MQTTS"
+check_tls_sni "${OLLAMA_GATEWAY_DOMAIN:-ai.wise-eat.com}" 443 "Ollama"
 
 if [[ "${fail}" -eq 0 ]]; then
   log "Tous les tests OK - les apps gardent les hostnames dans .env"
