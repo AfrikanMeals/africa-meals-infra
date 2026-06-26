@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Ollama (wise-eat-ollama) — CPU/RAM réseau via cAdvisor + contexte mémoire hôte.",
+  "description": "Ollama (wise-eat-ollama) — CPU/RAM/réseau via cAdvisor (filtre image ollama/ollama) + RAM hôte.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -50,7 +50,7 @@
       },
       "targets": [
         {
-          "expr": "count(container_last_seen{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"})",
+          "expr": "count(count by (name) (container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"})) or on() vector(0)",
           "legendFormat": "Container",
           "refId": "A"
         }
@@ -89,7 +89,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{instance=\"wise-eat:9100\"} / node_memory_MemTotal_bytes{instance=\"wise-eat:9100\"}))",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"}))",
           "legendFormat": "RAM hôte",
           "refId": "A"
         }
@@ -126,7 +126,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_rss{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}",
+          "expr": "container_memory_rss{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
           "legendFormat": "RSS Ollama",
           "refId": "A"
         }
@@ -163,7 +163,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\", cpu=\"total\"}[5m])) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"}[5m])) * 100",
           "legendFormat": "CPU Ollama",
           "refId": "A"
         }
@@ -209,17 +209,17 @@
       },
       "targets": [
         {
-          "expr": "container_memory_rss{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}",
+          "expr": "container_memory_rss{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
           "legendFormat": "RSS",
           "refId": "A"
         },
         {
-          "expr": "container_memory_usage_bytes{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}",
+          "expr": "container_memory_usage_bytes{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
           "legendFormat": "Usage",
           "refId": "B"
         },
         {
-          "expr": "container_memory_cache{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}",
+          "expr": "container_memory_cache{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
           "legendFormat": "Cache",
           "refId": "C"
         }
@@ -265,7 +265,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\", cpu=\"total\"}[5m])) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"}[5m])) * 100",
           "legendFormat": "CPU %",
           "refId": "A"
         }
@@ -311,12 +311,12 @@
       },
       "targets": [
         {
-          "expr": "rate(container_network_receive_bytes_total{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}[5m])",
+          "expr": "rate(container_network_receive_bytes_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}[5m])",
           "legendFormat": "RX",
           "refId": "A"
         },
         {
-          "expr": "rate(container_network_transmit_bytes_total{instance=\"wise-eat:8080\", name=~\".*/wise-eat-ollama\"}[5m])",
+          "expr": "rate(container_network_transmit_bytes_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}[5m])",
           "legendFormat": "TX",
           "refId": "B"
         }
@@ -346,5 +346,5 @@
   "timezone": "browser",
   "title": "Wise Eat — Ollama",
   "uid": "wise-eat-ollama",
-  "version": 1
+  "version": 2
 }
