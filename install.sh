@@ -41,6 +41,7 @@ Composants:
   mongodb-admin nginx reverse-proxy → Mongo Express (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
   repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
+  repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
@@ -130,6 +131,9 @@ run_component() {
       ;;
     repair-mongodb-prometheus)
       bash "${SCRIPTS}/repair-mongodb-prometheus.sh"
+      ;;
+    repair-mongodb-replicaset)
+      bash "${SCRIPTS}/repair-mongodb-replicaset.sh"
       ;;
     emqx-broker)
       bash "${SCRIPTS}/install-emqx-broker.sh"

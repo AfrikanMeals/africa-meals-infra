@@ -7,6 +7,10 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 [[ -f "${MONGODB_ENV}" ]] || die "Fichier absent : ${MONGODB_ENV} — lancer sudo ./install.sh mongodb"
 
+if grep -qE '^MONGO_BACKUP_CRON=30 3' "${MONGODB_ENV}" 2>/dev/null; then
+  sed -i 's|^MONGO_BACKUP_CRON=30 3 \* \* \*|MONGO_BACKUP_CRON="30 3 * * *"|' "${MONGODB_ENV}"
+fi
+
 set -a && source "${MONGODB_ENV}" && set +a
 
 : "${MONGO_ROOT_USER:?MONGO_ROOT_USER manquant}"

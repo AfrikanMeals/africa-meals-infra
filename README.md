@@ -488,5 +488,11 @@ Si Grafana affiche **No data** :
 sudo ./install.sh repair-mongodb-prometheus
 ```
 
+Si l'install **bloque sur rs.initiate()** (majorité 2/3 requise) :
+```bash
+# Ctrl+C puis :
+sudo ./install.sh repair-mongodb-replicaset
+```
+
 DNS A + AAAA `db.wise-eat.com` → VPS. Port **27018** : **DNS only** sur Cloudflare (comme Redis Stunnel).
 DNS A `data.wise-eat.com` → VPS (proxy Cloudflare OK pour HTTPS).
