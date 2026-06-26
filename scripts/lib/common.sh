@@ -965,14 +965,17 @@ stunnel_restart_or_die() {
   if ! systemctl restart stunnel4; then
     warn "stunnel4 a échoué — journal (40 dernières lignes) :"
     journalctl -u stunnel4 -n 40 --no-pager 2>/dev/null || true
+    stunnel_diagnose
     die "Corrigez /etc/stunnel/conf.d puis : sudo systemctl restart stunnel4"
   fi
   log "stunnel4 redémarré"
 }
 
 # Répertoire pid + foreground=no (obligatoire — sinon « inetd mode » / échec systemd).
+# Réécrit stunnel.conf (canonical) : l’init Debian boucle sur FILES="/etc/stunnel/*.conf"
+# et chaque fichier sans pid= global provoque l’erreur « inetd mode ».
 ensure_stunnel_runtime() {
-  mkdir -p /var/run/stunnel4
+  mkdir -p /var/run/stunnel4 /var/log/stunnel4
   chmod 755 /var/run/stunnel4
   rm -f /var/run/stunnel4/stunnel.pid
 
@@ -982,22 +985,49 @@ ensure_stunnel_runtime() {
     else
       echo 'ENABLED=1' >> /etc/default/stunnel4
     fi
+    if grep -q '^FILES=' /etc/default/stunnel4; then
+      sed -i 's|^FILES=.*|FILES="/etc/stunnel/stunnel.conf"|' /etc/default/stunnel4
+    else
+      echo 'FILES="/etc/stunnel/stunnel.conf"' >> /etc/default/stunnel4
+    fi
   fi
 
   local main=/etc/stunnel/stunnel.conf
-  [[ -f "${main}" ]] || touch "${main}"
+  mkdir -p /etc/stunnel/conf.d
+  if [[ -f "${main}" ]] && ! grep -q 'Wise Eat — global stunnel' "${main}" 2>/dev/null; then
+    cp -a "${main}" "${main}.bak.$(date +%s)"
+    log "Sauvegarde ${main} → ${main}.bak.*"
+  fi
 
-  if ! grep -q '^pid =' "${main}"; then
-    cat >> "${main}" <<'EOF'
-
-; Wise Eat — global (requis par stunnel4 / systemd)
+  cat > "${main}" <<'EOF'
+; Wise Eat — global stunnel (un seul daemon, services dans conf.d)
 foreground = no
 pid = /var/run/stunnel4/stunnel.pid
+output = /var/log/stunnel4/stunnel.log
 setuid = stunnel4
 setgid = stunnel4
 include = /etc/stunnel/conf.d
 EOF
-  elif ! grep -q '^foreground = no' "${main}"; then
-    sed -i '/^pid = /i foreground = no' "${main}"
-  fi
+
+  local stray
+  shopt -s nullglob
+  for stray in /etc/stunnel/*.conf; do
+    [[ "${stray}" == "${main}" ]] && continue
+    warn "Fichier stunnel orphelin (init.d le lancerait sans pid=) : ${stray} — déplacé vers ${stray}.disabled"
+    mv "${stray}" "${stray}.disabled"
+  done
+  shopt -u nullglob
+}
+
+stunnel_diagnose() {
+  local main=/etc/stunnel/stunnel.conf
+  log "=== Diagnostic stunnel ==="
+  echo "--- /etc/default/stunnel4 ---"
+  cat /etc/default/stunnel4 2>/dev/null || true
+  echo "--- ${main} ---"
+  cat "${main}" 2>/dev/null || true
+  echo "--- /etc/stunnel/conf.d/ ---"
+  ls -la /etc/stunnel/conf.d/ 2>/dev/null || true
+  echo "--- test foreground (3s) ---"
+  timeout 3 stunnel4 "${main}" -fd 2>&1 || true
 }

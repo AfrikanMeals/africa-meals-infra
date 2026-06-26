@@ -43,17 +43,6 @@ fi
 ensure_stunnel_runtime
 stunnel_sync_conf_d
 
-if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then
-  cat >> /etc/stunnel/stunnel.conf <<'EOF'
-
-; Wise Eat Mode A
-setuid = stunnel4
-setgid = stunnel4
-pid = /var/run/stunnel4/stunnel.pid
-include = /etc/stunnel/conf.d
-EOF
-fi
-
 systemctl enable stunnel4
 stunnel_restart_or_die
 
