@@ -86,7 +86,7 @@ log "État actuel : initiated=${initiated} primary=${primary}"
 
 if [[ "${initiated}" != *"yes"* ]] || [[ "${primary}" != *"yes"* ]]; then
   log "rs.initiate(${MONGO_REPLICA_SET}) — majorité 2/3 requise…"
-  out="$(timeout 120 mongosh_any --eval "
+  out="$(mongosh_any --eval "
     try {
       const st = rs.status();
       if (st.members.some(m => m.stateStr === 'PRIMARY')) {

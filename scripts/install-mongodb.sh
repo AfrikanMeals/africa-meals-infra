@@ -120,7 +120,7 @@ mongosh_admin() {
 
 init_replica_set() {
   local out
-  out="$(timeout 120 mongosh_admin --eval "
+  out="$(mongosh_admin --eval "
     try {
       const st = rs.status();
       if (st.ok === 1) { print('already_initiated'); quit(0); }
