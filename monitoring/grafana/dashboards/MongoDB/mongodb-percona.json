@@ -1707,7 +1707,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(rate(node_disk_io_time_seconds_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000 or irate(node_disk_io_time_seconds_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000)",
+          "expr": "(rate(node_disk_io_time_seconds_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000 or irate(node_disk_io_time_seconds_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1834,7 +1834,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(node_disk_reads_completed_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
+          "expr": "rate(node_disk_reads_completed_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{device}} - {{instance}}",
@@ -1938,7 +1938,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(node_disk_writes_completed_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
+          "expr": "rate(node_disk_writes_completed_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{device}} - {{instance}}",

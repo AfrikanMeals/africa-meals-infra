@@ -88,10 +88,11 @@ def patch_expr(expr: str) -> str:
                 count=1,
             )
 
-    if "node_disk_" in expr:
+    if "node_disk_" in expr and f'instance="{NODE_INSTANCE}"' not in expr:
+        # Insérer les labels juste avant [ ou { (évite de couper « _total » en « _tota{l} »).
         expr = re.sub(
-            r"(node_disk_[a-z_]+)(?!\{)",
-            rf'\1{{instance="{NODE_INSTANCE}",job="node"}}',
+            r"(node_disk_[a-z0-9_]+)([\[\{])",
+            rf'\1{{instance="{NODE_INSTANCE}",job="node"}}\2',
             expr,
         )
 
