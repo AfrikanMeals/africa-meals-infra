@@ -183,8 +183,15 @@ services:
     command:
       - '--mongodb.uri=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true'
       - '--mongodb.direct-connect'
-      - '--collect-all'
+      - '--mongodb.global-conn-pool'
+      - '--mongodb.connect-timeout-ms=10000'
       - '--compatible-mode'
+      # Collecteurs ciblés (--collect-all + discovering-mode dépasse le scrape_timeout → mongodb_up seul).
+      - '--collector.diagnosticdata'
+      - '--collector.replicasetstatus'
+      - '--collector.dbstats'
+      - '--collector.topmetrics'
+      - '--log.level=warn'
     ports:
       - "127.0.0.1:9216:9216"
 

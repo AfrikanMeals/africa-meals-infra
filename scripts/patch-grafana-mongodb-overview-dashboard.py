@@ -198,6 +198,8 @@ def main() -> None:
     )
     # Dashboard source embarque une plage figée en 2023 → tout affiche « No data ».
     dash["time"] = {"from": "now-24h", "to": "now"}
+    dash["refresh"] = "30s"
+    dash["liveNow"] = False
     dash.pop("timepicker", None)
 
     repl = json.dumps(dash)

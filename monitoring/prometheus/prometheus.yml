@@ -181,7 +181,7 @@ scrape_configs:
   # MongoDB — Percona exporter (connexion directe au primary)
   - job_name: mongodb
     scrape_interval: 30s
-    scrape_timeout: 25s
+    scrape_timeout: 60s
     static_configs:
       - targets: ['mongodb-exporter:9216']
         labels:

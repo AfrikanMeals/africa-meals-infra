@@ -64,7 +64,7 @@ if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
   COMPOSE_ARGS+=(--profile cluster-b)
 fi
 
-log "Recréation mongodb-exporter + Prometheus"
+log "Recréation mongodb-exporter + Prometheus + Grafana"
 docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate mongodb-exporter prometheus
 
 if ! wait_for_prometheus_ready 60; then
@@ -97,17 +97,17 @@ for s in r:
 " || warn "Scrape MongoDB DOWN — vérifier http://127.0.0.1:9090/targets"
 fi
 
-log "Attente métriques exporter (jusqu'à 90s)…"
+log "Attente métriques exporter (jusqu'à 120s)…"
 metrics_sample=""
-for _ in $(seq 1 18); do
-  metrics_sample="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+for _ in $(seq 1 24); do
+  metrics_sample="$(curl -sf --max-time 65 http://127.0.0.1:9216/metrics 2>/dev/null || true)"
   if [[ -n "${metrics_sample}" ]] \
-    && printf '%s\n' "${metrics_sample}" | grep -qE '^mongodb_(connections|ss_connections|ss_uptime)\{'; then
+    && printf '%s\n' "${metrics_sample}" | grep -qE '^mongodb_(ss_uptime|ss_connections|connections)\{'; then
     break
   fi
   sleep 5
 done
-for needle in mongodb_up mongodb_connections mongodb_op_counters_total mongodb_ss_opcounters mongodb_mongod_replset_member_state; do
+for needle in mongodb_up mongodb_ss_uptime mongodb_connections mongodb_ss_connections mongodb_ss_opcounters mongodb_mongod_replset_member_state; do
   if [[ -n "${metrics_sample}" ]] && printf '%s\n' "${metrics_sample}" | grep -qE "^${needle}(\{| )"; then
     log "OK  métrique exporter : ${needle}"
   else
@@ -115,7 +115,13 @@ for needle in mongodb_up mongodb_connections mongodb_op_counters_total mongodb_s
   fi
 done
 
+if [[ -n "${metrics_sample}" ]]; then
+  metric_count="$(printf '%s\n' "${metrics_sample}" | grep -cE '^mongodb_' || true)"
+  log "Total métriques mongodb_* exportées : ${metric_count}"
+fi
+
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
-docker compose "${COMPOSE_ARGS[@]}" up -d grafana 2>/dev/null || true
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate grafana 2>/dev/null || true
 
 log "Terminé — Grafana MongoDB : up{job=\"mongodb\"} doit être 1"
+log "Grafana Overview : plage horaire → « Last 24 hours » si l’écran affiche encore 2023 (cache navigateur)"
