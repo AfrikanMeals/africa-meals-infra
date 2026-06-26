@@ -67,7 +67,7 @@ API publique (IPv4 + IPv6 via nginx, basic auth) :
 Modèles :
   ollama list  (dans le conteneur wise-eat-ollama)
 
-Grafana : dashboard « Wise Eat — Ollama » (cAdvisor + mémoire hôte)
+Grafana : dashboard « Wise Eat — Ollama » + « Wise Eat — Ollama API Health »
 Certificat TLS : sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh ollama-gateway
 
 EOF

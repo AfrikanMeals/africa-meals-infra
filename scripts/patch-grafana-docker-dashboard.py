@@ -15,11 +15,12 @@ CADVISOR_INSTANCE = "wise-eat:8080"
 INSTANCE_MIXED = "wise-eat:(9100|8080)"
 INSTANCE_MIXED_RE = rf'instance=~"{re.escape(INSTANCE_MIXED)}"'
 
-# Conteneurs Docker réels (évite cgroup racine « / ») — ne pas exiger compose_project (souvent absent)
-CONTAINER_FILTER = 'image!="", name!="/"'
+# Conteneurs Docker réels (évite cgroup racine « / ») — ne pas exiger image (absent avec --disable_metrics=disk)
+CONTAINER_FILTER_CPU = 'job="cadvisor", id!="/", name!="/", cpu="total"'
+CONTAINER_FILTER = 'job="cadvisor", id!="/", name!="/"'
 CONTAINER_COUNT_EXPR = (
     f'count(count by (name) (container_cpu_usage_seconds_total{{instance="{CADVISOR_INSTANCE}", '
-    f'{CONTAINER_FILTER}, cpu="total"}}))'
+    f'{CONTAINER_FILTER_CPU}}}))'
 )
 DISK_USED_EXPR = (
     f'1 - (node_filesystem_avail_bytes{{instance="{NODE_INSTANCE}", mountpoint="/", '
@@ -105,10 +106,16 @@ def patch_expr(expr: str) -> str:
         CONTAINER_FILTER,
     )
 
-    # Remplace anciens filtres trop stricts
+    # Remplace anciens filtres trop stricts (image!="" exclut les métriques sans label image)
     expr = expr.replace(
         'container_label_com_docker_compose_project!="",image!=""',
         CONTAINER_FILTER,
+    )
+    expr = expr.replace('image!="", name!="/",', f'{CONTAINER_FILTER},')
+    expr = expr.replace('image!="", name!="/"', CONTAINER_FILTER)
+    expr = expr.replace(
+        f'instance="{CADVISOR_INSTANCE}", image!="", name!="/", cpu="total"',
+        f'instance="{CADVISOR_INSTANCE}", {CONTAINER_FILTER_CPU}',
     )
     expr = expr.replace('name=~".*wise-eat.*",', f"{CONTAINER_FILTER},")
     expr = expr.replace('{name=~".*wise-eat.*",', f'{{{CONTAINER_FILTER},')
@@ -222,10 +229,7 @@ def health_panel() -> dict:
             },
             {
                 "datasource": DS,
-                "expr": (
-                    f'count(count by (name) (container_last_seen{{instance="{CADVISOR_INSTANCE}", '
-                    f'{CONTAINER_FILTER}}}))'
-                ),
+                "expr": CONTAINER_COUNT_EXPR,
                 "instant": True,
                 "format": "time_series",
                 "legendFormat": "conteneurs wise-eat",
@@ -300,12 +304,12 @@ def main() -> None:
                 "datasource": DS,
                 "query": (
                     f'label_values(container_label_com_docker_compose_project'
-                    f'{{instance="{CADVISOR_INSTANCE}"}}, '
+                    f'{{instance="{CADVISOR_INSTANCE}", {CONTAINER_FILTER}}}, '
                     f"container_label_com_docker_compose_project)"
                 ),
                 "definition": (
                     f'label_values(container_label_com_docker_compose_project'
-                    f'{{instance="{CADVISOR_INSTANCE}"}}, '
+                    f'{{instance="{CADVISOR_INSTANCE}", {CONTAINER_FILTER}}}, '
                     f"container_label_com_docker_compose_project)"
                 ),
                 "refresh": 1,

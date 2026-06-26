@@ -54,6 +54,29 @@ else
   fail=1
 fi
 
+log "=== Ollama API (blackbox) ==="
+if curl -sf "http://127.0.0.1:9115/metrics" 2>/dev/null | grep -q '^probe_success'; then
+  log "OK  blackbox_exporter (:9115) — métriques probe exposées"
+else
+  warn "FAIL blackbox_exporter (:9115) — conteneur wise-eat-blackbox-exporter arrêté ?"
+  fail=1
+fi
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=probe_success{job="ollama-api"}' | grep -q '"value":\["' ; then
+  up=$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=probe_success{job="ollama-api"}' \
+    | python3 -c "import json,sys; r=json.load(sys.stdin).get('data',{}).get('result',[]); print(r[0]['value'][1] if r else '?')")
+  if [[ "${up}" == "1" ]]; then
+    log "OK  sonde Ollama /api/tags probe_success=1"
+  else
+    warn "FAIL sonde Ollama probe_success=${up} — wise-eat-ollama injoignable depuis wise-eat-infra ?"
+    fail=1
+  fi
+else
+  warn "FAIL sonde Ollama — job ollama-api absent dans Prometheus (sudo ./install.sh monitoring)"
+  fail=1
+fi
+
 log "=== Redis exporters (host) ==="
 for pair in "9121:cache" "9122:bullmq"; do
   port="${pair%%:*}"
@@ -141,7 +164,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'ollama-api', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else
@@ -169,7 +192,7 @@ else
 fi
 
 log "=== requête container_cpu (dashboard Docker #4271) ==="
-CADVISOR_Q='container_cpu_usage_seconds_total{instance="wise-eat:8080",image!="",name!="/",cpu="total"}'
+CADVISOR_Q='container_cpu_usage_seconds_total{job="cadvisor", instance="wise-eat:8080", id!="/", cpu="total"}'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CADVISOR_Q}" \
     | python3 -c "
@@ -207,7 +230,7 @@ else
 fi
 
 log "=== requête count conteneurs (dashboard Docker #4271 — panel Containers) ==="
-CONTAINER_COUNT_Q='count(count by (name) (container_cpu_usage_seconds_total{instance="wise-eat:8080",image!="",name!="/",cpu="total"}))'
+CONTAINER_COUNT_Q='count(count by (name) (container_cpu_usage_seconds_total{job="cadvisor", instance="wise-eat:8080", id!="/", cpu="total"}))'
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" | grep -q '"status":"success"'; then
   curl -sfG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode "query=${CONTAINER_COUNT_Q}" \
     | python3 -c "

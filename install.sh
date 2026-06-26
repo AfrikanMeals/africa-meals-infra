@@ -73,6 +73,7 @@ Composants:
   repair-ipv6-ufw  UFW IPv6 + ports Stunnel/MQTT + hairpin broker (sur VPS)
   monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
+  repair-cadvisor    Recréer cAdvisor (métriques conteneurs Docker / Grafana #4271)
   reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
@@ -235,6 +236,9 @@ run_component() {
       ;;
     repair-monitoring)
       bash "${SCRIPTS}/repair-monitoring.sh"
+      ;;
+    repair-cadvisor)
+      bash "${SCRIPTS}/repair-cadvisor.sh"
       ;;
     reset-grafana-dashboards-git)
       bash "${SCRIPTS}/reset-grafana-dashboards-git.sh"

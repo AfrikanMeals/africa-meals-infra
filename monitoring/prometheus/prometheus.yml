@@ -191,3 +191,25 @@ scrape_configs:
     relabel_configs:
       - target_label: instance
         replacement: wise-eat-mongo-1:27017
+
+  # Ollama — sonde HTTP /api/tags (indépendant de cAdvisor)
+  - job_name: ollama-api
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+          - http://wise-eat-ollama:11434/api/tags
+        labels:
+          namespace: wise-eat
+          service: ollama
+          ollama_endpoint: tags
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

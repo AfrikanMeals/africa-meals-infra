@@ -103,4 +103,4 @@ log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up 
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
 log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
 log "Prometheus: https://logs.wise-eat.com (basic auth — voir .env.monitoring)"
-log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB · Ollama (#12079 + #18847)"
+log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB · Ollama (cAdvisor + API Health)"

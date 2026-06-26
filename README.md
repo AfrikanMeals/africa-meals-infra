@@ -229,7 +229,7 @@ Modèles (re-téléchargement) :
 sudo ./scripts/pull-ollama-models.sh
 ```
 
-Grafana : **Wise Eat — Ollama** (dossier `Ollama/`) — CPU/RAM/réseau du conteneur `wise-eat-ollama`.
+Grafana : **Wise Eat — Ollama** (cAdvisor CPU/RAM) · **Wise Eat — Ollama API Health** (sonde HTTP `/api/tags`, indépendant de cAdvisor).
 
 Si Grafana Ollama affiche **No data** alors que `curl http://127.0.0.1:11434/api/tags` répond :
 
@@ -251,13 +251,21 @@ Diagnostic : `docker logs wise-eat-cadvisor --tail 30` · `docker info | grep 'S
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
 - **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
 
+Si le panel **Containers** affiche **N/A** et les graphiques « per Container » sont vides (node_exporter OK, cAdvisor UP) :
+
+```bash
+sudo ./install.sh repair-cadvisor
+```
+
+Cause : Docker 29 + `overlayfs` — cAdvisor ne remonte que `id="/"` sans `--disable_metrics=disk`. Les requêtes Grafana n'exigent plus `image!=""` (label souvent absent).
+
 **MinIO** : dossier Grafana `MinIO/` avec **Wise Eat — MinIO Storage** (équivalent Prometheus du #20826) — scrape `minio-cluster` + `minio-node`.
 
 **EMQX** : dossier Grafana `EMQX/` avec **Wise Eat — EMQX** (base Grafana.com #17446) — scrape `job=emqx` sur `/api/v5/prometheus/stats` (primary + réplicas).
 
 **MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (#12079, Percona legacy) et **Wise Eat — MongoDB Overview** (#18847, métriques ss/sys) — scrape `job=mongodb` via Percona exporter.
 
-**Ollama** : dossier Grafana `Ollama/` avec **Wise Eat — Ollama** — métriques conteneur `wise-eat-ollama` via cAdvisor (`job=cadvisor`) + RAM hôte (`job=node`).
+**Ollama** : dossier Grafana `Ollama/` — **Wise Eat — Ollama** (cAdvisor) + **Wise Eat — Ollama API Health** (blackbox `job=ollama-api`).
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
