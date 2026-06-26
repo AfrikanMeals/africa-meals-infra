@@ -68,6 +68,7 @@ Composants:
   repair-ipv6-ufw  UFW IPv6 + ports Stunnel/MQTT + hairpin broker (sur VPS)
   monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
+  reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
@@ -214,6 +215,9 @@ run_component() {
       ;;
     repair-monitoring)
       bash "${SCRIPTS}/repair-monitoring.sh"
+      ;;
+    reset-grafana-dashboards-git)
+      bash "${SCRIPTS}/reset-grafana-dashboards-git.sh"
       ;;
     grafana-console)
       bash "${SCRIPTS}/install-grafana-console.sh"
