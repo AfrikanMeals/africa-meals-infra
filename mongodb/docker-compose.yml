@@ -46,6 +46,11 @@ services:
     <<: *mongo-common
     container_name: wise-eat-mongo-1
     hostname: wise-eat-mongo-1
+    networks:
+      wise-eat-infra:
+        aliases:
+          - wise-eat-mongo-1
+          - mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?MONGO_ROOT_USER requis}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD requis}
@@ -91,13 +96,8 @@ services:
       mongo-1:
         condition: service_healthy
     environment:
-      ME_CONFIG_MONGODB_SERVER: wise-eat-mongo-1
-      ME_CONFIG_MONGODB_PORT: "27017"
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USER}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD}
-      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
-      ME_CONFIG_MONGODB_REPLICA_SET_NAME: ${MONGO_REPLICA_SET:-rs0}
+      # URL explicite — l'entrypoint attend « mongo » par défaut si SERVER absent
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&replicaSet=${MONGO_REPLICA_SET:-rs0}
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /
     ports:

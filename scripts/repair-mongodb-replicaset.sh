@@ -101,6 +101,7 @@ mongosh_admin --eval "
   }
 "
 
-docker compose --env-file .env.mongodb up -d mongo-express 2>/dev/null || true
+docker compose --env-file .env.mongodb up -d --force-recreate mongo-express 2>/dev/null || \
+  docker compose --env-file .env.mongodb up -d mongo-express
 log "Terminé — rs.status() :"
 mongosh_admin --eval "rs.status().members.forEach(m => print(m.name + ' ' + m.stateStr))"
