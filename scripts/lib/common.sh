@@ -412,6 +412,32 @@ wait_for_ollama_api() {
   return 1
 }
 
+refresh_cadvisor_if_present() {
+  if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-cadvisor'; then
+    log "Redémarrage cAdvisor (prise en compte du conteneur Ollama)…"
+    docker restart wise-eat-cadvisor >/dev/null
+    sleep 6
+  fi
+}
+
+verify_cadvisor_ollama_metrics() {
+  local max="${1:-30}"
+  local i
+  for i in $(seq 1 "$max"); do
+    if curl -sf http://127.0.0.1:8088/metrics 2>/dev/null | grep -Eq \
+      'container_label_com_wise_eat_service="ollama"|wise-eat-ollama|ollama/ollama'; then
+      log "cAdvisor remonte le conteneur Ollama (tentative ${i}/${max})"
+      return 0
+    fi
+    if [[ "$i" -lt 6 ]]; then
+      refresh_cadvisor_if_present
+    fi
+    sleep 2
+  done
+  warn "cAdvisor ne remonte pas encore Ollama — recréer le conteneur puis : sudo ./install.sh repair-ollama-monitoring"
+  return 1
+}
+
 ensure_mongodb_on_wise_eat_infra() {
   ensure_wise_eat_infra_network
   local name

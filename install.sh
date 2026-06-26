@@ -39,6 +39,7 @@ Composants:
   mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 1 Go RAM)
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
+  repair-ollama-monitoring Recréer Ollama + redémarrer cAdvisor (Grafana No data)
   mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
@@ -131,6 +132,9 @@ run_component() {
       ;;
     ollama-gateway)
       bash "${SCRIPTS}/install-ollama-gateway.sh"
+      ;;
+    repair-ollama-monitoring)
+      bash "${SCRIPTS}/repair-ollama-monitoring.sh"
       ;;
     mongodb-tls)
       bash "${SCRIPTS}/install-mongodb-tls.sh"

@@ -35,9 +35,13 @@ fi
 
 ensure_ollama_on_wise_eat_infra || true
 
+refresh_cadvisor_if_present
+
 if [[ "${OLLAMA_PULL_MODELS:-1}" == "1" ]]; then
   bash "${SCRIPT_DIR}/pull-ollama-models.sh"
 fi
+
+verify_cadvisor_ollama_metrics || true
 
 docker compose --env-file .env.ollama ps
 

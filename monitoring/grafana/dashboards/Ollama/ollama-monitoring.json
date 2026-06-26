@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Ollama (wise-eat-ollama) — CPU/RAM/réseau via cAdvisor (filtre image ollama/ollama) + RAM hôte.",
+  "description": "Ollama (wise-eat-ollama) — cAdvisor via label com.wise-eat.service=ollama + fallbacks compose/name.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -50,7 +50,7 @@
       },
       "targets": [
         {
-          "expr": "count(count by (name) (container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"})) or on() vector(0)",
+          "expr": "count(count by (name) (container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_wise_eat_service=\"ollama\"} or container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_docker_compose_service=\"ollama\"} or container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", name=~\".*wise-eat-ollama.*\"})) or on() vector(0)",
           "legendFormat": "Container",
           "refId": "A"
         }
@@ -126,7 +126,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_rss{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
+          "expr": "sum(container_memory_rss{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"} or container_memory_rss{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"} or container_memory_rss{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"})",
           "legendFormat": "RSS Ollama",
           "refId": "A"
         }
@@ -163,7 +163,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"}[5m])) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_wise_eat_service=\"ollama\"}[5m]) or rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_docker_compose_service=\"ollama\"}[5m]) or rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", name=~\".*wise-eat-ollama.*\"}[5m])) * 100",
           "legendFormat": "CPU Ollama",
           "refId": "A"
         }
@@ -209,17 +209,17 @@
       },
       "targets": [
         {
-          "expr": "container_memory_rss{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
+          "expr": "sum(container_memory_rss{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"} or container_memory_rss{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"} or container_memory_rss{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"})",
           "legendFormat": "RSS",
           "refId": "A"
         },
         {
-          "expr": "container_memory_usage_bytes{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
+          "expr": "sum(container_memory_usage_bytes{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"} or container_memory_usage_bytes{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"} or container_memory_usage_bytes{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"})",
           "legendFormat": "Usage",
           "refId": "B"
         },
         {
-          "expr": "container_memory_cache{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}",
+          "expr": "sum(container_memory_cache{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"} or container_memory_cache{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"} or container_memory_cache{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"})",
           "legendFormat": "Cache",
           "refId": "C"
         }
@@ -265,7 +265,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\", cpu=\"total\"}[5m])) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_wise_eat_service=\"ollama\"}[5m]) or rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", container_label_com_docker_compose_service=\"ollama\"}[5m]) or rate(container_cpu_usage_seconds_total{job=\"cadvisor\", name!=\"/\", cpu=\"total\", name=~\".*wise-eat-ollama.*\"}[5m])) * 100",
           "legendFormat": "CPU %",
           "refId": "A"
         }
@@ -311,12 +311,12 @@
       },
       "targets": [
         {
-          "expr": "rate(container_network_receive_bytes_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}[5m])",
+          "expr": "sum(rate(container_network_receive_bytes_total{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"}[5m]) or rate(container_network_receive_bytes_total{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"}[5m]) or rate(container_network_receive_bytes_total{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"}[5m]))",
           "legendFormat": "RX",
           "refId": "A"
         },
         {
-          "expr": "rate(container_network_transmit_bytes_total{job=\"cadvisor\", image=~\".*ollama.*\", name!=\"/\"}[5m])",
+          "expr": "sum(rate(container_network_transmit_bytes_total{job=\"cadvisor\", name!=\"/\", container_label_com_wise_eat_service=\"ollama\"}[5m]) or rate(container_network_transmit_bytes_total{job=\"cadvisor\", name!=\"/\", container_label_com_docker_compose_service=\"ollama\"}[5m]) or rate(container_network_transmit_bytes_total{job=\"cadvisor\", name!=\"/\", name=~\".*wise-eat-ollama.*\"}[5m]))",
           "legendFormat": "TX",
           "refId": "B"
         }
@@ -330,7 +330,7 @@
       "id": 8,
       "options": {
         "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false },
-        "content": "## Wise Eat — Ollama\n\n- **Modèles** : `nomic-embed-text` (embeddings), `llama3.2:3b` (copy push / newsletter)\n- **API locale** : `http://127.0.0.1:11434`\n- **Gateway public** : `https://ai.wise-eat.com` (basic auth nginx, IPv4 + IPv6)\n- **Variables API** : `OLLAMA_BASE_URL`, `PUSH_RECO_LLM_MODEL`, embedding provider `ollama`\n\nAlertes suggérées : RSS Ollama > 5 Go ou RAM hôte > 90 % pendant un batch.",
+        "content": "## Wise Eat — Ollama\n\n- **Modèles** : `nomic-embed-text`, `llama3.2:3b`\n- **API locale** : `http://127.0.0.1:11434`\n- **Gateway** : `https://ai.wise-eat.com`\n- **Label Docker** : `com.wise-eat.service=ollama` (cAdvisor)\n\nSi Grafana est vide : `sudo ./install.sh repair-ollama-monitoring`",
         "mode": "markdown"
       },
       "title": "Référence",
@@ -346,5 +346,5 @@
   "timezone": "browser",
   "title": "Wise Eat — Ollama",
   "uid": "wise-eat-ollama",
-  "version": 2
+  "version": 3
 }

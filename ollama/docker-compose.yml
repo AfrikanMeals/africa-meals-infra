@@ -17,6 +17,9 @@ services:
     volumes:
       - ${OLLAMA_DATA_DIR:-/var/lib/wise-eat/ollama}:/root/.ollama
     mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
+    labels:
+      com.wise-eat.service: ollama
+      com.wise-eat.component: ai
     networks:
       wise-eat-infra:
         aliases:

@@ -231,6 +231,13 @@ sudo ./scripts/pull-ollama-models.sh
 
 Grafana : **Wise Eat — Ollama** (dossier `Ollama/`) — CPU/RAM/réseau du conteneur `wise-eat-ollama`.
 
+Si Grafana Ollama affiche **No data** alors que `curl http://127.0.0.1:11434/api/tags` répond :
+
+```bash
+sudo ./install.sh repair-ollama-monitoring
+sudo ./install.sh monitoring
+```
+
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
 - **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
