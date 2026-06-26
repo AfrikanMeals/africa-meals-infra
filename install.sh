@@ -74,6 +74,7 @@ Composants:
   monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   repair-cadvisor    Recréer cAdvisor (métriques conteneurs Docker / Grafana #4271)
+  repair-docker-daemon-cadvisor  Docker 29 overlayfs → désactive containerd-snapshotter
   reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
@@ -239,6 +240,9 @@ run_component() {
       ;;
     repair-cadvisor)
       bash "${SCRIPTS}/repair-cadvisor.sh"
+      ;;
+    repair-docker-daemon-cadvisor)
+      bash "${SCRIPTS}/repair-docker-daemon-cadvisor.sh"
       ;;
     reset-grafana-dashboards-git)
       bash "${SCRIPTS}/reset-grafana-dashboards-git.sh"

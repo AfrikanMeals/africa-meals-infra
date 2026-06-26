@@ -257,7 +257,17 @@ Si le panel **Containers** affiche **N/A** et les graphiques « per Container »
 sudo ./install.sh repair-cadvisor
 ```
 
-Cause : Docker 29 + `overlayfs` — cAdvisor ne remonte que `id="/"` sans `--disable_metrics=disk`. Les requêtes Grafana n'exigent plus `image!=""` (label souvent absent).
+Si les logs cAdvisor mentionnent `overlayfs/layerdb/mounts/.../mount-id: no such file` (Docker 29 + **containerd-snapshotter**) :
+
+```bash
+# 1. cAdvisor v0.60+ (inclus dans git pull)
+sudo ./install.sh repair-cadvisor
+
+# 2. Si toujours vide — désactive containerd-snapshotter (~1 min coupure Docker)
+sudo ./install.sh repair-docker-daemon-cadvisor
+```
+
+Cause : Docker 29 stocke les images via containerd-snapshotter (`Storage Driver: overlayfs`). cAdvisor < v0.54 ne lit plus ce layout. `--disable_metrics=disk` seul ne suffit pas sur v0.53.
 
 **MinIO** : dossier Grafana `MinIO/` avec **Wise Eat — MinIO Storage** (équivalent Prometheus du #20826) — scrape `minio-cluster` + `minio-node`.
 

@@ -23,7 +23,7 @@ fi
 storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"
 log "Storage Driver Docker : ${storage_driver:-inconnu}"
 if [[ "${storage_driver}" == "overlayfs" ]]; then
-  log "Docker 29 overlayfs — compose utilise --disable_metrics=disk (cadvisor#3860)"
+  log "Docker 29 overlayfs — cAdvisor v0.60+ (PR #3709) + --disable_metrics=disk"
 fi
 
 docker compose "${COMPOSE_ARGS[@]}" pull cadvisor
@@ -33,6 +33,10 @@ if ! wait_for_cadvisor_container_metrics 60; then
   warn "cAdvisor ne remonte pas de métriques par conteneur"
   docker logs wise-eat-cadvisor --tail 25 2>&1 | sed 's/^/  /' || true
   echo ""
+  if [[ "${storage_driver}" == "overlayfs" ]]; then
+    warn "Docker 29 containerd-snapshotter — essayer : sudo ./install.sh repair-docker-daemon-cadvisor"
+    warn "(redémarre Docker ~1 min, désactive containerd-snapshotter dans daemon.json)"
+  fi
   warn "Vérifier : curl -s http://127.0.0.1:8088/metrics | grep container_cpu | grep -v 'id=\"/\"' | head"
   exit 1
 fi

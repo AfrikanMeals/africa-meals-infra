@@ -26,8 +26,8 @@ services:
       - "127.0.0.1:9100:9100"
 
   cadvisor:
-    # v0.53+ : ghcr.io (gcr.io/cadvisor/cadvisor n'est plus publié pour ces versions)
-    image: ghcr.io/google/cadvisor:v0.53.0
+    # v0.54+ requis pour Docker 29 + containerd-snapshotter (overlayfs) — PR #3709
+    image: ghcr.io/google/cadvisor:v0.60.2
     container_name: wise-eat-cadvisor
     restart: unless-stopped
     privileged: true
