@@ -9,14 +9,19 @@ services:
     restart: unless-stopped
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
+      # CPU-only VPS partagé (Wise Eat : 2 vCPU / 8 Go) — 1 modèle, 1 requête parallèle
       OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-1}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+      OLLAMA_MAX_QUEUE: ${OLLAMA_MAX_QUEUE:-8}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-2m}
+      # Copy push + embeddings : pas besoin de long contexte (économise RAM KV cache)
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-1024}
     ports:
       - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ${OLLAMA_DATA_DIR:-/var/lib/wise-eat/ollama}:/root/.ollama
-    mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    cpus: ${OLLAMA_CPU_LIMIT:-1.5}
     labels:
       com.wise-eat.service: ollama
       com.wise-eat.component: ai

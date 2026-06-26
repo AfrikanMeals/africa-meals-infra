@@ -194,6 +194,18 @@ Avec le stack monitoring : métriques via `memcached_exporter` sur `127.0.0.1:91
 
 Stack AI local pour recherche sémantique (`nomic-embed-text`) et génération de copy push/newsletter (`llama3.2:3b`).
 
+**Profil VPS cible** : 2 vCPU / 8 Go RAM (CPU-only, pas de GPU). Réglages par défaut dans `ollama/.env.example` :
+
+| Variable | Valeur | Rôle |
+|----------|--------|------|
+| `OLLAMA_MEM_LIMIT` | `3g` | Suffisant pour `llama3.2:3b` (~2 Go) ; laisse de la RAM à Mongo/EMQX/WS |
+| `OLLAMA_CPU_LIMIT` | `1.5` | Réserve ~0,5 vCPU au reste du stack pendant l’inférence |
+| `OLLAMA_MAX_LOADED_MODELS` | `1` | Un seul modèle en RAM (embeddings **ou** copy, pas les deux) |
+| `OLLAMA_NUM_PARALLEL` | `1` | Une inférence à la fois |
+| `OLLAMA_MAX_QUEUE` | `8` | Évite une file de 512 requêtes sur un petit VPS |
+| `OLLAMA_KEEP_ALIVE` | `2m` | Décharge le modèle plus vite après idle |
+| `OLLAMA_CONTEXT_LENGTH` | `1024` | Contexte court (copy + embeddings) → moins de RAM KV cache |
+
 **Prérequis DNS** : `ai.wise-eat.com` → A + AAAA vers le VPS (proxy Cloudflare OK pour :443).
 
 ```bash
