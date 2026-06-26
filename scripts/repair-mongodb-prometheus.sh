@@ -97,12 +97,12 @@ for s in r:
 " || warn "Scrape MongoDB DOWN — vérifier http://127.0.0.1:9090/targets"
 fi
 
-log "Attente métriques exporter (jusqu'à 60s)…"
+log "Attente métriques exporter (jusqu'à 90s)…"
 metrics_sample=""
-for _ in $(seq 1 12); do
+for _ in $(seq 1 18); do
   metrics_sample="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
   if [[ -n "${metrics_sample}" ]] \
-    && printf '%s\n' "${metrics_sample}" | grep -q '^mongodb_connections{'; then
+    && printf '%s\n' "${metrics_sample}" | grep -qE '^mongodb_(connections|ss_connections|ss_uptime)\{'; then
     break
   fi
   sleep 5

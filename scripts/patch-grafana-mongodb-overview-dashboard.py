@@ -9,7 +9,17 @@ import sys
 PROM_UID = "prometheus"
 DS = {"type": "prometheus", "uid": PROM_UID}
 MONGO_JOB = "mongodb"
+MONGO_INSTANCE = "wise-eat-mongo-1:27017"
 NODE_INSTANCE = "wise-eat:9100"
+
+# Fallbacks quand mongodb_ss_* absent (compatible-mode expose souvent l'alias legacy).
+METRIC_FALLBACKS: tuple[tuple[str, str], ...] = (
+    ("mongodb_ss_uptime", "mongodb_instance_uptime_seconds"),
+    ("mongodb_ss_connections", "mongodb_connections"),
+    ("mongodb_ss_opcounters", "mongodb_op_counters_total"),
+    ("mongodb_ss_mem_resident", "mongodb_memory"),
+    ("mongodb_ss_mem_virtual", "mongodb_memory"),
+)
 
 
 def fix_ds(obj) -> None:
@@ -26,11 +36,34 @@ def fix_ds(obj) -> None:
             fix_ds(item)
 
 
+def add_metric_fallback(expr: str) -> str:
+    for primary, legacy in METRIC_FALLBACKS:
+        if primary in expr and legacy not in expr:
+            legacy_expr = expr.replace(primary, legacy, 1)
+            if primary == "mongodb_ss_mem_resident":
+                legacy_expr = legacy_expr.replace(
+                    "}", ',type="resident"}', 1
+                ) if "type=" not in legacy_expr else legacy_expr
+            elif primary == "mongodb_ss_mem_virtual":
+                legacy_expr = legacy_expr.replace(
+                    "}", ',type="virtual"}', 1
+                ) if "type=" not in legacy_expr else legacy_expr
+            return f"({expr}) or ({legacy_expr})"
+    return expr
+
+
 def patch_expr(expr: str) -> str:
     if not expr:
         return expr
 
     expr = expr.replace("nmongodb_sys_", "mongodb_sys_")
+
+    # IP exporter hardcodée dans le dashboard source (#18847).
+    expr = re.sub(r',instance="\d+\.\d+\.\d+\.\d+:\d+"', "", expr)
+    expr = re.sub(r',instance="\d+\.\d+\.\d+\.\d+:\d+"', "", expr)
+
+    # Percona 0.44 : mongodb_ss_connections utilise le label state (pas conn_type).
+    expr = re.sub(r"\bconn_type=", "state=", expr)
 
     if "node_load1" in expr:
         expr = re.sub(
@@ -42,38 +75,46 @@ def patch_expr(expr: str) -> str:
     if "mongodb_" not in expr:
         return expr
 
-    if "job=" in expr:
-        return expr
-
-    if 'instance=~"$instance"' in expr:
-        return re.sub(
-            r'\{instance=~"\$instance"',
-            f'{{job="{MONGO_JOB}",instance=~"$instance"',
-            expr,
-        )
-
-    if re.search(r"mongodb_\w+\{", expr):
-        expr = re.sub(
-            r"(mongodb_\w+)\{",
-            rf'\1{{job="{MONGO_JOB}",',
-            expr,
-            count=1,
-        )
-        if 'instance=~' not in expr:
+    if "job=" not in expr:
+        if 'instance=~"$instance"' in expr:
             expr = re.sub(
-                rf'\{{job="{MONGO_JOB}",',
-                f'{{job="{MONGO_JOB}",instance=~"$instance",',
+                r'\{instance=~"\$instance"',
+                f'{{job="{MONGO_JOB}",instance=~"$instance"',
+                expr,
+            )
+        elif re.search(r"mongodb_\w+\{", expr):
+            expr = re.sub(
+                r"(mongodb_\w+)\{",
+                rf'\1{{job="{MONGO_JOB}",',
                 expr,
                 count=1,
             )
-        return expr
+            if 'instance=~' not in expr:
+                expr = re.sub(
+                    rf'\{{job="{MONGO_JOB}",',
+                    f'{{job="{MONGO_JOB}",instance=~"$instance",',
+                    expr,
+                    count=1,
+                )
+        else:
+            expr = re.sub(
+                r"(mongodb_\w+)([\[\{])",
+                rf'\1{{job="{MONGO_JOB}",instance=~"$instance"}}\2',
+                expr,
+                count=1,
+            )
 
-    return re.sub(
-        r"(mongodb_\w+)([\[\{])",
-        rf'\1{{job="{MONGO_JOB}",instance=~"$instance"}}\2',
+    # irate/rate sans labels (artefact dashboard source).
+    expr = re.sub(
+        r"irate\(mongodb_sys_disks_sda_io_time_ms\[",
+        f'irate(mongodb_sys_disks_sda_io_time_ms{{job="{MONGO_JOB}",instance=~"$instance"}}[',
         expr,
-        count=1,
     )
+
+    if " or " not in expr:
+        expr = add_metric_fallback(expr)
+
+    return expr
 
 
 def patch_targets(panel: dict) -> None:
@@ -83,6 +124,10 @@ def patch_targets(panel: dict) -> None:
             continue
         if isinstance(target.get("expr"), str):
             target["expr"] = patch_expr(target["expr"])
+            if "{{conn_type}}" in target.get("legendFormat", ""):
+                target["legendFormat"] = target["legendFormat"].replace(
+                    "{{conn_type}}", "{{state}}"
+                )
         if ptype in ("stat", "singlestat", "gauge"):
             target["instant"] = True
             target["format"] = "time_series"
@@ -103,6 +148,15 @@ def migrate_graph(panel: dict) -> None:
         },
         "tooltip": {"mode": "multi", "sort": "none"},
     }
+
+
+def fix_row_repeats(panels: list) -> None:
+    for panel in panels:
+        if panel.get("repeat") == "env":
+            panel["repeat"] = "instance"
+        nested = panel.get("panels")
+        if isinstance(nested, list):
+            fix_row_repeats(nested)
 
 
 def migrate_panels(panels: list) -> None:
@@ -142,6 +196,9 @@ def main() -> None:
         "MongoDB Percona exporter (métriques ss/sys). "
         "Base Grafana.com #18847 — job=mongodb, instance=wise-eat-mongo-1:27017."
     )
+    # Dashboard source embarque une plage figée en 2023 → tout affiche « No data ».
+    dash["time"] = {"from": "now-24h", "to": "now"}
+    dash.pop("timepicker", None)
 
     repl = json.dumps(dash)
     repl = repl.replace("${DS_PROMETHEUS}", "Prometheus")
@@ -153,7 +210,14 @@ def main() -> None:
 
     fix_ds(dash)
     patch_dashboard(dash)
+    fix_row_repeats(dash.get("panels") or [])
     migrate_panels(dash.get("panels") or [])
+
+    # Artefacts du dashboard source (IP exporter, ancien job).
+    cleaned = json.dumps(dash)
+    cleaned = cleaned.replace("172.21.0.5:9216", MONGO_INSTANCE)
+    cleaned = cleaned.replace("Mongodb_exporter", MONGO_JOB)
+    dash = json.loads(cleaned)
 
     dash["templating"] = {
         "list": [
@@ -168,7 +232,11 @@ def main() -> None:
                 "includeAll": True,
                 "multi": True,
                 "hide": 0,
-                "current": {"selected": True, "text": "All", "value": "$__all"},
+                "current": {
+                    "selected": True,
+                    "text": MONGO_INSTANCE,
+                    "value": MONGO_INSTANCE,
+                },
             },
             {
                 "name": "interval",
