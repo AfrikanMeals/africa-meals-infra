@@ -97,9 +97,18 @@ for s in r:
 " || warn "Scrape MongoDB DOWN — vérifier http://127.0.0.1:9090/targets"
 fi
 
-metrics_sample="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
-for needle in mongodb_up mongodb_connections mongodb_op_counters_total mongodb_mongod_replset_member_state; do
-  if [[ -n "${metrics_sample}" ]] && printf '%s\n' "${metrics_sample}" | grep -q "^${needle}"; then
+log "Attente métriques exporter (jusqu'à 60s)…"
+metrics_sample=""
+for _ in $(seq 1 12); do
+  metrics_sample="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+  if [[ -n "${metrics_sample}" ]] \
+    && printf '%s\n' "${metrics_sample}" | grep -q '^mongodb_connections{'; then
+    break
+  fi
+  sleep 5
+done
+for needle in mongodb_up mongodb_connections mongodb_op_counters_total mongodb_ss_opcounters mongodb_mongod_replset_member_state; do
+  if [[ -n "${metrics_sample}" ]] && printf '%s\n' "${metrics_sample}" | grep -qE "^${needle}(\{| )"; then
     log "OK  métrique exporter : ${needle}"
   else
     warn "ABSENT exporter : ${needle}"

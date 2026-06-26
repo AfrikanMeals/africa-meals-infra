@@ -74,7 +74,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(mongodb_op_counters_total{job=\"mongodb\",instance=~\"$env\"}[$interval])",
+          "expr": "(rate(mongodb_op_counters_total{job=\"mongodb\",instance=~\"$env\"}[$interval])) or (rate(mongodb_ss_opcounters{job=\"mongodb\",instance=~\"$env\"}[$interval]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -92,7 +92,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -121,6 +121,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -186,7 +202,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -215,6 +231,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -276,7 +308,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -305,6 +337,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -388,7 +436,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "series",
@@ -419,6 +467,30 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -481,7 +553,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "series",
@@ -512,6 +584,30 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -554,7 +650,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(mongodb_op_counters_repl_total{job=\"mongodb\",instance=~\"$env\"}[$interval])",
+          "expr": "(rate(mongodb_op_counters_repl_total{job=\"mongodb\",instance=~\"$env\"}[$interval])) or (rate(mongodb_ss_opcountersRepl{job=\"mongodb\",instance=~\"$env\"}[$interval]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -572,7 +668,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -601,6 +697,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -682,17 +794,16 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "mongodb_instance_uptime_seconds{job=\"mongodb\",instance=~\"$env\"}",
+          "expr": "(mongodb_instance_uptime_seconds{job=\"mongodb\",instance=~\"$env\"}) or (mongodb_ss_uptime{job=\"mongodb\",instance=~\"$env\"})",
           "format": "time_series",
-          "intervalFactor": 2,
           "legendFormat": "",
           "refId": "A",
-          "step": 1800
+          "instant": true
         }
       ],
       "thresholds": "0,360",
       "title": "Uptime",
-      "type": "singlestat",
+      "type": "stat",
       "valueFontSize": "80%",
       "valueMaps": [
         {
@@ -701,7 +812,58 @@
           "value": "null"
         }
       ],
-      "valueName": "current"
+      "valueName": "current",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "null": {
+                  "index": 0,
+                  "text": "N/A"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.0
+              },
+              {
+                "color": "orange",
+                "value": 360.0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      }
     },
     {
       "cacheTimeout": null,
@@ -770,16 +932,15 @@
         {
           "expr": "mongodb_connections{job=\"mongodb\",instance=~\"$env\",state=\"available\"}",
           "format": "time_series",
-          "intervalFactor": 2,
           "legendFormat": "",
           "metric": "mongodb_connections",
           "refId": "A",
-          "step": 1800
+          "instant": true
         }
       ],
       "thresholds": "",
       "title": "Available Connections",
-      "type": "singlestat",
+      "type": "stat",
       "valueFontSize": "80%",
       "valueMaps": [
         {
@@ -788,7 +949,50 @@
           "value": "null"
         }
       ],
-      "valueName": "avg"
+      "valueName": "avg",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "null": {
+                  "index": 0,
+                  "text": "N/A"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      }
     },
     {
       "cacheTimeout": null,
@@ -858,16 +1062,15 @@
         {
           "expr": "mongodb_connections{job=\"mongodb\",instance=~\"$env\",state=\"current\"}",
           "format": "time_series",
-          "intervalFactor": 2,
           "legendFormat": "",
           "metric": "mongodb_connections",
           "refId": "A",
-          "step": 1800
+          "instant": true
         }
       ],
       "thresholds": "",
       "title": "Open Connections",
-      "type": "singlestat",
+      "type": "stat",
       "valueFontSize": "80%",
       "valueMaps": [
         {
@@ -876,7 +1079,50 @@
           "value": "null"
         }
       ],
-      "valueName": "avg"
+      "valueName": "avg",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "null": {
+                  "index": 0,
+                  "text": "N/A"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      }
     },
     {
       "collapsed": false,
@@ -932,7 +1178,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "mongodb_mongod_replset_oplog_size_bytes{job=\"mongodb\",instance=~\"$env\"}",
+          "expr": "(mongodb_mongod_replset_oplog_size_bytes{job=\"mongodb\",instance=~\"$env\"}) or (mongodb_ss_repl_oplogSize{job=\"mongodb\",instance=~\"$env\"})",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -951,7 +1197,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -980,6 +1226,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1044,7 +1306,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1075,6 +1337,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1117,7 +1395,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(mongodb_network_bytes_total{job=\"mongodb\",instance=~\"$env\"}[$interval])",
+          "expr": "(rate(mongodb_network_bytes_total{job=\"mongodb\",instance=~\"$env\"}[$interval])) or (rate(mongodb_ss_network_bytes_total{job=\"mongodb\",instance=~\"$env\"}[$interval]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1136,7 +1414,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1165,6 +1443,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1286,7 +1580,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1315,6 +1609,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1397,7 +1707,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(rate(node_disk_io_time_seconds_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000 or irate(node_disk_io_time_seconds_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000)",
+          "expr": "(rate(node_disk_io_time_seconds_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000 or irate(node_disk_io_time_seconds_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])/1000)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1423,7 +1733,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1452,6 +1762,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1508,7 +1834,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(node_disk_reads_completed_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
+          "expr": "rate(node_disk_reads_completed_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{device}} - {{instance}}",
@@ -1525,7 +1851,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1554,6 +1880,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -1596,7 +1938,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(node_disk_writes_completed_total{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
+          "expr": "rate(node_disk_writes_completed_tota{instance=\"wise-eat:9100\",job=\"node\"}l{instance=\"wise-eat:9100\",job=\"node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{device}} - {{instance}}",
@@ -1613,7 +1955,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1642,6 +1984,22 @@
       "yaxis": {
         "align": false,
         "alignLevel": null
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     }
   ],
