@@ -87,7 +87,7 @@ services:
       - ./keyfile:/etc/mongodb/keyfile:ro
 
   dbgate:
-    image: dbgate/dbgate:6
+    image: dbgate/dbgate:6.8.2
     container_name: wise-eat-dbgate
     restart: unless-stopped
     networks:
