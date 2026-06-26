@@ -8,7 +8,8 @@ DASH_ROOT="${MON_DIR}/grafana/dashboards"
 CORE_SYSTEM_DIR="${DASH_ROOT}/Core System"
 MINIO_DIR_DASH="${DASH_ROOT}/MinIO"
 EMQX_DIR_DASH="${DASH_ROOT}/EMQX"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}" "${EMQX_DIR_DASH}"
+OLLAMA_DIR_DASH="${DASH_ROOT}/Ollama"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}" "${EMQX_DIR_DASH}" "${OLLAMA_DIR_DASH}"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -209,6 +210,15 @@ fetch_mongodb_overview_dashboard() {
   log "Dashboard MongoDB Overview → ${out} (Grafana.com #18847 — Percona ss/sys)"
 }
 
+fetch_ollama_dashboard() {
+  local out="${OLLAMA_DIR_DASH}/ollama-llm-inference.json"
+  local tmp="${out}.tmp"
+  curl -fsSL "https://grafana.com/api/dashboards/25086/revisions/latest/download" -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-ollama-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard Ollama → ${out} (Grafana.com #25086 — ollama-exporter)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
@@ -217,6 +227,7 @@ fetch_minio_dashboard
 fetch_emqx_dashboard
 fetch_mongodb_dashboard
 fetch_mongodb_overview_dashboard
+fetch_ollama_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Volume MinIO (25 Go par défaut) — loop ext4 ou montage existant.
+# Volume MinIO (10 Go par défaut) — loop ext4 ou montage existant.
 set -euo pipefail
 
 # shellcheck source=common.sh
@@ -9,10 +9,98 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 MINIO_DATA_DIR="${MINIO_DATA_DIR:-/var/lib/wise-eat/minio}"
 MINIO_DATA_ROOT="${MINIO_DATA_ROOT:-/var/lib/wise-eat}"
 MINIO_LOOP_FILE="${MINIO_LOOP_FILE:-${MINIO_DATA_ROOT}/minio-data.img}"
-MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-25}"
+MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-10}"
 
 minio_data_mount_active() {
   mountpoint -q "${MINIO_DATA_DIR}" 2>/dev/null
+}
+
+minio_data_mount_active_for() {
+  mountpoint -q "${1}" 2>/dev/null
+}
+
+minio_container_for_data_dir() {
+  case "${1}" in
+    */minio-replica-1) echo "wise-eat-minio-replica-1" ;;
+    */minio-replica-2) echo "wise-eat-minio-replica-2" ;;
+    *) echo "wise-eat-minio" ;;
+  esac
+}
+
+minio_loop_file_size_gb() {
+  local img="$1"
+  [[ -f "${img}" ]] || return 1
+  stat -c '%s' "${img}" | awk '{printf "%d\n", ($1 + 1073741823) / 1073741824}'
+}
+
+# Réduit un fichier loop ext4 existant vers target_gb si l'espace utilisé le permet.
+shrink_minio_loop_volume_if_needed() {
+  local data_dir="$1"
+  local loop_file="$2"
+  local target_gb="$3"
+
+  [[ -f "${loop_file}" ]] || return 0
+  [[ "${data_dir}" == /* ]] || return 0
+  if [[ -n "${MINIO_DATA_DEVICE:-}" ]] && [[ -b "${MINIO_DATA_DEVICE}" ]]; then
+    return 0
+  fi
+
+  local current_gb
+  current_gb="$(minio_loop_file_size_gb "${loop_file}")"
+  [[ "${current_gb}" -gt "${target_gb}" ]] || return 0
+
+  local used_bytes target_bytes margin_bytes
+  if minio_data_mount_active_for "${data_dir}"; then
+    used_bytes="$(df -B1 "${data_dir}" | awk 'NR==2{print $3}')"
+  else
+    mkdir -p "${data_dir}"
+    mount -o loop,noatime "${loop_file}" "${data_dir}"
+    used_bytes="$(df -B1 "${data_dir}" | awk 'NR==2{print $3}')"
+    umount "${data_dir}"
+  fi
+
+  target_bytes=$(( target_gb * 1024 * 1024 * 1024 ))
+  margin_bytes=$(( 512 * 1024 * 1024 ))
+  if (( used_bytes + margin_bytes > target_bytes )); then
+    warn "Volume MinIO ${data_dir} : $(numfmt --to=iec-i --suffix=B "${used_bytes}" 2>/dev/null || echo "${used_bytes} o") utilisés > ${target_gb}G cible — réduction ignorée (données préservées)"
+    return 0
+  fi
+
+  log "Réduction volume MinIO ${loop_file} : ${current_gb}G → ${target_gb}G (données préservées)"
+
+  local container
+  container="$(minio_container_for_data_dir "${data_dir}")"
+  if docker ps -q -f "name=^${container}$" 2>/dev/null | grep -q .; then
+    log "Arrêt ${container} pour réduction volume"
+    docker stop "${container}" || true
+  fi
+
+  if minio_data_mount_active_for "${data_dir}"; then
+    umount "${data_dir}"
+  fi
+
+  local loop_dev=""
+  cleanup_loop() {
+    [[ -n "${loop_dev}" ]] && losetup -d "${loop_dev}" 2>/dev/null || true
+  }
+  trap cleanup_loop EXIT
+
+  loop_dev="$(losetup --find --show "${loop_file}")"
+  e2fsck -fy "${loop_dev}"
+  resize2fs "${loop_dev}" "${target_gb}G"
+  truncate -s "${target_gb}G" "${loop_file}"
+  losetup -d "${loop_dev}"
+  loop_dev=""
+  trap - EXIT
+
+  mount -o loop,noatime "${loop_file}" "${data_dir}"
+  chown -R 1000:1000 "${data_dir}" 2>/dev/null || true
+
+  if docker ps -aq -f "name=^${container}$" 2>/dev/null | grep -q .; then
+    docker start "${container}" 2>/dev/null || true
+  fi
+
+  log "Volume MinIO réduit : ${data_dir} (${target_gb}G, $(df -h "${data_dir}" | awk 'NR==2{print $3" utilisés"}'))"
 }
 
 minio_data_has_objects() {
@@ -53,7 +141,7 @@ ensure_minio_data_volume() {
   require_root
   apt install -y e2fsprogs util-linux rsync 2>/dev/null || true
 
-  # Chemin relatif (dev local) — pas de loop 25G.
+  # Chemin relatif (dev local) — pas de loop dédié.
   if [[ "${MINIO_DATA_DIR}" != /* ]]; then
     MINIO_DATA_DIR="${MINIO_DIR}/${MINIO_DATA_DIR#./}"
     mkdir -p "${MINIO_DATA_DIR}"
@@ -66,6 +154,9 @@ ensure_minio_data_volume() {
 
   # Montage déjà actif (partition VPS dédiée ou loop précédent).
   if minio_data_mount_active; then
+    if [[ -f "${MINIO_LOOP_FILE}" ]] && [[ -z "${MINIO_DATA_DEVICE:-}" ]]; then
+      shrink_minio_loop_volume_if_needed "${MINIO_DATA_DIR}" "${MINIO_LOOP_FILE}" "${MINIO_STORAGE_GB}"
+    fi
     chown -R 1000:1000 "${MINIO_DATA_DIR}" 2>/dev/null || true
     migrate_legacy_minio_data
     log "Volume MinIO actif : ${MINIO_DATA_DIR} ($(df -h "${MINIO_DATA_DIR}" | awk 'NR==2{print $2" utilisés "$3" ("$5")"}'))"
@@ -89,11 +180,13 @@ ensure_minio_data_volume() {
     return 0
   fi
 
-  # Fichier loop 25 Go (défaut).
+  # Fichier loop (défaut MINIO_STORAGE_GB Go).
   if [[ ! -f "${MINIO_LOOP_FILE}" ]]; then
     log "Création volume MinIO ${MINIO_STORAGE_GB}G → ${MINIO_LOOP_FILE}"
     truncate -s "${MINIO_STORAGE_GB}G" "${MINIO_LOOP_FILE}"
     mkfs.ext4 -F -L wise-eat-minio "${MINIO_LOOP_FILE}"
+  else
+    shrink_minio_loop_volume_if_needed "${MINIO_DATA_DIR}" "${MINIO_LOOP_FILE}" "${MINIO_STORAGE_GB}"
   fi
 
   mkdir -p "${MINIO_DATA_DIR}"
@@ -114,7 +207,7 @@ ensure_minio_replica_data_volume() {
   local data_dir="${!data_dir_var:-${data_dir_default}}"
   local loop_default="${MINIO_DATA_ROOT:-/var/lib/wise-eat}/minio-replica-${replica_num}-data.img"
   local loop_file="${!loop_var:-${loop_default}}"
-  local storage_gb="${!gb_var:-${MINIO_STORAGE_GB:-25}}"
+  local storage_gb="${!gb_var:-${MINIO_STORAGE_GB:-10}}"
 
   MINIO_DATA_DIR="${data_dir}" \
     MINIO_LOOP_FILE="${loop_file}" \

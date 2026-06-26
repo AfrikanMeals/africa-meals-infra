@@ -46,4 +46,4 @@ curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 || true
 count="$(curl -sf http://127.0.0.1:8088/metrics \
   | grep '^container_cpu_usage_seconds_total' | grep -v 'id="/"' | wc -l | tr -d ' ')"
 log "cAdvisor OK — ${count} série(s) container_cpu (hors racine)"
-log "Grafana : Wise Eat — Docker Monitoring · Wise Eat — Ollama"
+log "Grafana : Wise Eat — Docker Monitoring"

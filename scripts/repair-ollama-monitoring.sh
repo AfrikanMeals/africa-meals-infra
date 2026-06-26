@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Recréer Ollama (labels monitoring) + redémarrer cAdvisor pour Grafana.
+# Recréer Ollama + ollama-exporter pour Grafana (#25086).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -15,17 +15,26 @@ fi
 
 set -a && source .env.ollama && set +a
 
-log "Recréation conteneur Ollama (labels com.wise-eat.service=ollama)…"
+log "Recréation conteneur Ollama…"
 docker compose --env-file .env.ollama up -d --force-recreate
 
 wait_for_ollama_api 90 || die "Ollama API injoignable après recréation"
 
-refresh_cadvisor_if_present
-verify_cadvisor_ollama_metrics 20 || true
+ensure_ollama_on_wise_eat_infra || true
+
+if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-ollama-exporter'; then
+  log "Redémarrage ollama-exporter…"
+  docker restart wise-eat-ollama-exporter >/dev/null
+  sleep 5
+else
+  warn "ollama-exporter absent — sudo ./install.sh monitoring"
+fi
+
+verify_ollama_exporter_metrics 30 || true
 
 echo ""
 log "Vérification manuelle :"
-echo "  curl -s http://127.0.0.1:8088/metrics | grep -E 'wise-eat-ollama|com_wise_eat_service' | head"
-echo "  curl -s http://127.0.0.1:9090/api/v1/query?query=container_memory_rss{container_label_com_wise_eat_service=\"ollama\"}"
+echo "  curl -s http://127.0.0.1:9400/metrics | grep '^ollama_up '"
+echo "  curl -sG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=ollama_up{job=\"ollama\"}'"
 echo ""
-log "Grafana : Wise Eat — Ollama · Wise Eat — Ollama API Health"
+log "Grafana : Wise Eat — Ollama LLM Inference (#25086)"

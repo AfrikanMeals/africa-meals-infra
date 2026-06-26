@@ -1,0 +1,19 @@
+# Wise Eat — ollama-exporter (https://github.com/maravexa/ollama-exporter)
+ollama_url: "http://wise-eat-ollama:11434"
+listen_addr: ":9400"
+poll_interval: "15s"
+
+proxy:
+  enabled: true
+  listen_addr: ":9401"
+  exclude_paths:
+    - "/"
+    - "/api/ps"
+    - "/api/tags"
+    - "/api/show"
+    - "/api/version"
+
+gpu:
+  enabled: false
+
+log_level: "info"

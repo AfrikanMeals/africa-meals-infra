@@ -116,7 +116,7 @@ API locale (même VPS, sans TLS) :
 Réplicas (site replication) :
   sudo ./install.sh minio-replication
 
-Volume : ${MINIO_DATA_DIR} (${MINIO_STORAGE_GB:-25}G max)
+Volume : ${MINIO_DATA_DIR} (${MINIO_STORAGE_GB:-10}G max)
 Backups : ${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio} (mirror quotidien 03:00)
 API S3 public : ${MINIO_SERVER_URL}
 Console public : https://${CONSOLE_DOMAIN}

@@ -49,7 +49,7 @@ MINIO_CONSOLE_BACKEND_PORT="${MINIO_CONSOLE_BACKEND_PORT:-9001}"
 MINIO_CONSOLE_BASIC_AUTH_USER="${MINIO_CONSOLE_BASIC_AUTH_USER:-minio-console}"
 MINIO_CONSOLE_HTASSWD_FILE="${MINIO_CONSOLE_HTASSWD_FILE:-/etc/nginx/htpasswd/minio-console}"
 MINIO_DATA_DIR="${MINIO_DATA_DIR:-/var/lib/wise-eat/minio}"
-MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-25}"
+MINIO_STORAGE_GB="${MINIO_STORAGE_GB:-10}"
 MINIO_BACKUP_DIR="${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}"
 MONGO_TLS_DOMAIN="${MONGO_TLS_DOMAIN:-db.wise-eat.com}"
 MONGO_TLS_PORT="${MONGO_TLS_PORT:-27018}"
@@ -437,6 +437,20 @@ wait_for_cadvisor_container_metrics() {
     fi
     sleep 2
   done
+  return 1
+}
+
+verify_ollama_exporter_metrics() {
+  local max="${1:-30}"
+  local i
+  for i in $(seq 1 "$max"); do
+    if curl -sf http://127.0.0.1:9400/metrics 2>/dev/null | grep -q '^ollama_up 1'; then
+      log "ollama-exporter remonte ollama_up=1 (tentative ${i}/${max})"
+      return 0
+    fi
+    sleep 2
+  done
+  warn "ollama-exporter ne remonte pas ollama_up=1 — sudo ./install.sh monitoring"
   return 1
 }
 

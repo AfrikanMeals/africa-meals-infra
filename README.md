@@ -134,7 +134,7 @@ Détails techniques :
 | `PROMETHEUS_LOGS_DOMAIN` | `logs.wise-eat.com` | Prometheus public (nginx + basic auth) |
 | `MINIO_STORAGE_DOMAIN` | `storage.wise-eat.com` | MinIO S3 public (nginx + TLS) |
 | `MINIO_CONSOLE_DOMAIN` | `cdn.wise-eat.com` | MinIO Console public (nginx + basic auth) |
-| `MINIO_STORAGE_GB` | `25` | Taille volume données MinIO (loop ext4) |
+| `MINIO_STORAGE_GB` | `10` | Taille volume données MinIO (loop ext4) |
 | `MINIO_DATA_DIR` | `/var/lib/wise-eat/minio` | Montage objets S3 |
 | `EMQX_BROKER_DOMAIN` | `broker.wise-eat.com` | MQTT public (nginx TLS) |
 | `EMQX_MQTTS_PORT` | `8883` | MQTTS (nginx stream → EMQX :1883) |
@@ -145,7 +145,7 @@ Détails techniques :
 | `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
 | `OLLAMA_GATEWAY_DOMAIN` | `ai.wise-eat.com` | Ollama API public (nginx + basic auth) |
 | `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
-| `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 25G) |
+| `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 10G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
@@ -229,23 +229,19 @@ Modèles (re-téléchargement) :
 sudo ./scripts/pull-ollama-models.sh
 ```
 
-Grafana : **Wise Eat — Ollama** (cAdvisor CPU/RAM) · **Wise Eat — Ollama API Health** (sonde HTTP `/api/tags`, indépendant de cAdvisor).
+Grafana : **[Ollama LLM Inference](https://grafana.com/grafana/dashboards/25086-ollama-llm-inference/)** (#25086) — métriques via [ollama-exporter](https://github.com/maravexa/ollama-exporter) (`job=ollama`, `:9400`).
 
-Si Grafana Ollama affiche **No data** alors que `curl http://127.0.0.1:11434/api/tags` répond :
+| Port | Rôle |
+|------|------|
+| `9400` | Métriques Prometheus (`/metrics`) |
+| `9401` | Proxy transparent (optionnel — pour TPS/latence requêtes ; pointer `OLLAMA_BASE_URL` ici sur le VPS) |
+
+Si Grafana Ollama affiche **No data** :
 
 ```bash
 sudo ./install.sh repair-ollama-monitoring
-sudo ./install.sh repair-monitoring
+curl -s http://127.0.0.1:9400/metrics | grep '^ollama_up '
 ```
-
-Si `verify-monitoring` signale **FAIL cAdvisor** avec seulement `id="/"` (Docker 29 + `overlayfs`) : le compose impose `--disable_metrics=disk` (contournement [cadvisor#3860](https://github.com/google/cadvisor/issues/3860)). Après `git pull` :
-
-```bash
-sudo ./install.sh repair-monitoring
-curl -s http://127.0.0.1:8088/metrics | grep 'container_cpu_usage_seconds_total' | grep -v 'id="/"' | head
-```
-
-Diagnostic : `docker logs wise-eat-cadvisor --tail 30` · `docker info | grep 'Storage Driver'`
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
@@ -275,7 +271,7 @@ Cause : Docker 29 stocke les images via containerd-snapshotter (`Storage Driver:
 
 **MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (#12079, Percona legacy) et **Wise Eat — MongoDB Overview** (#18847, métriques ss/sys) — scrape `job=mongodb` via Percona exporter.
 
-**Ollama** : dossier Grafana `Ollama/` — **Wise Eat — Ollama** (cAdvisor) + **Wise Eat — Ollama API Health** (blackbox `job=ollama-api`).
+**Ollama** : dossier Grafana `Ollama/` — **Wise Eat — Ollama LLM Inference** (#25086, `ollama-exporter`).
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
@@ -401,7 +397,7 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh minio-console
 
 Si la popup basic auth se répète en boucle : `sudo ./install.sh minio-console` (resynchronise nginx + htpasswd).
 
-**Volume 25 Go** : loop ext4 `/var/lib/wise-eat/minio-data.img` monté sur `/var/lib/wise-eat/minio` (ou `MINIO_DATA_DEVICE` pour un disque dédié).
+**Volume 10 Go** : loop ext4 `/var/lib/wise-eat/minio-data.img` monté sur `/var/lib/wise-eat/minio` (ou `MINIO_DATA_DEVICE` pour un disque dédié). Pour réduire un volume existant sans perte de données, mettre `MINIO_STORAGE_GB=10` dans `minio/.env.minio` puis relancer `sudo ./install.sh minio` (ou `minio-replication` pour les réplicas) — la réduction est ignorée si l'espace utilisé dépasse la cible.
 
 **Sauvegardes incrémentales** :
 - Mirror quotidien (`mc mirror`) → `/var/backups/wise-eat-minio/latest/`

@@ -54,26 +54,26 @@ else
   fail=1
 fi
 
-log "=== Ollama API (blackbox) ==="
-if curl -sf "http://127.0.0.1:9115/metrics" 2>/dev/null | grep -q '^probe_success'; then
-  log "OK  blackbox_exporter (:9115) — métriques probe exposées"
+log "=== Ollama (ollama-exporter) ==="
+if curl -sf "http://127.0.0.1:9400/metrics" 2>/dev/null | grep -q '^ollama_up '; then
+  log "OK  ollama-exporter (:9400) — métriques ollama_* exposées"
 else
-  warn "FAIL blackbox_exporter (:9115) — conteneur wise-eat-blackbox-exporter arrêté ?"
+  warn "FAIL ollama-exporter (:9400) — conteneur wise-eat-ollama-exporter arrêté ?"
   fail=1
 fi
 if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-  --data-urlencode 'query=probe_success{job="ollama-api"}' | grep -q '"value":\["' ; then
+  --data-urlencode 'query=ollama_up{job="ollama"}' | grep -q '"value":\["' ; then
   up=$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-    --data-urlencode 'query=probe_success{job="ollama-api"}' \
+    --data-urlencode 'query=ollama_up{job="ollama"}' \
     | python3 -c "import json,sys; r=json.load(sys.stdin).get('data',{}).get('result',[]); print(r[0]['value'][1] if r else '?')")
   if [[ "${up}" == "1" ]]; then
-    log "OK  sonde Ollama /api/tags probe_success=1"
+    log "OK  Prometheus ollama_up=1 (job=ollama)"
   else
-    warn "FAIL sonde Ollama probe_success=${up} — wise-eat-ollama injoignable depuis wise-eat-infra ?"
+    warn "FAIL Prometheus ollama_up=${up} — Ollama injoignable depuis ollama-exporter ?"
     fail=1
   fi
 else
-  warn "FAIL sonde Ollama — job ollama-api absent dans Prometheus (sudo ./install.sh monitoring)"
+  warn "FAIL job ollama absent dans Prometheus — sudo ./install.sh monitoring"
   fail=1
 fi
 
@@ -164,7 +164,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'ollama-api', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'ollama', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else

@@ -35,13 +35,11 @@ fi
 
 ensure_ollama_on_wise_eat_infra || true
 
-refresh_cadvisor_if_present
-
 if [[ "${OLLAMA_PULL_MODELS:-1}" == "1" ]]; then
   bash "${SCRIPT_DIR}/pull-ollama-models.sh"
 fi
 
-verify_cadvisor_ollama_metrics || true
+verify_ollama_exporter_metrics || true
 
 docker compose --env-file .env.ollama ps
 
@@ -67,7 +65,7 @@ API publique (IPv4 + IPv6 via nginx, basic auth) :
 Modèles :
   ollama list  (dans le conteneur wise-eat-ollama)
 
-Grafana : dashboard « Wise Eat — Ollama » + « Wise Eat — Ollama API Health »
+Grafana : dashboard « Wise Eat — Ollama LLM Inference » (#25086, ollama-exporter)
 Certificat TLS : sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh ollama-gateway
 
 EOF
