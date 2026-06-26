@@ -39,6 +39,14 @@ elif docker exec wise-eat-cadvisor wget -qO- http://127.0.0.1:8080/metrics 2>/de
   log "OK  cAdvisor (réseau Docker) — métriques conteneurs présentes (:8088 host injoignable)"
 else
   warn "FAIL cAdvisor — pas de container_cpu_usage_seconds_total (recréer : sudo ./install.sh repair-monitoring)"
+  if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-cadvisor'; then
+    warn "      Logs cAdvisor (dernières lignes) :"
+    docker logs wise-eat-cadvisor --tail 15 2>&1 | sed 's/^/        /' || true
+    storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"
+    if [[ "${storage_driver}" == "overlayfs" ]]; then
+      warn "      Storage Driver=overlayfs (Docker 29+) — cAdvisor peut échouer ; préférer overlay2 dans /etc/docker/daemon.json"
+    fi
+  fi
   fail=1
 fi
 

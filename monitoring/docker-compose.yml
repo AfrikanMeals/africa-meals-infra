@@ -26,10 +26,12 @@ services:
       - "127.0.0.1:9100:9100"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.53.0
     container_name: wise-eat-cadvisor
     restart: unless-stopped
     privileged: true
+    # cgroup v2 : namespace hôte requis pour lire les stats des autres conteneurs
+    cgroup: host
     networks:
       - wise-eat-infra
     command:
@@ -44,6 +46,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     ports:

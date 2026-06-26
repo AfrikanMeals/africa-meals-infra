@@ -235,8 +235,17 @@ Si Grafana Ollama affiche **No data** alors que `curl http://127.0.0.1:11434/api
 
 ```bash
 sudo ./install.sh repair-ollama-monitoring
-sudo ./install.sh monitoring
+sudo ./install.sh repair-monitoring
 ```
+
+Si `verify-monitoring` signale **FAIL cAdvisor — pas de container_cpu_usage_seconds_total** (tous les dashboards conteneurs vides, pas seulement Ollama) : cAdvisor ne lit pas les cgroups v2. Le compose monitoring impose `cgroup: host` + montage `/sys/fs/cgroup`. Après `git pull` :
+
+```bash
+sudo ./install.sh repair-monitoring
+curl -s http://127.0.0.1:8088/metrics | grep '^container_cpu_usage_seconds_total' | head
+```
+
+Diagnostic : `docker logs wise-eat-cadvisor --tail 30` · `docker info | grep 'Storage Driver'` (si `overlayfs`, passer à `overlay2` dans `/etc/docker/daemon.json`).
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
