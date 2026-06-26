@@ -958,6 +958,7 @@ stunnel_sync_conf_d() {
     log "bindv6only=0 — listeners :::PORT couvrent v4+v6 ; retrait sections accept=PORT seules"
     stunnel_strip_redundant_v4_listeners
   fi
+  chmod 644 /etc/stunnel/conf.d/*.conf 2>/dev/null || true
 }
 
 stunnel_restart_or_die() {
@@ -976,7 +977,8 @@ stunnel_restart_or_die() {
 # et chaque fichier sans pid= global provoque l’erreur « inetd mode ».
 ensure_stunnel_runtime() {
   mkdir -p /var/run/stunnel4 /var/log/stunnel4
-  chmod 755 /var/run/stunnel4
+  chown stunnel4:stunnel4 /var/run/stunnel4 /var/log/stunnel4
+  chmod 755 /var/run/stunnel4 /var/log/stunnel4
   rm -f /var/run/stunnel4/stunnel.pid
 
   if [[ -f /etc/default/stunnel4 ]]; then
