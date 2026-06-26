@@ -472,10 +472,20 @@ sudo ./install.sh repair-mongodb-admin   # migration mongo-express → DbGate
 
 ```env
 # VPS local (PM2)
-MONGODB_URI=mongodb://wise-eat-app:PASSWORD@127.0.0.1:27017/african_meals_db?authSource=african_meals_db&replicaSet=rs0
+MONGODB_URI=mongodb://wise-eat-app:PASSWORD@127.0.0.1:27017/wise_eat_db?authSource=admin&replicaSet=rs0
 
 # Remote (TLS)
-MONGODB_URI=mongodb://wise-eat-app:PASSWORD@db.wise-eat.com:27018/african_meals_db?authSource=african_meals_db&replicaSet=rs0&tls=true
+MONGODB_URI=mongodb://wise-eat-app:PASSWORD@db.wise-eat.com:27018/wise_eat_db?authSource=admin&tls=true&directConnection=true
+```
+
+**Renommer la base** (ex. migration depuis `african_meals_db`) :
+
+```bash
+# Sur le VPS — copie les données + met à jour .env.mongodb et droits wise-eat-app
+sudo MONGO_APP_DATABASE_NEW=wise_eat_db ./install.sh rename-mongodb-database
+
+# Sans copie (base vide / déjà migrée via l’admin)
+sudo MONGO_RENAME_COPY_DATA=0 MONGO_APP_DATABASE_NEW=wise_eat_db ./install.sh rename-mongodb-database
 ```
 
 Secrets dans `mongodb/.env.mongodb` (générés à l’install).

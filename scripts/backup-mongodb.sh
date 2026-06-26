@@ -41,7 +41,7 @@ docker exec wise-eat-mongo-1 mongodump \
   --username="${MONGO_ROOT_USER}" \
   --password="${MONGO_ROOT_PASSWORD}" \
   --authenticationDatabase=admin \
-  --db="${MONGO_APP_DATABASE:-african_meals_db}" \
+  --db="${MONGO_APP_DATABASE:-wise_eat_db}" \
   --gzip \
   --oplog \
   --out="/data/db/.backup-staging" 2>/dev/null || \

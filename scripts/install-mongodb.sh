@@ -248,8 +248,8 @@ fi
 bash "${SCRIPT_DIR}/repair-mongodb-prometheus.sh" 2>/dev/null || \
   warn "Monitoring MongoDB — relancer : sudo ./install.sh repair-mongodb-prometheus"
 
-LOCAL_URI="mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@127.0.0.1:27017/${MONGO_APP_DATABASE}?authSource=${MONGO_APP_DATABASE}&replicaSet=${MONGO_REPLICA_SET}"
-REMOTE_URI="mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT:-27018}/${MONGO_APP_DATABASE}?authSource=${MONGO_APP_DATABASE}&replicaSet=${MONGO_REPLICA_SET}&tls=true"
+LOCAL_URI="mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@127.0.0.1:27017/${MONGO_APP_DATABASE}?authSource=admin&replicaSet=${MONGO_REPLICA_SET}"
+REMOTE_URI="mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT:-27018}/${MONGO_APP_DATABASE}?authSource=admin&replicaSet=${MONGO_REPLICA_SET}&tls=true&directConnection=true"
 
 cat <<EOF
 

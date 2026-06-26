@@ -44,6 +44,7 @@ Composants:
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
   repair-mongodb-tls       Répare Stunnel MongoDB TLS (:27018) + resync conf.d
+  rename-mongodb-database  Renomme la base app (african_meals_db → wise_eat_db) + droits + copie
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
@@ -143,6 +144,9 @@ run_component() {
       ;;
     repair-mongodb-tls)
       bash "${SCRIPTS}/repair-mongodb-tls.sh"
+      ;;
+    rename-mongodb-database)
+      bash "${SCRIPTS}/rename-mongodb-database.sh"
       ;;
     emqx-broker)
       bash "${SCRIPTS}/install-emqx-broker.sh"
