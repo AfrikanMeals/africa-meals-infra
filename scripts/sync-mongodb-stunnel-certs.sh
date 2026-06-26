@@ -22,7 +22,11 @@ chmod 640 "${DEST}/privkey.pem"
 
 log "Certs Stunnel MongoDB synchronisés (${MONGO_TLS_DOMAIN}) → ${DEST}/"
 
+if [[ "${STUNNEL_SKIP_RESTART:-}" == "1" ]]; then
+  exit 0
+fi
+
 if systemctl is-active stunnel4 >/dev/null 2>&1; then
-  systemctl restart stunnel4
-  log "stunnel4 redémarré"
+  stunnel_sync_conf_d
+  stunnel_restart_or_die
 fi

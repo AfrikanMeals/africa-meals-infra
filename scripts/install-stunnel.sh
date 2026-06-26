@@ -40,6 +40,7 @@ else
   die "Certificat Let's Encrypt absent pour ${REDIS_TLS_DOMAIN}. Lancer : STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls"
 fi
 
+ensure_stunnel_runtime
 stunnel_sync_conf_d
 
 if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then

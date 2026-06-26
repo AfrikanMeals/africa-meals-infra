@@ -18,6 +18,7 @@ if [[ -f "${MONGODB_ENV}" ]]; then
 fi
 
 apt install -y stunnel4 2>/dev/null || true
+ensure_stunnel_runtime
 mkdir -p /etc/stunnel/conf.d /etc/stunnel/mongodb
 
 if [[ ! -f "/etc/letsencrypt/live/${MONGO_TLS_DOMAIN}/fullchain.pem" ]]; then
@@ -37,21 +38,10 @@ if [[ ! -f "/etc/letsencrypt/live/${MONGO_TLS_DOMAIN}/fullchain.pem" ]]; then
   fi
 fi
 
-bash "${SCRIPT_DIR}/sync-mongodb-stunnel-certs.sh"
+# Sync certs sans redémarrer stunnel (config pas encore à jour).
+STUNNEL_SKIP_RESTART=1 bash "${SCRIPT_DIR}/sync-mongodb-stunnel-certs.sh"
 
-cp "${INFRA_ROOT}/mongodb/stunnel/mongodb-tls.conf" /etc/stunnel/conf.d/
-
-if ! grep -q 'include = /etc/stunnel/conf.d' /etc/stunnel/stunnel.conf 2>/dev/null; then
-  cat >> /etc/stunnel/stunnel.conf <<'EOF'
-
-; Wise Eat
-setuid = stunnel4
-setgid = stunnel4
-pid = /var/run/stunnel4/stunnel.pid
-include = /etc/stunnel/conf.d
-EOF
-fi
-
+stunnel_sync_conf_d
 systemctl enable stunnel4
 stunnel_restart_or_die
 
@@ -61,5 +51,11 @@ if command -v ufw >/dev/null 2>&1; then
   ufw reload
 fi
 
+if ss -tlnp 2>/dev/null | grep -q ":${MONGO_TLS_PORT}"; then
+  log "OK  port ${MONGO_TLS_PORT} actif"
+else
+  warn "Port ${MONGO_TLS_PORT} absent — journalctl -u stunnel4 -n 50"
+fi
+
 log "MongoDB TLS actif : ${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT} → 127.0.0.1:27017 (v4 + v6)"
-log "URI : mongodb://USER:PASS@${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT}/DB?replicaSet=rs0&tls=true"
+log "URI : mongodb://USER:PASS@${MONGO_TLS_DOMAIN}:${MONGO_TLS_PORT}/DB?replicaSet=rs0&tls=true&directConnection=true"

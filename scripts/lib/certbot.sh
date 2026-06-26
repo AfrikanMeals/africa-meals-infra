@@ -78,8 +78,11 @@ export EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 export MONGO_TLS_DOMAIN=${MONGO_TLS_DOMAIN}
 export MONGO_ADMIN_DOMAIN=${MONGO_ADMIN_DOMAIN}
 export INFRA_ROOT=${INFRA_ROOT}
-bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
-bash ${INFRA_ROOT}/scripts/sync-mongodb-stunnel-certs.sh 2>/dev/null || true
+STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
+STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-mongodb-stunnel-certs.sh 2>/dev/null || true
+source ${INFRA_ROOT}/scripts/lib/common.sh
+stunnel_sync_conf_d
+stunnel_restart_or_die 2>/dev/null || true
 if systemctl is-active nginx >/dev/null 2>&1; then
   WISE_EAT_DOMAIN=${WISE_EAT_DOMAIN} bash ${INFRA_ROOT}/scripts/enable-nginx-ssl.sh
   if [[ -f "/etc/letsencrypt/live/${GRAFANA_CONSOLE_DOMAIN}/fullchain.pem" ]]; then
@@ -115,11 +118,6 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ -f "/etc/letsencrypt/live/${EMQX_WORKER_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-emqx-worker-ssl.sh 2>/dev/null || true
-  fi
-  if [[ -f "/etc/letsencrypt/live/${MONGO_TLS_DOMAIN}/fullchain.pem" ]]; then
-    bash ${INFRA_ROOT}/scripts/sync-mongodb-stunnel-certs.sh 2>/dev/null || true
-    cp ${INFRA_ROOT}/mongodb/stunnel/mongodb-tls.conf /etc/stunnel/conf.d/ 2>/dev/null || true
-    systemctl restart stunnel4 2>/dev/null || true
   fi
   if [[ -f "/etc/letsencrypt/live/${MONGO_ADMIN_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-mongodb-admin-ssl.sh 2>/dev/null || true

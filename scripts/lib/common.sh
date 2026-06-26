@@ -961,10 +961,43 @@ stunnel_sync_conf_d() {
 }
 
 stunnel_restart_or_die() {
+  ensure_stunnel_runtime
   if ! systemctl restart stunnel4; then
     warn "stunnel4 a échoué — journal (40 dernières lignes) :"
     journalctl -u stunnel4 -n 40 --no-pager 2>/dev/null || true
     die "Corrigez /etc/stunnel/conf.d puis : sudo systemctl restart stunnel4"
   fi
   log "stunnel4 redémarré"
+}
+
+# Répertoire pid + foreground=no (obligatoire — sinon « inetd mode » / échec systemd).
+ensure_stunnel_runtime() {
+  mkdir -p /var/run/stunnel4
+  chmod 755 /var/run/stunnel4
+  rm -f /var/run/stunnel4/stunnel.pid
+
+  if [[ -f /etc/default/stunnel4 ]]; then
+    if grep -q '^ENABLED=' /etc/default/stunnel4; then
+      sed -i 's/^ENABLED=.*/ENABLED=1/' /etc/default/stunnel4
+    else
+      echo 'ENABLED=1' >> /etc/default/stunnel4
+    fi
+  fi
+
+  local main=/etc/stunnel/stunnel.conf
+  [[ -f "${main}" ]] || touch "${main}"
+
+  if ! grep -q '^pid =' "${main}"; then
+    cat >> "${main}" <<'EOF'
+
+; Wise Eat — global (requis par stunnel4 / systemd)
+foreground = no
+pid = /var/run/stunnel4/stunnel.pid
+setuid = stunnel4
+setgid = stunnel4
+include = /etc/stunnel/conf.d
+EOF
+  elif ! grep -q '^foreground = no' "${main}"; then
+    sed -i '/^pid = /i foreground = no' "${main}"
+  fi
 }
