@@ -30,21 +30,25 @@ fi
 
 log "=== cAdvisor (conteneurs Docker) ==="
 cadvisor_metrics_ok() {
-  curl -sf "http://127.0.0.1:8088/metrics" 2>/dev/null | grep -q '^container_cpu_usage_seconds_total'
+  local metrics
+  metrics="$(curl -sf "http://127.0.0.1:8088/metrics" 2>/dev/null || true)"
+  [[ -n "${metrics}" ]] || return 1
+  echo "${metrics}" | grep '^container_cpu_usage_seconds_total' | grep -v 'id="/"' | grep -q .
 }
 if cadvisor_metrics_ok; then
   log "OK  cAdvisor (:8088) — métriques conteneurs présentes"
 elif docker exec wise-eat-cadvisor wget -qO- http://127.0.0.1:8080/metrics 2>/dev/null \
-  | grep -q '^container_cpu_usage_seconds_total'; then
+  | grep '^container_cpu_usage_seconds_total' | grep -v 'id="/"' | grep -q .; then
   log "OK  cAdvisor (réseau Docker) — métriques conteneurs présentes (:8088 host injoignable)"
 else
-  warn "FAIL cAdvisor — pas de container_cpu_usage_seconds_total (recréer : sudo ./install.sh repair-monitoring)"
+  warn "FAIL cAdvisor — pas de métriques conteneur (seulement id=\"/\" ou vide)"
+  warn "      Recréer : sudo ./install.sh repair-monitoring"
   if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-cadvisor'; then
     warn "      Logs cAdvisor (dernières lignes) :"
     docker logs wise-eat-cadvisor --tail 15 2>&1 | sed 's/^/        /' || true
     storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"
     if [[ "${storage_driver}" == "overlayfs" ]]; then
-      warn "      Storage Driver=overlayfs (Docker 29+) — cAdvisor peut échouer ; préférer overlay2 dans /etc/docker/daemon.json"
+      warn "      Storage Driver=overlayfs (Docker 29+) — compose impose --disable_metrics=disk (cadvisor#3860)"
     fi
   fi
   fail=1

@@ -81,7 +81,12 @@ if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
 fi
 log "Recréation cAdvisor (métriques conteneurs)…"
 docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate cadvisor
-sleep 8
+
+if ! wait_for_cadvisor_container_metrics 45; then
+  storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"
+  warn "cAdvisor ne remonte pas encore de métriques par conteneur (driver=${storage_driver:-?})"
+  warn "Vérifier : docker logs wise-eat-cadvisor --tail 30"
+fi
 
 if ! bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"; then
   warn "fetch-grafana-dashboard partiellement échoué — vérifier python3 / curl"

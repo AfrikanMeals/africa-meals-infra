@@ -238,14 +238,14 @@ sudo ./install.sh repair-ollama-monitoring
 sudo ./install.sh repair-monitoring
 ```
 
-Si `verify-monitoring` signale **FAIL cAdvisor — pas de container_cpu_usage_seconds_total** (tous les dashboards conteneurs vides, pas seulement Ollama) : cAdvisor ne lit pas les cgroups v2. Le compose monitoring impose `cgroup: host` + montage `/sys/fs/cgroup`. Après `git pull` :
+Si `verify-monitoring` signale **FAIL cAdvisor** avec seulement `id="/"` (Docker 29 + `overlayfs`) : le compose impose `--disable_metrics=disk` (contournement [cadvisor#3860](https://github.com/google/cadvisor/issues/3860)). Après `git pull` :
 
 ```bash
 sudo ./install.sh repair-monitoring
-curl -s http://127.0.0.1:8088/metrics | grep '^container_cpu_usage_seconds_total' | head
+curl -s http://127.0.0.1:8088/metrics | grep 'container_cpu_usage_seconds_total' | grep -v 'id="/"' | head
 ```
 
-Diagnostic : `docker logs wise-eat-cadvisor --tail 30` · `docker info | grep 'Storage Driver'` (si `overlayfs`, passer à `overlay2` dans `/etc/docker/daemon.json`).
+Diagnostic : `docker logs wise-eat-cadvisor --tail 30` · `docker info | grep 'Storage Driver'`
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`

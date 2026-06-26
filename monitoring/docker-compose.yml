@@ -26,7 +26,8 @@ services:
       - "127.0.0.1:9100:9100"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.53.0
+    # v0.53+ : ghcr.io (gcr.io/cadvisor/cadvisor n'est plus publié pour ces versions)
+    image: ghcr.io/google/cadvisor:v0.53.0
     container_name: wise-eat-cadvisor
     restart: unless-stopped
     privileged: true
@@ -38,7 +39,8 @@ services:
       - --docker_only=true
       - --store_container_labels=true
       - --housekeeping_interval=10s
-      - --enable_metrics=cpu,memory,network,disk,process,oom_event
+      # Docker 29 + overlayfs : sans ceci cAdvisor ne remonte que id="/" (cadvisor#3860)
+      - --disable_metrics=disk
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:

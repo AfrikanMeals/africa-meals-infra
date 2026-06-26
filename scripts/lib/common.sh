@@ -420,6 +420,26 @@ refresh_cadvisor_if_present() {
   fi
 }
 
+cadvisor_has_container_metrics() {
+  local metrics
+  metrics="$(curl -sf http://127.0.0.1:8088/metrics 2>/dev/null || true)"
+  [[ -n "${metrics}" ]] || return 1
+  echo "${metrics}" | grep '^container_cpu_usage_seconds_total' | grep -v 'id="/"' | grep -q .
+}
+
+wait_for_cadvisor_container_metrics() {
+  local max="${1:-60}"
+  local i
+  for i in $(seq 1 "$max"); do
+    if cadvisor_has_container_metrics; then
+      log "cAdvisor remonte des métriques conteneur (tentative ${i}/${max})"
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
 verify_cadvisor_ollama_metrics() {
   local max="${1:-30}"
   local i
