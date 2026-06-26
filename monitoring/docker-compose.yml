@@ -220,6 +220,8 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: wise-eat-prometheus
     restart: unless-stopped
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
+    memswap_limit: ${PROMETHEUS_MEMSWAP_LIMIT:-768m}
     networks:
       - wise-eat-infra
     command:
@@ -246,6 +248,8 @@ services:
     image: grafana/grafana:13.1.0
     container_name: wise-eat-grafana
     restart: unless-stopped
+    mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
+    memswap_limit: ${GRAFANA_MEMSWAP_LIMIT:-384m}
     networks:
       - wise-eat-infra
     environment:

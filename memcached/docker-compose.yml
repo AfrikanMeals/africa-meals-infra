@@ -6,8 +6,13 @@ networks:
     name: wise-eat-infra
     external: true
 
+x-memcached-mem: &memcached-mem
+  mem_limit: ${MEMCACHED_MEM_LIMIT:-192m}
+  memswap_limit: ${MEMCACHED_MEMSWAP_LIMIT:-256m}
+
 services:
   memcached:
+    <<: *memcached-mem
     image: memcached:1.6-alpine
     container_name: wise-eat-memcached
     networks:
@@ -24,6 +29,7 @@ services:
     restart: unless-stopped
 
   memcached-replica-1:
+    <<: *memcached-mem
     profiles: ["cluster-b"]
     image: memcached:1.6-alpine
     container_name: wise-eat-memcached-replica-1
@@ -41,6 +47,7 @@ services:
     restart: unless-stopped
 
   memcached-replica-2:
+    <<: *memcached-mem
     profiles: ["cluster-b"]
     image: memcached:1.6-alpine
     container_name: wise-eat-memcached-replica-2

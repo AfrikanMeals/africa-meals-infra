@@ -7,8 +7,17 @@ networks:
     name: wise-eat-infra
     external: true
 
+x-redis-mem-cache: &redis-mem-cache
+  mem_limit: ${REDIS_CACHE_MEM_LIMIT:-896m}
+  memswap_limit: ${REDIS_CACHE_MEMSWAP_LIMIT:-1152m}
+
+x-redis-mem-bull: &redis-mem-bull
+  mem_limit: ${REDIS_BULL_MEM_LIMIT:-640m}
+  memswap_limit: ${REDIS_BULL_MEMSWAP_LIMIT:-768m}
+
 services:
   redis-cache:
+    <<: *redis-mem-cache
     image: redis:7-alpine
     container_name: wise-eat-redis-cache
     networks:
@@ -49,6 +58,7 @@ services:
       retries: 5
 
   redis-bullmq:
+    <<: *redis-mem-bull
     image: redis:7-alpine
     container_name: wise-eat-redis-bullmq
     networks:
@@ -89,6 +99,7 @@ services:
       retries: 5
 
   redis-cache-replica-1:
+    <<: *redis-mem-cache
     profiles: ["cluster-b"]
     image: redis:7-alpine
     container_name: wise-eat-redis-cache-replica-1
@@ -109,6 +120,7 @@ services:
     restart: unless-stopped
 
   redis-cache-replica-2:
+    <<: *redis-mem-cache
     profiles: ["cluster-b"]
     image: redis:7-alpine
     container_name: wise-eat-redis-cache-replica-2
@@ -129,6 +141,7 @@ services:
     restart: unless-stopped
 
   redis-bullmq-replica-1:
+    <<: *redis-mem-bull
     profiles: ["cluster-b"]
     image: redis:7-alpine
     container_name: wise-eat-redis-bullmq-replica-1
@@ -149,6 +162,7 @@ services:
     restart: unless-stopped
 
   redis-bullmq-replica-2:
+    <<: *redis-mem-bull
     profiles: ["cluster-b"]
     image: redis:7-alpine
     container_name: wise-eat-redis-bullmq-replica-2

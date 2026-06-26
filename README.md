@@ -150,6 +150,33 @@ Détails techniques :
 | `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
+| `VPS_SWAP_SIZE_GB` | `2` | Swap hôte (créé par `ensure_vps_swap` si absent) |
+| `VPS_SWAPPINESS` | `40` | Aggressivité swap kernel (0–100) |
+
+## Mémoire & swap (VPS 8 Go)
+
+Profil cible : **2 vCPU / 8 Go RAM / 2 Go swap**. Chaque conteneur a un `mem_limit` (RAM) et un `memswap_limit` (RAM + swap autorisé) :
+
+| Composant | RAM | Swap conteneur | Total cgroup |
+|-----------|-----|----------------|--------------|
+| MongoDB ×3 | 512 Mo | 512 Mo | 1 Go |
+| DbGate | 512 Mo | 256 Mo | 768 Mo |
+| Ollama | 3 Go | 1 Go | 4 Go |
+| EMQX ×3 | 256 Mo | 128 Mo | 384 Mo |
+| Prometheus | 512 Mo | 256 Mo | 768 Mo |
+| Grafana | 256 Mo | 128 Mo | 384 Mo |
+| Redis cache (+ réplicas) | 896 Mo | 256 Mo | 1152 Mo |
+| Redis BullMQ (+ réplicas) | 640 Mo | 128 Mo | 768 Mo |
+| Memcached ×3 | 192 Mo | 64 Mo | 256 Mo |
+| MinIO | 256 Mo | 128 Mo | 384 Mo |
+
+Le swap hôte est provisionné automatiquement à chaque `install.sh` (via `ensure_docker` → `scripts/lib/vps-swap.sh`). Vérification :
+
+```bash
+swapon --show
+sysctl vm.swappiness
+docker inspect wise-eat-mongo-1 --format 'mem={{.HostConfig.Memory}} swap={{.HostConfig.MemorySwap}}'
+```
 
 ## Composants `install.sh`
 
