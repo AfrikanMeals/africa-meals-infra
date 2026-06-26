@@ -535,7 +535,7 @@ sudo ./install.sh repair-emqx-boot
 
 ## MongoDB
 
-Base de données self-hosted **MongoDB 8** — replica set **rs0** (1 primary + 2 réplicas), volume **5 Go**, **1 Go RAM** par nœud + swap.
+Base de données self-hosted **MongoDB 8** — replica set **rs0** (1 primary + 2 réplicas), volume **5 Go**, **512 Mo RAM** par nœud + swap (**1,5 Go** total rs0).
 
 ```bash
 sudo ./install.sh mongodb

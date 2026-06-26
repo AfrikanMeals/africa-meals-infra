@@ -1,6 +1,6 @@
 # Wise Eat — MongoDB 8 : 1 primary + 2 réplicas (replica set rs0)
 # Install : sudo ./install.sh mongodb
-# RAM : 1 Go / nœud + swap · Stockage : 5 Go (volume dédié)
+# RAM : 512 Mo / nœud + swap (1,5 Go total rs0) · Stockage : 5 Go (volume dédié)
 
 name: wise-eat-mongo
 
@@ -22,11 +22,11 @@ x-mongo-common: &mongo-common
     - --keyFile
     - /etc/mongodb/keyfile
     - --wiredTigerCacheSizeGB
-    - ${MONGO_WIREDTIGER_CACHE_GB:-0.25}
+    - ${MONGO_WIREDTIGER_CACHE_GB:-0.125}
     - --setParameter
     - authenticationMechanisms=SCRAM-SHA-256
-  mem_limit: ${MONGO_MEM_LIMIT:-1g}
-  memswap_limit: ${MONGO_MEMSWAP_LIMIT:-2g}
+  mem_limit: ${MONGO_MEM_LIMIT:-512m}
+  memswap_limit: ${MONGO_MEMSWAP_LIMIT:-1g}
   healthcheck:
     test:
       [

@@ -36,7 +36,7 @@ Composants:
   memcached     Memcached 1 primary (:11211) + 2 réplicas
   minio         MinIO Docker (S3 :9000, console :9001, volume 10G)
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
-  mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 1 Go RAM)
+  mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 512 Mo RAM / nœud)
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
   repair-ollama-monitoring Recréer Ollama + ollama-exporter (Grafana #25086)
