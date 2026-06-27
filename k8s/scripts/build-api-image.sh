@@ -51,6 +51,10 @@ if command -v k3s >/dev/null 2>&1; then
   echo "Import image dans k3s containerd..."
   docker save "${IMAGE}" | sudo k3s ctr images import -
   echo "Image importée : ${IMAGE}"
+  if sudo k3s kubectl get deployment africa-meals-api -n wise-eat >/dev/null 2>&1; then
+    echo "Redémarrage deployment africa-meals-api (image :latest)..."
+    sudo k3s kubectl rollout restart deployment/africa-meals-api -n wise-eat
+  fi
 elif command -v ctr >/dev/null 2>&1 && [[ -S /run/k3s/containerd/containerd.sock ]]; then
   docker save "${IMAGE}" | sudo ctr -n k8s.io images import -
 else
