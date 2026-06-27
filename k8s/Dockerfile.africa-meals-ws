@@ -19,7 +19,8 @@ RUN npm run build
 FROM node:20-alpine AS builder
 WORKDIR /app/africa-meals-ws
 COPY africa-meals-ws/package.json africa-meals-ws/package-lock.json* ./
-COPY --from=packages /app/packages /app/packages
+# package.json WS : file:../africa-meals-project/packages/…
+COPY --from=packages /app/packages /app/africa-meals-project/packages
 RUN npm ci --legacy-peer-deps
 COPY africa-meals-ws/tsconfig.json africa-meals-ws/tsconfig.build.json africa-meals-ws/nest-cli.json ./
 COPY africa-meals-ws/src ./src
@@ -31,7 +32,7 @@ ENV NODE_ENV=production
 ENV PORT=8000
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
 COPY africa-meals-ws/package.json africa-meals-ws/package-lock.json* ./
-COPY --from=packages /app/packages /app/packages
+COPY --from=packages /app/packages /app/africa-meals-project/packages
 RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 COPY --from=builder /app/africa-meals-ws/dist ./dist
 USER nodejs
