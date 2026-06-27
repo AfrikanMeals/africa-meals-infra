@@ -174,6 +174,34 @@ kubectl get pods -n kube-system -l k8s-app=kube-dns
 sudo WS_BACKEND_PORT=30800 infra/k8s/scripts/patch-nginx-ws-backend.sh
 ```
 
+## Headlamp — UI Kubernetes (`k8s.wise-eat.com`)
+
+[Headlamp](https://headlamp.dev/) (CNCF) : gestion pods, logs, exec, déploiements — gratuit et adapté k3s.
+
+| Couche | Auth |
+|--------|------|
+| nginx | basic auth (`K8S_DASHBOARD_BASIC_AUTH_USER` / mot de passe) |
+| Headlamp | token ServiceAccount `headlamp-admin` |
+
+**DNS** : `k8s.wise-eat.com` → A/AAAA VPS (**DNS only** Cloudflare).
+
+```bash
+cd /opt/wise-eat && git pull
+chmod +x k8s/scripts/*.sh
+
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
+  K8S_DASHBOARD_BASIC_AUTH_PASSWORD='votre-mot-de-passe' \
+  k8s/scripts/deploy-k8s-dashboard.sh
+```
+
+Connexion :
+
+1. Ouvrir `https://k8s.wise-eat.com/` → basic auth nginx
+2. Dans Headlamp → **Token** → coller le token :
+   ```bash
+   sudo k8s/scripts/create-headlamp-admin-token.sh
+   ```
+
 ## Fichiers
 
 ```
@@ -185,8 +213,13 @@ infra/k8s/
     service.yaml            # NodePort 30800
     poddisruptionbudget.yaml
     secret.env.example
+  headlamp/                 # UI Kubernetes (NodePort 30850)
   scripts/
     deploy-ws-production.sh # ← commande principale
+    deploy-k8s-dashboard.sh # Headlamp + k8s.wise-eat.com
+    install-headlamp.sh
+    install-k8s-nginx.sh
+    create-headlamp-admin-token.sh
     deploy-ws.sh
     create-ws-secret.sh
     build-ws-image.sh
