@@ -32,7 +32,27 @@ Internet → nginx :443 (wise-eat.cloud / ws.wise-eat.com)
 
 ## Commande de déploiement (production)
 
-Sur le **VPS**, depuis la racine du monorepo :
+### VPS Wise Eat (`/opt/wise-eat` + `/opt/wise-eat-ws`)
+
+Dépôts séparés sur le serveur — le dossier applicatif s’appelle **`wise-eat-ws`**, pas `africa-meals-ws`.
+
+```bash
+cd /opt/wise-eat
+git pull
+chmod +x k8s/scripts/*.sh
+
+# .env explicite (recommandé)
+sudo k8s/scripts/deploy-ws-production.sh /opt/wise-eat-ws/.env
+
+# ou auto-détection de /opt/wise-eat-ws/.env
+sudo k8s/scripts/deploy-ws-production.sh
+```
+
+Prérequis build Docker : `/opt/wise-eat-ws` **et** `/opt/packages` (monorepo partiel avec `africa-meals-proto` + `africa-meals-field-selection`).
+
+### Monorepo local
+
+Sur la racine du monorepo :
 
 ```bash
 cd /chemin/AfrikaMeals

@@ -3,6 +3,7 @@
 # Réécrit les hostnames publics vers host.k3s.internal (services locaux VPS + TLS SNI via ConfigMap).
 #
 # Usage :
+#   ./create-ws-secret.sh /opt/wise-eat-ws/.env
 #   ./create-ws-secret.sh africa-meals-ws/.env
 #   VPS_K8S_LOCAL=0 ./create-ws-secret.sh .env   # sans réécriture locale
 set -euo pipefail

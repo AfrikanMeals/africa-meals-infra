@@ -1,27 +1,51 @@
 #!/usr/bin/env bash
 # Build l'image Docker africa-meals-ws et l'importe dans k3s (containerd).
 #
-# Usage (depuis la racine du monorepo AfrikaMeals) :
+# Monorepo (AfrikaMeals/) :
 #   ./infra/k8s/scripts/build-ws-image.sh
-#   ./infra/k8s/scripts/build-ws-image.sh v1.2.3
+#
+# VPS (/opt/wise-eat + /opt/wise-eat-ws + /opt/packages) :
+#   sudo ./k8s/scripts/build-ws-image.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-K8S_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-INFRA_ROOT="$(cd "${K8S_DIR}/.." && pwd)"
-MONO_ROOT="$(cd "${INFRA_ROOT}/.." && pwd)"
+# shellcheck source=ws-paths.sh
+source "${SCRIPT_DIR}/ws-paths.sh"
 
 TAG="${1:-latest}"
 IMAGE="africa-meals/ws:${TAG}"
-DOCKERFILE="${K8S_DIR}/Dockerfile.africa-meals-ws"
+DOCKERFILE="$(cd "${SCRIPT_DIR}/.." && pwd)/Dockerfile.africa-meals-ws"
+BUILD_CTX=""
+BUILD_CTX_TMP=""
+WS_DIR=""
 
-if [[ ! -f "${MONO_ROOT}/africa-meals-ws/package.json" ]]; then
-  echo "Monorepo introuvable — lancer depuis AfrikaMeals/ (parent de africa-meals-ws)." >&2
+cleanup() {
+  [[ -n "${BUILD_CTX_TMP}" && -d "${BUILD_CTX_TMP}" ]] && rm -rf "${BUILD_CTX_TMP}"
+}
+trap cleanup EXIT
+
+WS_DIR="$(ws_resolve_source_dir)" || {
+  echo "Source WS introuvable (wise-eat-ws ou africa-meals-ws avec package.json)." >&2
+  echo "VPS : cloner le dépôt WS dans /opt/wise-eat-ws" >&2
+  exit 1
+}
+
+if ! ws_resolve_packages_dir "${WS_DIR}" >/dev/null; then
+  echo "packages/ introuvable (africa-meals-proto, africa-meals-field-selection)." >&2
+  echo "VPS : cloner ou lier packages/ à côté de wise-eat-ws (ex. /opt/packages)." >&2
   exit 1
 fi
 
-echo "Build ${IMAGE} (contexte ${MONO_ROOT})..."
-docker build -f "${DOCKERFILE}" -t "${IMAGE}" "${MONO_ROOT}"
+ws_paths_init
+BUILD_CTX="$(ws_prepare_docker_context)"
+if [[ "${BUILD_CTX}" != "${WS_PATHS_MONO_ROOT}" ]]; then
+  BUILD_CTX_TMP="${BUILD_CTX}"
+fi
+
+echo "Build ${IMAGE}"
+echo "  source WS : ${WS_DIR}"
+echo "  contexte  : ${BUILD_CTX}"
+docker build -f "${DOCKERFILE}" -t "${IMAGE}" "${BUILD_CTX}"
 
 if command -v k3s >/dev/null 2>&1; then
   echo "Import image dans k3s containerd..."

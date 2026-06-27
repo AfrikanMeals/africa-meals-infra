@@ -43,7 +43,7 @@ DEPLOYMENT="africa-meals-ws"
 
 if ! "${KUBECTL[@]}" get secret "${SECRET_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
   echo "Secret ${SECRET_NAME} absent dans ${NAMESPACE}." >&2
-  echo "Créer : ${SCRIPT_DIR}/create-ws-secret.sh africa-meals-ws/.env" >&2
+  echo "Créer : ${SCRIPT_DIR}/create-ws-secret.sh /opt/wise-eat-ws/.env" >&2
   exit 1
 fi
 
