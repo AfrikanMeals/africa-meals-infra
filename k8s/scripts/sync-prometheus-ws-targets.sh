@@ -47,21 +47,6 @@ ws_stop_relays() {
   pkill -f "socat TCP-LISTEN:${RELAY_BASE}" 2>/dev/null || true
 }
 
-mapfile -t POD_LINES < <(
-  "${KUBECTL[@]}" get pods -n "${NAMESPACE}" \
-    -l app.kubernetes.io/name=africa-meals-ws \
-    --field-selector=status.phase=Running \
-    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' \
-    2>/dev/null | grep -E $'\t[0-9]+\.' || true
-)
-
-if [[ ${#POD_LINES[@]} -eq 0 ]]; then
-  ws_stop_relays
-  echo "[]" > "${TARGETS_FILE}"
-  echo "Aucun pod WS Running — ${TARGETS_FILE} vidé." >&2
-  exit 0
-fi
-
 write_targets_json() {
   local -a entries=("$@")
   {
@@ -87,8 +72,56 @@ write_targets_json() {
   } > "${TARGETS_FILE}"
 }
 
+write_k8s_host_targets() {
+  {
+    echo '['
+    echo '  {'
+    echo "    \"targets\": [\"${SCRAPE_HOST}:${KSM_PORT}\"],"
+    echo '    "labels": {'
+    echo '      "namespace": "kube-system",'
+    echo '      "service": "kube-state-metrics"'
+    echo '    }'
+    echo '  },'
+    echo '  {'
+    echo "    \"targets\": [\"${SCRAPE_HOST}:${NODEPORT}\"],"
+    echo '    "labels": {'
+    echo '      "service": "africa-meals-ws",'
+    echo '      "scrape": "nodeport"'
+    echo '    }'
+    echo '  }'
+    echo ']'
+  } > "${K8S_HOST_TARGETS}"
+}
+
+prometheus_reload() {
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+    curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null \
+      && echo "Prometheus rechargé (/-/reload)." \
+      || docker restart wise-eat-prometheus >/dev/null
+  fi
+}
+
+mapfile -t POD_LINES < <(
+  "${KUBECTL[@]}" get pods -n "${NAMESPACE}" \
+    -l app.kubernetes.io/name=africa-meals-ws \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' \
+    2>/dev/null | grep -E $'\t[0-9]+\.' || true
+)
+
 ENTRIES=()
 TARGET_MODE=""
+
+if [[ ${#POD_LINES[@]} -eq 0 ]]; then
+  ws_stop_relays
+  write_targets_json "nodeport-aggregate"$'\t'"${SCRAPE_HOST}:${NODEPORT}"
+  write_k8s_host_targets
+  echo "Aucun pod WS Running — fallback NodePort ${SCRAPE_HOST}:${NODEPORT}" >&2
+  cat "${TARGETS_FILE}"
+  echo "Passerelle k8s : ${K8S_HOST_TARGETS}"
+  prometheus_reload
+  exit 0
+fi
 
 # 1) Prometheus host + IP pods joignables depuis l'hôte (cas k3s VPS idéal)
 if prometheus_uses_host_network; then
@@ -153,28 +186,7 @@ echo "Mode cibles WS : ${TARGET_MODE} (${#ENTRIES[@]:-1} entrée(s))"
 echo "Fichier : ${TARGETS_FILE}"
 cat "${TARGETS_FILE}"
 
-{
-  echo '['
-  echo '  {'
-  echo "    \"targets\": [\"${SCRAPE_HOST}:${KSM_PORT}\"],"
-  echo '    "labels": {'
-  echo '      "namespace": "kube-system",'
-  echo '      "service": "kube-state-metrics"'
-  echo '    }'
-  echo '  },'
-  echo '  {'
-  echo "    \"targets\": [\"${SCRAPE_HOST}:${NODEPORT}\"],"
-  echo '    "labels": {'
-  echo '      "service": "africa-meals-ws",'
-  echo '      "scrape": "nodeport"'
-  echo '    }'
-  echo '  }'
-  echo ']'
-} > "${K8S_HOST_TARGETS}"
+write_k8s_host_targets
 echo "Passerelle k8s : ${K8S_HOST_TARGETS}"
 
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
-  curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null \
-    && echo "Prometheus rechargé (/-/reload)." \
-    || docker restart wise-eat-prometheus >/dev/null
-fi
+prometheus_reload

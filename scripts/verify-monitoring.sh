@@ -406,6 +406,36 @@ else
   fail=1
 fi
 
+if command -v k3s >/dev/null 2>&1; then
+  log "=== africa-meals-ws (k8s) ==="
+  if curl -sf --max-time 5 "http://127.0.0.1:30800/api/metrics" | grep -q ws_up; then
+    log "OK  WS NodePort :30800 /api/metrics"
+  else
+    warn "FAIL WS NodePort 30800 — pods k8s down ?"
+    fail=1
+  fi
+  if curl -sf --max-time 5 "http://127.0.0.1:30080/metrics" 2>/dev/null | grep -q kube_; then
+    log "OK  kube-state-metrics :30080"
+  else
+    warn "FAIL kube-state-metrics :30080 — sudo k8s/scripts/install-kube-state-metrics.sh"
+    fail=1
+  fi
+  prom_mode="$(docker inspect wise-eat-prometheus -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${prom_mode}" != "host" ]]; then
+    warn "FAIL Prometheus pas en network_mode=host (scrape k8s bloqué) — sudo k8s/scripts/recreate-prometheus-host.sh"
+    fail=1
+  else
+    log "OK  Prometheus network_mode=host"
+  fi
+  if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=ws_up' | grep -q '"value":\["'; then
+    log "OK  Prometheus ws_up présent"
+  else
+    warn "FAIL ws_up absent — sudo k8s/scripts/repair-ws-prometheus.sh"
+    fail=1
+  fi
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   echo ""
   warn "Correctifs fréquents :"
@@ -417,6 +447,7 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
   echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
   echo "  8. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
+  echo "  9. WS k8s Grafana : sudo k8s/scripts/repair-ws-prometheus.sh && docker restart wise-eat-grafana"
   exit 1
 fi
 

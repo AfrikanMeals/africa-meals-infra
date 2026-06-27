@@ -86,8 +86,14 @@ echo "== 5/7 Déploiement 3 pods (512 Mi + restart Always) =="
 "${SCRIPT_DIR}/deploy-ws.sh" --verify
 
 if [[ "${SKIP_MONITORING}" == "false" ]]; then
-  echo "== 6/7 Prometheus targets WS =="
+  echo "== 6/7 Prometheus (host network + cibles WS) =="
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+    "${SCRIPT_DIR}/recreate-prometheus-host.sh" || true
+  fi
   "${SCRIPT_DIR}/sync-prometheus-ws-targets.sh" || true
+  if [[ -x "${SCRIPT_DIR}/install-ws-prometheus-cron.sh" ]]; then
+    "${SCRIPT_DIR}/install-ws-prometheus-cron.sh" || true
+  fi
 fi
 
 if [[ "${SKIP_NGINX}" == "false" ]]; then

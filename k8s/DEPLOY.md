@@ -128,11 +128,16 @@ Le dashboard **`Africa Meals WS (k8s)`** est provisionné depuis :
 Panels : pods ready, scrape metrics, mémoire 512 Mi, STOMP sessions, WebSocket stats, gRPC p95/erreurs, MQTT, redémarrages k8s.
 
 ```bash
-# Recharger Grafana après git pull
+cd /opt/wise-eat && git pull
+
+# Réparation complète (Prometheus host network + cibles pods + kube-state-metrics)
+sudo k8s/scripts/repair-ws-prometheus.sh
 docker restart wise-eat-grafana
 
-# Recharger Prometheus (nouvelles cibles pods)
-/opt/wise-eat/k8s/scripts/sync-prometheus-ws-targets.sh
+# Vérification
+curl -sG 'http://127.0.0.1:9090/api/v1/query' --data-urlencode 'query=ws_up' | head -c 300
+curl -sG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=kube_deployment_status_replicas_available{deployment="africa-meals-ws",namespace="wise-eat"}' | head -c 300
 ```
 
 Console Grafana : `https://console.wise-eat.com` → dossier **Servers**.
@@ -174,7 +179,7 @@ Rolling update sans coupure (`maxUnavailable: 0`).
 |----------|--------|
 | Pod CrashLoop | `kubectl logs -n wise-eat deployment/africa-meals-ws --tail=100` |
 | 502 ws.wise-eat.com | `kubectl get pods -n wise-eat` + `curl 127.0.0.1:30800/api/health` |
-| Grafana « No data » | `apt install socat` puis `sudo k8s/scripts/repair-ws-prometheus.sh` + `docker restart wise-eat-grafana` |
+| Grafana « No data » | `git pull` puis `sudo k8s/scripts/repair-ws-prometheus.sh` + `docker restart wise-eat-grafana` (Prometheus doit être en `network_mode=host`) |
 | Certificat WS | `sudo STUNNEL_TLS_EMAIL=… k8s/scripts/enable-ws-nginx-ssl.sh` |
 | packages manquants | vérifier `/opt/packages/africa-meals-proto` |
 

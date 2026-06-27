@@ -98,6 +98,11 @@ fi
 
 bash "${SCRIPT_DIR}/verify-monitoring.sh" || true
 
+if command -v k3s >/dev/null 2>&1 && [[ -x "${INFRA_ROOT}/k8s/scripts/repair-ws-prometheus.sh" ]]; then
+  log "k3s détecté — scrape africa-meals-ws (Grafana Servers)"
+  bash "${INFRA_ROOT}/k8s/scripts/repair-ws-prometheus.sh" || warn "repair-ws-prometheus partiel — voir k8s/DEPLOY.md"
+fi
+
 echo ""
 log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
