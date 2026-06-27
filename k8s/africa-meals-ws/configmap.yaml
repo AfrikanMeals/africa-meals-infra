@@ -20,7 +20,8 @@ data:
   AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://host.k3s.internal:9000/api"
   STATUS_PROBE_API_URL: "https://api.wise-eat.com/health"
 
-  # --- MongoDB (Stunnel TLS local :27018) — URI complète dans le Secret ---
+  # --- MongoDB (Stunnel :27018 local) — URI dans le Secret, SNI dans ConfigMap ---
+  MONGODB_TLS_SERVERNAME: "db.wise-eat.com"
   REDIS_HOST: "host.k3s.internal"
   REDIS_PORT: "6381"
   REDIS_TLS: "true"

@@ -40,8 +40,10 @@ if [[ "${VPS_K8S_LOCAL}" == "1" ]]; then
   sed \
     -e "s/@cache\\.wise-eat\\.com:/@${LOCAL_HOST}:/g" \
     -e "s/@broker\\.wise-eat\\.com:/@${LOCAL_HOST}:/g" \
+    -e "s/@db\\.wise-eat\\.com:/@${LOCAL_HOST}:/g" \
     -e "s/cache\\.wise-eat\\.com:/${LOCAL_HOST}:/g" \
     -e "s/broker\\.wise-eat\\.com:/${LOCAL_HOST}:/g" \
+    -e "s/db\\.wise-eat\\.com:/${LOCAL_HOST}:/g" \
     "${FILTERED}" > "${REWRITTEN}"
   mv "${REWRITTEN}" "${FILTERED}"
 fi
