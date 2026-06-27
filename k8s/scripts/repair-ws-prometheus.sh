@@ -81,6 +81,12 @@ else
   echo "  docker restart wise-eat-prometheus" >&2
 fi
 
+if result="$(prom_query 'up{job="kube-state-metrics"}' 2>/dev/null)" && echo "${result}" | grep -q '"value":\[".*","1"\]'; then
+  echo "OK up{job=kube-state-metrics}=1"
+else
+  echo "Échec scrape kube-state-metrics — curl http://127.0.0.1:30080/metrics | head" >&2
+fi
+
 if result="$(prom_query 'kube_deployment_status_replicas_available{deployment="africa-meals-ws",namespace="wise-eat"}' 2>/dev/null)" \
   && echo "${result}" | grep -q '"value"'; then
   echo "OK kube_deployment_status_replicas_available :"

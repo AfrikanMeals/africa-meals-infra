@@ -35,6 +35,16 @@ fi
 
 mkdir -p "${TARGETS_DIR}" "${PID_DIR}"
 
+seed_targets_from_examples() {
+  local f example
+  for f in ws-pods.json k8s-host.json; do
+    if [[ ! -s "${TARGETS_DIR}/${f}" && -f "${TARGETS_DIR}/${f}.example" ]]; then
+      cp "${TARGETS_DIR}/${f}.example" "${TARGETS_DIR}/${f}"
+    fi
+  done
+}
+seed_targets_from_examples
+
 ws_stop_relays() {
   local f pid
   shopt -s nullglob
@@ -178,15 +188,17 @@ if [[ ${#ENTRIES[@]} -eq 0 ]]; then
   ws_stop_relays
   write_targets_json "nodeport-aggregate"$'\t'"${SCRAPE_HOST}:${NODEPORT}"
   TARGET_MODE="nodeport-fallback"
+  TARGET_COUNT=1
 else
   write_targets_json "${ENTRIES[@]}"
+  TARGET_COUNT="${#ENTRIES[@]}"
 fi
 
-echo "Mode cibles WS : ${TARGET_MODE} (${#ENTRIES[@]:-1} entrée(s))"
+write_k8s_host_targets
+
+echo "Mode cibles WS : ${TARGET_MODE} (${TARGET_COUNT} entrée(s))"
 echo "Fichier : ${TARGETS_FILE}"
 cat "${TARGETS_FILE}"
-
-write_k8s_host_targets
 echo "Passerelle k8s : ${K8S_HOST_TARGETS}"
 
 prometheus_reload

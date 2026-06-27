@@ -18,6 +18,9 @@ redis/cache-replica.generated.conf
 redis/bull-replica.generated.conf
 
 monitoring/.env.monitoring
+# Cibles file_sd régénérées sur le VPS (sync-prometheus-ws-targets.sh)
+monitoring/prometheus/targets/ws-pods.json
+monitoring/prometheus/targets/k8s-host.json
 
 memcached/.env.memcached
 minio/.env.minio

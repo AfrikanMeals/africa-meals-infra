@@ -1,0 +1,16 @@
+[
+  {
+    "targets": ["127.0.0.1:30080"],
+    "labels": {
+      "namespace": "kube-system",
+      "service": "kube-state-metrics"
+    }
+  },
+  {
+    "targets": ["127.0.0.1:30800"],
+    "labels": {
+      "service": "africa-meals-ws",
+      "scrape": "nodeport"
+    }
+  }
+]
