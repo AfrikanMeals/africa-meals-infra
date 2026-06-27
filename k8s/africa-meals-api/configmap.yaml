@@ -12,6 +12,8 @@ data:
   SERVER_URL: "https://api.wise-eat.com"
   API_PUBLIC_BASE_URL: "https://api.wise-eat.com"
   DISABLE_SWAGGER: "true"
+  GOOGLE_APPLICATION_CREDENTIALS: ""
+  AM_FIREBASE_SERVICE_ACCOUNT_PATH: ""
 
   VPS_LOCAL_HOST: "host.k3s.internal"
 

@@ -71,6 +71,10 @@ if [[ "${VPS_K8S_LOCAL}" == "1" ]]; then
   mv "${REWRITTEN}" "${FILTERED}"
 fi
 
+# GOOGLE_APPLICATION_CREDENTIALS=accounts.json (PM2 local) — remplacé par ConfigMap k8s + volume /run/secrets/firebase
+grep -vE '^GOOGLE_APPLICATION_CREDENTIALS=' "${FILTERED}" > "${FILTERED}.strip" || true
+mv "${FILTERED}.strip" "${FILTERED}"
+
 "${KUBECTL[@]}" create namespace "${NAMESPACE}" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
 "${KUBECTL[@]}" create secret generic "${SECRET_NAME}" \

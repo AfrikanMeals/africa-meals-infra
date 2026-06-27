@@ -69,8 +69,6 @@ spec:
                   fieldPath: metadata.namespace
             - name: REQUEST_STATS_ENABLED
               value: "true"
-            - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: /app/africa-meals-api/accounts.json
           envFrom:
             - secretRef:
                 name: africa-meals-api-env
@@ -85,8 +83,7 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: firebase-sa
-              mountPath: /app/africa-meals-api/accounts.json
-              subPath: accounts.json
+              mountPath: /run/secrets/firebase
               readOnly: true
           lifecycle:
             preStop:

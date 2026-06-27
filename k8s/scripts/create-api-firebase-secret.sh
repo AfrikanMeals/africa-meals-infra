@@ -8,8 +8,8 @@ SECRET_NAME="${K8S_API_FIREBASE_SECRET:-africa-meals-api-firebase-sa}"
 SA_FILE="${1:-}"
 
 if [[ -z "${SA_FILE}" || ! -f "${SA_FILE}" ]]; then
-  echo "Usage: $0 <chemin/accounts.json>" >&2
-  echo "Fichier absent — pods démarreront sans montage Firebase (optionnel)." >&2
+  echo "Fichier accounts.json absent — Firebase utilisera applicationDefault() (FCM optionnel)." >&2
+  echo "Pour FCM : copier accounts.json puis relancer $0 /opt/wise-eat-api/accounts.json" >&2
   exit 0
 fi
 
@@ -25,4 +25,8 @@ fi
   --from-file=accounts.json="${SA_FILE}" \
   --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
-echo "Secret ${SECRET_NAME} appliqué (accounts.json)"
+"${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
+  -p '{"data":{"AM_FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json"}}'
+
+echo "Secret ${SECRET_NAME} appliqué (accounts.json → /run/secrets/firebase/)"
+echo "ConfigMap africa-meals-api : AM_FIREBASE_SERVICE_ACCOUNT_PATH activé"
