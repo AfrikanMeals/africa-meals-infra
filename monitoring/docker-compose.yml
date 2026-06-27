@@ -251,14 +251,14 @@ services:
     restart: unless-stopped
     mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
     memswap_limit: ${GRAFANA_MEMSWAP_LIMIT:-384m}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - wise-eat-infra
+    # host : joint Prometheus (host network, 0.0.0.0:9090) via 127.0.0.1 — host.docker.internal absent sur Linux sans recreate
+    network_mode: host
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD requis}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: 3000
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://127.0.0.1:3000/}
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_INSTALL_PLUGINS: ""
@@ -266,8 +266,6 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
-    ports:
-      - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
 

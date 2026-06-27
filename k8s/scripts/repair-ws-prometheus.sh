@@ -69,17 +69,24 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus';
 fi
 
 echo ""
-echo "== 4b/5 Grafana → Prometheus (host.docker.internal) =="
+echo "== 4b/5 Grafana → Prometheus (127.0.0.1:9090) =="
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
-  if docker exec wise-eat-grafana wget -qO- --timeout=5 'http://host.docker.internal:9090/-/ready' 2>/dev/null | grep -qi prometheus; then
-    echo "OK Grafana joint Prometheus via host.docker.internal:9090"
+  grafana_net="$(docker inspect wise-eat-grafana -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${grafana_net}" != "host" ]]; then
+    echo "Grafana n'est PAS en network_mode=host (host.docker.internal souvent absent sur Linux)." >&2
+    if [[ -x "${SCRIPT_DIR}/recreate-grafana-host.sh" ]]; then
+      "${SCRIPT_DIR}/recreate-grafana-host.sh"
+    else
+      echo "  sudo ${SCRIPT_DIR}/recreate-grafana-host.sh" >&2
+    fi
+  elif docker exec wise-eat-grafana wget -qO- --timeout=5 'http://127.0.0.1:9090/-/ready' 2>/dev/null | grep -qi prometheus; then
+    echo "OK Grafana joint Prometheus via 127.0.0.1:9090"
   else
-    echo "Échec Grafana → Prometheus (Prometheus doit écouter 0.0.0.0:9090, pas 127.0.0.1 seul)" >&2
-    echo "  sudo ${SCRIPT_DIR}/recreate-prometheus-host.sh" >&2
-    echo "  docker restart wise-eat-grafana" >&2
+    echo "Échec Grafana → Prometheus — recréer Grafana + Prometheus host" >&2
+    [[ -x "${SCRIPT_DIR}/recreate-grafana-host.sh" ]] && "${SCRIPT_DIR}/recreate-grafana-host.sh" || true
   fi
 else
-  echo "Conteneur wise-eat-grafana absent" >&2
+  echo "Conteneur wise-eat-grafana absent — sudo k8s/scripts/recreate-grafana-host.sh" >&2
 fi
 
 echo ""
