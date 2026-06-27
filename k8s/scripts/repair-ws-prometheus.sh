@@ -69,6 +69,20 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus';
 fi
 
 echo ""
+echo "== 4b/5 Grafana → Prometheus (host.docker.internal) =="
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
+  if docker exec wise-eat-grafana wget -qO- --timeout=5 'http://host.docker.internal:9090/-/ready' 2>/dev/null | grep -qi prometheus; then
+    echo "OK Grafana joint Prometheus via host.docker.internal:9090"
+  else
+    echo "Échec Grafana → Prometheus (Prometheus doit écouter 0.0.0.0:9090, pas 127.0.0.1 seul)" >&2
+    echo "  sudo ${SCRIPT_DIR}/recreate-prometheus-host.sh" >&2
+    echo "  docker restart wise-eat-grafana" >&2
+  fi
+else
+  echo "Conteneur wise-eat-grafana absent" >&2
+fi
+
+echo ""
 echo "== 5/5 Requêtes Prometheus (attendre ~30s si scrape récent) =="
 sleep 2
 
@@ -93,7 +107,8 @@ if result="$(prom_query 'kube_deployment_status_replicas_available{deployment="a
   echo "${result}" | head -c 400
   echo ""
 else
-  echo "kube_deployment_status_replicas_available vide (job kube-state-metrics ?)" >&2
+  echo "kube_deployment_status_replicas_available vide — fallback dashboard : count(ws_up==1)" >&2
+  curl -s http://127.0.0.1:30080/metrics 2>/dev/null | grep -E 'kube_deployment.*africa-meals-ws' | head -3 || true
 fi
 
 echo ""

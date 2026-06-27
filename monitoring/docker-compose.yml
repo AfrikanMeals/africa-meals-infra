@@ -229,7 +229,8 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
       - --web.enable-lifecycle
-      - --web.listen-address=127.0.0.1:9090
+      # 0.0.0.0 : Grafana (Docker) joint via host.docker.internal → IP pont hôte, pas 127.0.0.1
+      - --web.listen-address=0.0.0.0:9090
       - --web.external-url=${PROMETHEUS_EXTERNAL_URL:-http://127.0.0.1:9090/}
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro

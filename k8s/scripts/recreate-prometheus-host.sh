@@ -44,12 +44,12 @@ docker run -d \
   --storage.tsdb.path=/prometheus \
   --storage.tsdb.retention.time="${RETENTION}" \
   --web.enable-lifecycle \
-  --web.listen-address=127.0.0.1:9090 \
+  --web.listen-address=0.0.0.0:9090 \
   --web.external-url="${EXTERNAL_URL}"
 
 sleep 2
 if curl -sf http://127.0.0.1:9090/-/ready >/dev/null; then
-  echo "OK — Prometheus host network sur http://127.0.0.1:9090"
+  echo "OK — Prometheus host network sur http://127.0.0.1:9090 (écoute 0.0.0.0:9090)"
 else
   echo "Prometheus ne répond pas sur :9090" >&2
   docker logs wise-eat-prometheus --tail 30 >&2
