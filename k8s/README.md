@@ -153,16 +153,19 @@ Causes fréquentes : secret absent, Redis/Mongo injoignables, `JWT_SECRET` manqu
 
 **TLS Redis/MQTT** — vérifier SNI dans les logs ; ne pas mettre `REDIS_TLS_REJECT_UNAUTHORIZED=false` en prod.
 
-**`host.k3s.internal` introuvable** (`ENOTFOUND`) — ce nom n'existe pas nativement sur k3s bare-metal (réservé à k3d). Le script de déploiement le configure automatiquement :
+**`host.k3s.internal` introuvable** (`ENOTFOUND`) — ce nom n'existe pas nativement sur k3s bare-metal (réservé à k3d). Le déploiement injecte `hostAliases` sur les pods WS (recommandé) :
 
 ```bash
 sudo k8s/scripts/ensure-k3s-host-gateway.sh
 ```
 
-Il mappe `host.k3s.internal` → InternalIP du nœud (Stunnel écoute sur `0.0.0.0`). Vérifier :
+Les pods WS résolvent `host.k3s.internal` via `/etc/hosts`, **sans CoreDNS**. Un `kubectl run dns-test` échouera encore — c'est normal.
+
+**CoreDNS `Connection refused`** (après une ancienne version du script) :
 
 ```bash
-sudo k3s kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+sudo k8s/scripts/ensure-k3s-host-gateway.sh --repair-coredns
+kubectl get pods -n kube-system -l k8s-app=kube-dns
 ```
 
 **nginx** — backend WS :
