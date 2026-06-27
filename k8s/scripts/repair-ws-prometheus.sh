@@ -12,7 +12,17 @@ prom_query() {
   curl -sfG "${PROM_URL}/api/v1/query" --data-urlencode "query=${1}"
 }
 
-echo "== 1/5 Sync cibles WS (relais socat ou NodePort) =="
+echo ""
+echo "== 0/5 Prometheus host network (recommandé VPS) =="
+if ! prometheus_uses_host_network; then
+  echo "Prometheus n'est PAS en network_mode=host — scrape k8s souvent en échec." >&2
+  echo "  sudo ${SCRIPT_DIR}/recreate-prometheus-host.sh" >&2
+else
+  echo "OK Prometheus network_mode=host"
+fi
+
+echo ""
+echo "== 1/5 Sync cibles WS =="
 "${SCRIPT_DIR}/sync-prometheus-ws-targets.sh"
 
 echo ""
@@ -23,10 +33,10 @@ fi
 
 echo ""
 echo "== 3/5 Sonde depuis l'hôte =="
-if curl -sf --max-time 5 "http://127.0.0.1:30080/metrics" | head -1 | grep -q .; then
+if curl -sf --max-time 5 "http://127.0.0.1:30080/metrics" 2>/dev/null | grep -q kube_; then
   echo "OK kube-state-metrics : http://127.0.0.1:30080/metrics"
 else
-  echo "Échec kube-state-metrics NodePort 30080" >&2
+  echo "Échec kube-state-metrics :30080 — ss -tlnp | grep 30080" >&2
 fi
 
 if curl -sf --max-time 5 "http://127.0.0.1:30800/api/metrics" | grep -q ws_up; then

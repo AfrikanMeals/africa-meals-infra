@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Met à jour les cibles Prometheus pour scraper /api/metrics de chaque pod WS.
 #
-# Prometheus tourne dans Docker : il ne peut PAS joindre les IP pods k3s (10.42.x.x).
-# Mécanisme : relais socat sur l'hôte (0.0.0.0:2808x → podIP:8000), cibles host.docker.internal:2808x
-# Secours sans socat : NodePort 30800 (métriques avec label pod= depuis l'app).
+# Prérequis : Prometheus en network_mode=host (recreate-prometheus-host.sh).
+#   → scrape direct podIP:8000 depuis l'hôte, NodePort 127.0.0.1:30080 / :30800
 #
 # Usage : sudo ./sync-prometheus-ws-targets.sh
 set -euo pipefail
@@ -22,12 +21,12 @@ USE_RELAY="${WS_POD_METRICS_RELAY:-1}"
 NODEPORT="${WS_NODEPORT:-30800}"
 KSM_PORT="${KUBE_STATE_METRICS_NODEPORT:-30080}"
 
-SCRAPE_HOST="$(prometheus_resolve_host_gateway)" || {
-  echo "Impossible de résoudre l'IP hôte pour Prometheus (réseau wise-eat-infra ?)." >&2
+SCRAPE_HOST="$(prometheus_scrape_host)" || {
+  echo "Impossible de résoudre l'adresse scrape." >&2
   exit 1
 }
 prometheus_host_gateway_warn
-echo "Passerelle scrape Prometheus : ${SCRAPE_HOST} (hôte VPS)"
+echo "Adresse scrape Prometheus : ${SCRAPE_HOST}"
 
 KUBECTL=(kubectl)
 if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
@@ -89,26 +88,43 @@ write_targets_json() {
 }
 
 ENTRIES=()
-RELAY_OK=true
+TARGET_MODE=""
 
-if [[ "${USE_RELAY}" == "1" ]] && command -v socat >/dev/null 2>&1; then
+# 1) Prometheus host + IP pods joignables depuis l'hôte (cas k3s VPS idéal)
+if prometheus_uses_host_network; then
+  for line in "${POD_LINES[@]}"; do
+    IFS=$'\t' read -r pod_name pod_ip <<< "${line}"
+    [[ -n "${pod_name}" && -n "${pod_ip}" ]] || continue
+    if host_can_reach_pod_metrics "${pod_ip}"; then
+      ENTRIES+=("${pod_name}"$'\t'"${pod_ip}:8000")
+    fi
+  done
+  if [[ ${#ENTRIES[@]} -gt 0 ]]; then
+    TARGET_MODE="direct-pod-ip"
+    ws_stop_relays
+  fi
+fi
+
+# 2) Relais socat (127.0.0.1 si host network, sinon passerelle Docker)
+if [[ ${#ENTRIES[@]} -eq 0 && "${USE_RELAY}" == "1" ]] && command -v socat >/dev/null 2>&1; then
   ws_stop_relays
+  bind_addr="0.0.0.0"
+  prometheus_uses_host_network && bind_addr="127.0.0.1"
   idx=0
+  RELAY_OK=true
   for line in "${POD_LINES[@]}"; do
     IFS=$'\t' read -r pod_name pod_ip <<< "${line}"
     [[ -n "${pod_name}" && -n "${pod_ip}" ]] || continue
     port=$((RELAY_BASE + idx))
     idx=$((idx + 1))
-    socat "TCP-LISTEN:${port},fork,reuseaddr,bind=0.0.0.0" "TCP:${pod_ip}:8000" </dev/null >/dev/null 2>&1 &
+    socat "TCP-LISTEN:${port},fork,reuseaddr,bind=${bind_addr}" "TCP:${pod_ip}:8000" </dev/null >/dev/null 2>&1 &
     relay_pid=$!
     sleep 0.15
     if ! kill -0 "${relay_pid}" 2>/dev/null; then
-      echo "Échec relais socat port ${port} → ${pod_ip}:8000" >&2
       RELAY_OK=false
       break
     fi
     if ! curl -sf --max-time 2 "http://127.0.0.1:${port}/api/health" >/dev/null; then
-      echo "Relais port ${port} ne répond pas (/api/health)" >&2
       kill "${relay_pid}" 2>/dev/null || true
       RELAY_OK=false
       break
@@ -117,24 +133,23 @@ if [[ "${USE_RELAY}" == "1" ]] && command -v socat >/dev/null 2>&1; then
     ENTRIES+=("${pod_name}"$'\t'"${SCRAPE_HOST}:${port}")
   done
   if [[ "${RELAY_OK}" == "true" && ${#ENTRIES[@]} -gt 0 ]]; then
-    write_targets_json "${ENTRIES[@]}"
-    echo "Prometheus targets (relais socat) : ${#ENTRIES[@]} pod(s) → ports ${RELAY_BASE}-$((RELAY_BASE + idx - 1))"
+    TARGET_MODE="socat-relay"
   else
     ws_stop_relays
-    RELAY_OK=false
+    ENTRIES=()
   fi
-else
-  RELAY_OK=false
 fi
 
-if [[ "${RELAY_OK}" == "false" ]]; then
-  if [[ "${USE_RELAY}" == "1" ]] && ! command -v socat >/dev/null 2>&1; then
-    echo "socat absent — secours NodePort :${NODEPORT} (apt install -y socat)." >&2
-  fi
+# 3) Secours NodePort
+if [[ ${#ENTRIES[@]} -eq 0 ]]; then
+  ws_stop_relays
   write_targets_json "nodeport-aggregate"$'\t'"${SCRAPE_HOST}:${NODEPORT}"
-  echo "Prometheus targets (NodePort) : ${SCRAPE_HOST}:${NODEPORT}"
+  TARGET_MODE="nodeport-fallback"
+else
+  write_targets_json "${ENTRIES[@]}"
 fi
 
+echo "Mode cibles WS : ${TARGET_MODE} (${#ENTRIES[@]:-1} entrée(s))"
 echo "Fichier : ${TARGETS_FILE}"
 cat "${TARGETS_FILE}"
 
@@ -156,15 +171,10 @@ cat "${TARGETS_FILE}"
   echo '  }'
   echo ']'
 } > "${K8S_HOST_TARGETS}"
-echo "Passerelle k8s : ${K8S_HOST_TARGETS} (${SCRAPE_HOST}:${KSM_PORT}, :${NODEPORT})"
+echo "Passerelle k8s : ${K8S_HOST_TARGETS}"
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
-  if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null; then
-    echo "Prometheus rechargé (/-/reload)."
-  else
-    echo "Reload échoué — redémarrage conteneur..." >&2
-    docker restart wise-eat-prometheus >/dev/null
-    sleep 3
-    echo "Prometheus redémarré."
-  fi
+  curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null \
+    && echo "Prometheus rechargé (/-/reload)." \
+    || docker restart wise-eat-prometheus >/dev/null
 fi

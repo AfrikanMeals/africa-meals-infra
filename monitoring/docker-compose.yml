@@ -222,23 +222,20 @@ services:
     restart: unless-stopped
     mem_limit: ${PROMETHEUS_MEM_LIMIT:-512m}
     memswap_limit: ${PROMETHEUS_MEMSWAP_LIMIT:-768m}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - wise-eat-infra
+    # host : scrape k3s NodePort + IP pods sans passerelle Docker (VPS Wise Eat)
+    network_mode: host
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
       - --web.enable-lifecycle
+      - --web.listen-address=127.0.0.1:9090
       - --web.external-url=${PROMETHEUS_EXTERNAL_URL:-http://127.0.0.1:9090/}
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts:/etc/prometheus/alerts:ro
       - ./prometheus/targets:/etc/prometheus/targets:ro
       - prometheus-data:/prometheus
-    ports:
-      - "127.0.0.1:9090:9090"
     depends_on:
       - node-exporter
       - cadvisor
@@ -253,6 +250,8 @@ services:
     restart: unless-stopped
     mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
     memswap_limit: ${GRAFANA_MEMSWAP_LIMIT:-384m}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - wise-eat-infra
     environment:
