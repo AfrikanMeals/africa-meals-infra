@@ -1,0 +1,208 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "africa-meals-ws — 3 pods k8s (Socket.IO, STOMP, gRPC, MQTT). Dossier Grafana : Servers.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "green", "value": 3 }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [
+        {
+          "expr": "kube_deployment_status_replicas_available{deployment=\"africa-meals-ws\", namespace=\"wise-eat\"}",
+          "legendFormat": "pods ready",
+          "refId": "A"
+        }
+      ],
+      "title": "Pods WS disponibles (k8s)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [
+        { "expr": "up{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Scrape /api/metrics (par pod)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 400000000 }, { "color": "red", "value": 480000000 }] },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [
+        { "expr": "ws_process_resident_memory_bytes{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Mémoire RSS (limite 512 Mi/pod)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "targets": [
+        { "expr": "ws_process_uptime_seconds{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Uptime process",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "targets": [
+        { "expr": "ws_stomp_sessions_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "STOMP sessions — {{pod}}", "refId": "A" },
+        { "expr": "ws_stomp_users_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "STOMP users — {{pod}}", "refId": "B" },
+        { "expr": "ws_stomp_admin_sessions{job=\"africa-meals-ws-pods\"}", "legendFormat": "STOMP admin — {{pod}}", "refId": "C" }
+      ],
+      "title": "STOMP — sessions actives",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "targets": [
+        { "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\", kind=\"ws\"}", "legendFormat": "WS events — {{pod}}", "refId": "A" },
+        { "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\", kind=\"http\"}", "legendFormat": "HTTP events — {{pod}}", "refId": "B" },
+        { "expr": "ws_request_stats_buffer_entries{job=\"africa-meals-ws-pods\"}", "legendFormat": "buffer — {{pod}}", "refId": "C" }
+      ],
+      "title": "WebSocket / HTTP — tampon stats",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "targets": [
+        { "expr": "ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+      ],
+      "title": "gRPC — latence p95 (fenêtre récente)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "targets": [
+        { "expr": "ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+      ],
+      "title": "gRPC — taux d'erreur",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "OFF" }, "1": { "color": "green", "text": "ON" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 20 },
+      "id": 9,
+      "targets": [
+        { "expr": "ws_feature_enabled{job=\"africa-meals-ws-pods\", feature=\"stomp\"}", "legendFormat": "STOMP {{pod}}", "refId": "A" },
+        { "expr": "ws_feature_enabled{job=\"africa-meals-ws-pods\", feature=\"socket_io\"}", "legendFormat": "Socket.IO {{pod}}", "refId": "B" },
+        { "expr": "ws_feature_enabled{job=\"africa-meals-ws-pods\", feature=\"grpc_server\"}", "legendFormat": "gRPC {{pod}}", "refId": "C" }
+      ],
+      "title": "Features activées (STOMP / Socket.IO / gRPC)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DISCONNECTED" }, "1": { "color": "green", "text": "CONNECTED" } }, "type": "value" }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 20 },
+      "id": 10,
+      "targets": [
+        { "expr": "ws_mqtt_subscriber_connected{job=\"africa-meals-ws-pods\"}", "legendFormat": "MQTT {{pod}}", "refId": "A" }
+      ],
+      "title": "MQTT subscriber (EMQX)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 20 },
+      "id": 11,
+      "targets": [
+        { "expr": "kube_pod_container_status_restarts_total{namespace=\"wise-eat\", pod=~\"africa-meals-ws-.*\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Redémarrages conteneur (k8s)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["wise-eat", "africa-meals-ws", "k8s", "stomp", "websocket", "grpc"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Africa Meals WS (k8s)",
+  "uid": "africa-meals-ws-k8s",
+  "version": 1
+}

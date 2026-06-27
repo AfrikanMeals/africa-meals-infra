@@ -5,6 +5,7 @@ namespace: wise-eat
 
 resources:
   - namespace.yaml
+  - limitrange.yaml
   - configmap.yaml
   - deployment.yaml
   - service.yaml

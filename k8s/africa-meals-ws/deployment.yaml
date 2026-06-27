@@ -26,6 +26,7 @@ spec:
         app.kubernetes.io/component: websocket
     spec:
       restartPolicy: Always
+      serviceAccountName: africa-meals-ws
       terminationGracePeriodSeconds: 60
       topologySpreadConstraints:
         - maxSkew: 1
@@ -58,6 +59,16 @@ spec:
               value: "8000"
             - name: NODE_ENV
               value: production
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: REQUEST_STATS_ENABLED
+              value: "true"
           envFrom:
             - configMapRef:
                 name: africa-meals-ws
@@ -65,11 +76,11 @@ spec:
                 name: africa-meals-ws-env
           resources:
             requests:
-              cpu: 150m
-              memory: 320Mi
+              cpu: 100m
+              memory: 512Mi
             limits:
               cpu: "1"
-              memory: 768Mi
+              memory: 512Mi
           lifecycle:
             preStop:
               exec:

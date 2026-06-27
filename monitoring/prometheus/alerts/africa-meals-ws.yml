@@ -1,0 +1,58 @@
+groups:
+  - name: africa-meals-ws
+    rules:
+      - alert: AfricaMealsWsPodsDown
+        expr: |
+          kube_deployment_status_replicas_available{deployment="africa-meals-ws", namespace="wise-eat"} < 2
+        for: 2m
+        labels:
+          severity: critical
+          service: africa-meals-ws
+        annotations:
+          summary: "Moins de 2 pods WS disponibles"
+          description: "Deployment africa-meals-ws : {{ $value }} pod(s) ready (attendu ≥ 2)."
+
+      - alert: AfricaMealsWsPodNotReady
+        expr: |
+          kube_pod_status_ready{namespace="wise-eat", pod=~"africa-meals-ws-.*", condition="true"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-ws
+        annotations:
+          summary: "Pod WS not ready — {{ $labels.pod }}"
+          description: "Le pod {{ $labels.pod }} n'est pas Ready depuis 5 min."
+
+      - alert: AfricaMealsWsMetricsDown
+        expr: |
+          up{job="africa-meals-ws-pods"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          service: africa-meals-ws
+        annotations:
+          summary: "Scrape métriques WS échoué — {{ $labels.instance }}"
+          description: "Prometheus ne scrape plus /api/metrics sur {{ $labels.instance }}."
+
+      - alert: AfricaMealsWsHighMemory
+        expr: |
+          ws_process_resident_memory_bytes{job="africa-meals-ws-pods"} > 480000000
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-ws
+        annotations:
+          summary: "Mémoire WS élevée — pod {{ $labels.pod }}"
+          description: "RSS > 480 Mo (limite pod 512 Mo) sur {{ $labels.pod }}."
+
+      - alert: AfricaMealsWsMqttDisconnected
+        expr: |
+          ws_mqtt_subscriber_enabled{job="africa-meals-ws-pods"} == 1
+          and ws_mqtt_subscriber_connected{job="africa-meals-ws-pods"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-ws
+        annotations:
+          summary: "MQTT subscriber déconnecté — {{ $labels.pod }}"
+          description: "Le subscriber MQTT est activé mais déconnecté sur {{ $labels.pod }}."

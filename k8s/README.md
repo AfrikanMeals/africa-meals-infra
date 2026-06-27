@@ -1,5 +1,7 @@
 # africa-meals-ws — production k8s (VPS Wise Eat)
 
+> **Déploiement depuis zéro (VPS `/opt/wise-eat` + `/opt/wise-eat-ws`) : [DEPLOY.md](./DEPLOY.md)**
+
 **3 pods** k3s, services locaux sur le VPS (équivalent `127.0.0.1` via `host.k3s.internal`), **TLS conservé** (SNI Let's Encrypt).  
 **PM2 = dev uniquement** — pas de `africa-meals-ws` en PM2 prod sur le VPS.
 

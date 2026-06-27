@@ -65,6 +65,10 @@ if [[ "${READY:-0}" != "${DESIRED}" ]]; then
 fi
 
 echo ""
+echo "Synchronisation cibles Prometheus..."
+"${SCRIPT_DIR}/sync-prometheus-ws-targets.sh" || true
+
+echo ""
 echo "Pods (${READY}/${DESIRED} ready) :"
 "${KUBECTL[@]}" get pods -n "${NAMESPACE}" -l "app.kubernetes.io/name=${DEPLOYMENT}" -o wide
 

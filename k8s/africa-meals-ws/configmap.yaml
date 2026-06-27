@@ -18,7 +18,7 @@ data:
 
   # --- API interne (Nest sur le VPS, pas PM2 prod) ---
   AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://host.k3s.internal:9000/api"
-  STATUS_PROBE_API_URL: "http://host.k3s.internal:9000/health"
+  STATUS_PROBE_API_URL: "https://api.wise-eat.com/health"
 
   # --- MongoDB (Stunnel TLS local :27018) — URI complète dans le Secret ---
   REDIS_HOST: "host.k3s.internal"

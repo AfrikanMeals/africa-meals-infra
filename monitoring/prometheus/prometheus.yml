@@ -203,3 +203,41 @@ scrape_configs:
     relabel_configs:
       - target_label: instance
         replacement: wise-eat-ollama:11434
+
+  # k8s — kube-state-metrics (pods/deployments africa-meals-ws)
+  - job_name: kube-state-metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:30080']
+        labels:
+          namespace: kube-system
+          service: kube-state-metrics
+    relabel_configs:
+      - target_label: instance
+        replacement: wise-eat-k8s:30080
+
+  # africa-meals-ws — métriques applicatives par pod (STOMP, WS, gRPC, MQTT)
+  - job_name: africa-meals-ws-pods
+    metrics_path: /api/metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/ws-pods.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Sonde agrégée NodePort (fallback si file_sd vide)
+  - job_name: africa-meals-ws-nodeport
+    metrics_path: /api/metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:30800']
+        labels:
+          service: africa-meals-ws
+          scrape: nodeport
+    relabel_configs:
+      - target_label: instance
+        replacement: ws-nodeport:30800

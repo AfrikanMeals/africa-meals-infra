@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: africa-meals-ws
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: africa-meals-ws
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: africa-meals-ws-limits
+  namespace: wise-eat
+spec:
+  limits:
+    - type: Container
+      default:
+        memory: 512Mi
+        cpu: 500m
+      defaultRequest:
+        memory: 512Mi
+        cpu: 100m
+      max:
+        memory: 512Mi
+        cpu: "2"
+      min:
+        memory: 256Mi
+        cpu: 50m
