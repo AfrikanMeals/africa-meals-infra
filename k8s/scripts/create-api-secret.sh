@@ -26,11 +26,28 @@ fi
 FILTERED="$(mktemp)"
 trap 'rm -f "${FILTERED}"' EXIT
 
-grep -vE '^\s*(#|$)' "${ENV_FILE}" | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' > "${FILTERED}" || true
+RAW="$(mktemp)"
+grep -vE '^\s*(#|$)' "${ENV_FILE}" | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' > "${RAW}" || true
 
-if [[ ! -s "${FILTERED}" ]]; then
+if [[ ! -s "${RAW}" ]]; then
   echo "Aucune variable dans ${ENV_FILE}" >&2
   exit 1
+fi
+
+# kubectl --from-env-file refuse les clés dupliquées (ex. APP_NAME, SUPPORT_EMAIL).
+# Dernière occurrence dans le fichier = valeur retenue (comportement .env habituel).
+BEFORE_DEDUPE="$(wc -l < "${RAW}" | tr -d ' ')"
+tac "${RAW}" | awk '
+  /^[A-Za-z_][A-Za-z0-9_]*=/ {
+    key = $0
+    sub(/=.*/, "", key)
+    if (!seen[key]++) print
+  }
+' | tac > "${FILTERED}"
+rm -f "${RAW}"
+AFTER_DEDUPE="$(wc -l < "${FILTERED}" | tr -d ' ')"
+if [[ "${BEFORE_DEDUPE}" != "${AFTER_DEDUPE}" ]]; then
+  echo "Clés dupliquées ignorées (${BEFORE_DEDUPE} → ${AFTER_DEDUPE} entrées uniques, dernière valeur gardée)." >&2
 fi
 
 if [[ "${VPS_K8S_LOCAL}" == "1" ]] && grep -qE '^MONGODB_URI=mongodb\+srv://' "${FILTERED}"; then

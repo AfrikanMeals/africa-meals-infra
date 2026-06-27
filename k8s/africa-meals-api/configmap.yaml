@@ -88,7 +88,7 @@ data:
   # --- Ollama (proxy métriques VPS) ---
   OLLAMA_BASE_URL: "http://host.k3s.internal:9401"
 
-  # --- MinIO (nginx public — pods résolvent via DNS public ou host gateway) ---
+  # --- MinIO (Secret : endpoint host.k3s.internal:9000 ; MINIO_PUBLIC_BASE_URL reste public) ---
   MINIO_HEALTH_CHECK: "false"
 
   # --- SSE (connexions sur WS) ---
