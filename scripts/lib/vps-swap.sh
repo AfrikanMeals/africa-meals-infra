@@ -2,6 +2,10 @@
 # Swap hôte + swappiness — VPS Wise Eat (8 Go RAM, stack Docker partagé).
 # Chaque conteneur : mem_limit (RAM) + memswap_limit (RAM + swap autorisé).
 
+if ! declare -f log >/dev/null 2>&1; then
+  log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+fi
+
 ensure_vps_swap() {
   local swap_size="${VPS_SWAP_SIZE_GB:-2}"
   local swapfile="${VPS_SWAP_FILE:-/swapfile}"

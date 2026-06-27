@@ -14,10 +14,15 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
   exit 1
 fi
 
+if [[ -f "${INFRA_ROOT}/scripts/lib/common.sh" ]]; then
+  # shellcheck source=../../scripts/lib/common.sh
+  source "${INFRA_ROOT}/scripts/lib/common.sh"
+fi
+
 if [[ -f "${INFRA_ROOT}/scripts/lib/vps-swap.sh" ]]; then
   # shellcheck source=../../scripts/lib/vps-swap.sh
   source "${INFRA_ROOT}/scripts/lib/vps-swap.sh"
-  ensure_vps_swap
+  ensure_vps_memory_tuning
 fi
 
 if command -v k3s >/dev/null 2>&1; then
