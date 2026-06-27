@@ -1,8 +1,6 @@
 {
-  "annotations": {
-    "list": []
-  },
-  "description": "africa-meals-ws — 3 pods k8s (Socket.IO, STOMP, gRPC, MQTT). Dossier Grafana : Servers.",
+  "annotations": { "list": [] },
+  "description": "africa-meals-ws — pods k8s (STOMP, Socket.IO, gRPC, MQTT). Dossier Grafana : Servers.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -10,7 +8,16 @@
   "links": [],
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "Vue d'ensemble k8s",
+      "type": "row"
+    },
+    {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Pods Ready (deployment wise-eat / africa-meals-ws, attendu 3)",
       "fieldConfig": {
         "defaults": {
           "mappings": [],
@@ -26,147 +33,329 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
       "id": 1,
-      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(ws_up == 1) or kube_deployment_status_replicas_available{deployment=\"africa-meals-ws\",namespace=\"wise-eat\"}",
+          "expr": "kube_deployment_status_replicas_available{deployment=\"africa-meals-ws\",namespace=\"wise-eat\"} or count(ws_up{job=\"africa-meals-ws-pods\"} == 1)",
           "instant": true,
-          "legendFormat": "pods ready",
+          "legendFormat": "pods",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Pods WS disponibles (k8s)",
+      "title": "Pods disponibles",
       "type": "stat"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
           "mappings": [
             { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Mémoire RSS" },
+            "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.cellOptions", "value": { "type": "color-text" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Uptime" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Scrape" },
+            "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "color-background" } }]
+          }
+        ]
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "id": 2,
-      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "gridPos": { "h": 5, "w": 20, "x": 4, "y": 1 },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": false, "displayName": "Pod" }]
+      },
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ws_up{job=~\"africa-meals-ws.*\"}",
+          "expr": "ws_up{job=\"africa-meals-ws-pods\"}",
+          "format": "table",
           "instant": true,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "__auto",
           "range": false,
-          "refId": "A"
+          "refId": "scrape"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ws_process_resident_memory_bytes{job=\"africa-meals-ws-pods\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "mem"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ws_process_uptime_seconds{job=\"africa-meals-ws-pods\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "uptime"
         }
       ],
-      "title": "Scrape /api/metrics (par pod)",
-      "type": "stat"
+      "title": "État par pod",
+      "transformations": [
+        { "id": "seriesToColumns", "options": { "byField": "pod" } },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "__name__": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "exported_pod": true,
+              "instance": true,
+              "instance 1": true,
+              "instance 2": true,
+              "job": true,
+              "job 1": true,
+              "job 2": true,
+              "namespace": true,
+              "namespace 1": true,
+              "namespace 2": true,
+              "service": true,
+              "service 1": true,
+              "service 2": true
+            },
+            "indexByName": {
+              "Value #scrape": 1,
+              "Value #mem": 2,
+              "Value #uptime": 3,
+              "pod": 0
+            },
+            "renameByName": {
+              "Value #mem": "Mémoire RSS",
+              "Value #scrape": "Scrape",
+              "Value #uptime": "Uptime",
+              "pod": "Pod"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "id": 101,
+      "panels": [],
+      "title": "Ressources process",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 400000000 }, { "color": "red", "value": 480000000 }] },
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 400000000 },
+              { "color": "red", "value": 480000000 }
+            ]
+          },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 },
       "id": 3,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ws_process_resident_memory_bytes{job=~\"africa-meals-ws.*\"}",
-          "instant": true,
+          "expr": "ws_process_resident_memory_bytes{job=\"africa-meals-ws-pods\"}",
           "legendFormat": "{{pod}}",
-          "range": false,
           "refId": "A"
         }
       ],
       "title": "Mémoire RSS (limite 512 Mi/pod)",
-      "type": "stat"
+      "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
       "id": 4,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ws_process_uptime_seconds{job=~\"africa-meals-ws.*\"}",
-          "instant": true,
+          "expr": "ws_process_uptime_seconds{job=\"africa-meals-ws-pods\"}",
           "legendFormat": "{{pod}}",
-          "range": false,
           "refId": "A"
         }
       ],
       "title": "Uptime process",
-      "type": "stat"
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "panels": [],
+      "title": "STOMP & WebSocket",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "showPoints": "never" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
       "id": 5,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_sessions_active{job=~\"africa-meals-ws.*\"}", "legendFormat": "STOMP sessions — {{pod}}", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_users_active{job=~\"africa-meals-ws.*\"}", "legendFormat": "STOMP users — {{pod}}", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_admin_sessions{job=~\"africa-meals-ws.*\"}", "legendFormat": "STOMP admin — {{pod}}", "refId": "C" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_sessions_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "sessions — {{pod}}", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_users_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "users — {{pod}}", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_stomp_admin_sessions{job=\"africa-meals-ws-pods\"}", "legendFormat": "admin — {{pod}}", "refId": "C" }
       ],
       "title": "STOMP — sessions actives",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "showPoints": "never" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "id": 6,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_events{job=~\"africa-meals-ws.*\",kind=\"ws\"}", "legendFormat": "WS events — {{pod}}", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_events{job=~\"africa-meals-ws.*\",kind=\"http\"}", "legendFormat": "HTTP events — {{pod}}", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_buffer_entries{job=~\"africa-meals-ws.*\"}", "legendFormat": "buffer — {{pod}}", "refId": "C" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\",kind=\"ws\"}", "legendFormat": "WS — {{pod}}", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\",kind=\"http\"}", "legendFormat": "HTTP — {{pod}}", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_request_stats_buffer_entries{job=\"africa-meals-ws-pods\"}", "legendFormat": "buffer — {{pod}}", "refId": "C" }
       ],
       "title": "WebSocket / HTTP — tampon stats",
       "type": "timeseries"
     },
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "panels": [],
+      "title": "gRPC (si GRPC_WS_SERVER_ENABLED=true)",
+      "type": "row"
+    },
+    {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "description": "Vide si gRPC serveur désactivé ou aucun appel récent",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "showPoints": "never" },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 24 },
       "id": 7,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_p95_ms{job=~\"africa-meals-ws.*\"}", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\"} > 0", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
       ],
-      "title": "gRPC — latence p95 (fenêtre récente)",
+      "title": "gRPC — latence p95",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "showPoints": "never" },
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 24 },
       "id": 8,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_error_rate{job=~\"africa-meals-ws.*\"}", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\"} > 0", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
       ],
       "title": "gRPC — taux d'erreur",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "id": 104,
+      "panels": [],
+      "title": "Intégrations & Kubernetes",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -179,14 +368,20 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 20 },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 32 },
       "id": 9,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_feature_enabled{job=~\"africa-meals-ws.*\",feature=\"stomp\"}", "instant": true, "legendFormat": "STOMP {{pod}}", "range": false, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_feature_enabled{job=~\"africa-meals-ws.*\",feature=\"socket_io\"}", "instant": true, "legendFormat": "Socket.IO {{pod}}", "range": false, "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_feature_enabled{job=~\"africa-meals-ws.*\",feature=\"grpc_server\"}", "instant": true, "legendFormat": "gRPC {{pod}}", "range": false, "refId": "C" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "min by (feature) (ws_feature_enabled{job=\"africa-meals-ws-pods\"})", "instant": true, "legendFormat": "{{feature}}", "range": false, "refId": "A" }
       ],
-      "title": "Features activées (STOMP / Socket.IO / gRPC)",
+      "title": "Features runtime (min sur pods)",
       "type": "stat"
     },
     {
@@ -194,35 +389,60 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "options": { "0": { "color": "red", "text": "DISCONNECTED" }, "1": { "color": "green", "text": "CONNECTED" } }, "type": "value" }
-          ]
+            { "options": { "0": { "color": "red", "text": "OFF" }, "1": { "color": "green", "text": "ON" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 20 },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 32 },
       "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ws_mqtt_subscriber_connected{job=~\"africa-meals-ws.*\"}",
+          "expr": "ws_mqtt_subscriber_connected{job=\"africa-meals-ws-pods\"}",
           "instant": true,
-          "legendFormat": "MQTT {{pod}}",
+          "legendFormat": "{{pod}}",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "MQTT subscriber (EMQX)",
+      "title": "MQTT EMQX (par pod)",
       "type": "stat"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 32 },
       "id": 11,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "kube_pod_container_status_restarts_total{namespace=\"wise-eat\",pod=~\"africa-meals-ws-.*\"}", "legendFormat": "{{pod}}", "refId": "A" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "kube_pod_container_status_restarts_total{namespace=\"wise-eat\",pod=~\"africa-meals-ws-.*\"}",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
       ],
-      "title": "Redémarrages conteneur (k8s)",
+      "title": "Redémarrages conteneur",
       "type": "timeseries"
     }
   ],
@@ -235,5 +455,5 @@
   "timezone": "browser",
   "title": "Africa Meals WS (k8s)",
   "uid": "africa-meals-ws-k8s",
-  "version": 3
+  "version": 4
 }
