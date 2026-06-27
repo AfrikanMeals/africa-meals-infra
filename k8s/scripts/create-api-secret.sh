@@ -7,6 +7,10 @@
 #   VPS_K8S_LOCAL=0 ./create-api-secret.sh .env
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/rewrite-k8s-mongodb-uri.sh
+source "${SCRIPT_DIR}/lib/rewrite-k8s-mongodb-uri.sh"
+
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
 SECRET_NAME="${K8S_API_SECRET:-africa-meals-api-env}"
 ENV_FILE="${1:-}"
@@ -69,6 +73,7 @@ if [[ "${VPS_K8S_LOCAL}" == "1" ]]; then
     -e "s/127\\.0\\.0\\.1:11434/${LOCAL_HOST}:11434/g" \
     "${FILTERED}" > "${REWRITTEN}"
   mv "${REWRITTEN}" "${FILTERED}"
+  rewrite_k8s_mongodb_uri_in_file "${FILTERED}" "${LOCAL_HOST}" "${MONGO_STUNNEL_PORT:-27018}"
 fi
 
 # GOOGLE_APPLICATION_CREDENTIALS=accounts.json (PM2 local) — remplacé par ConfigMap k8s + volume /run/secrets/firebase

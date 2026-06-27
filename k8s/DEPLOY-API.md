@@ -130,7 +130,8 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 
 | Symptôme | Action |
 |----------|--------|
-| CrashLoop | `kubectl logs -n wise-eat deployment/africa-meals-api --tail=100` |
+| CrashLoop Mongo `ECONNREFUSED :27017` | recréer le Secret : `create-api-secret.sh` (réécrit `:27018` Stunnel) |
+| CrashLoop Redis `ERR_TLS_CERT_ALTNAME_INVALID` | rebuild API (fix `REDIS_TLS_SERVERNAME`) + rollout restart |
 | 502 api.wise-eat.com | `curl 127.0.0.1:30900/api/health` + `patch-nginx-api-backend.sh` |
 | Grafana vide | `repair-api-prometheus.sh` + restart Grafana |
 | Atlas au lieu de Stunnel | utiliser `.env.prod` avec `host.k3s.internal:27018` |

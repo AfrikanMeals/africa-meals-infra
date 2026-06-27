@@ -8,6 +8,10 @@
 #   VPS_K8S_LOCAL=0 ./create-ws-secret.sh .env   # sans réécriture locale
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/rewrite-k8s-mongodb-uri.sh
+source "${SCRIPT_DIR}/lib/rewrite-k8s-mongodb-uri.sh"
+
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
 SECRET_NAME="${K8S_WS_SECRET:-africa-meals-ws-env}"
 ENV_FILE="${1:-}"
@@ -52,6 +56,7 @@ if [[ "${VPS_K8S_LOCAL}" == "1" ]]; then
     -e "s/db\\.wise-eat\\.com:/${LOCAL_HOST}:/g" \
     "${FILTERED}" > "${REWRITTEN}"
   mv "${REWRITTEN}" "${FILTERED}"
+  rewrite_k8s_mongodb_uri_in_file "${FILTERED}" "${LOCAL_HOST}" "${MONGO_STUNNEL_PORT:-27018}"
 fi
 
 "${KUBECTL[@]}" create namespace "${NAMESPACE}" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
