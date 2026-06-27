@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Met à jour les cibles Prometheus pour scraper chaque pod WS (/api/metrics).
-# Usage : ./sync-prometheus-ws-targets.sh
+# Met à jour les cibles Prometheus pour scraper /api/metrics de chaque pod WS.
+#
+# Prometheus tourne dans Docker : il ne peut PAS joindre les IP pods k3s (10.42.x.x).
+# Mécanisme : relais socat sur l'hôte (0.0.0.0:2808x → podIP:8000), cibles host.docker.internal:2808x
+# Secours sans socat : NodePort 30800 (métriques avec label pod= depuis l'app, scrape round-robin).
+#
+# Usage : sudo ./sync-prometheus-ws-targets.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,55 +13,115 @@ INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TARGETS_DIR="${INFRA_ROOT}/monitoring/prometheus/targets"
 TARGETS_FILE="${TARGETS_DIR}/ws-pods.json"
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
+RELAY_BASE="${WS_METRICS_RELAY_BASE_PORT:-28080}"
+PID_DIR="${WS_METRICS_RELAY_PID_DIR:-/var/run/ws-prometheus-relay}"
+USE_RELAY="${WS_POD_METRICS_RELAY:-1}"
+SCRAPE_HOST="${PROMETHEUS_HOST_GATEWAY:-host.docker.internal}"
+NODEPORT="${WS_NODEPORT:-30800}"
 
 KUBECTL=(kubectl)
 if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
   KUBECTL=(sudo k3s kubectl)
 fi
 
-mkdir -p "${TARGETS_DIR}"
+mkdir -p "${TARGETS_DIR}" "${PID_DIR}"
 
-mapfile -t IPS < <(
+ws_stop_relays() {
+  local f pid
+  for f in "${PID_DIR}"/*.pid; do
+    [[ -f "${f}" ]] || continue
+    pid="$(cat "${f}" 2>/dev/null || true)"
+    [[ -n "${pid}" ]] && kill "${pid}" 2>/dev/null || true
+    rm -f "${f}"
+  done
+  # Anciennes relais sans pid file
+  pkill -f "socat TCP-LISTEN:${RELAY_BASE}" 2>/dev/null || true
+}
+
+mapfile -t POD_LINES < <(
   "${KUBECTL[@]}" get pods -n "${NAMESPACE}" \
     -l app.kubernetes.io/name=africa-meals-ws \
-    -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.status.podIP}{"\n"}{end}' \
-    2>/dev/null | grep -E '^[0-9]+\.' || true
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' \
+    2>/dev/null | grep -E $'\t[0-9]+\.' || true
 )
 
-if [[ ${#IPS[@]} -eq 0 ]]; then
+if [[ ${#POD_LINES[@]} -eq 0 ]]; then
+  ws_stop_relays
   echo "[]" > "${TARGETS_FILE}"
   echo "Aucun pod WS Running — ${TARGETS_FILE} vidé." >&2
   exit 0
 fi
 
-{
-  echo '['
-  echo '  {'
-  echo -n '    "targets": ['
-  first=true
-  for ip in "${IPS[@]}"; do
-    [[ -n "${ip}" ]] || continue
-    if [[ "${first}" == true ]]; then
-      first=false
-    else
-      echo -n ', '
-    fi
-    echo -n "\"${ip}:8000\""
-  done
-  echo '],'
-  echo '    "labels": {'
-  echo '      "job": "africa-meals-ws-pods",'
-  echo '      "service": "africa-meals-ws",'
-  echo '      "namespace": "'"${NAMESPACE}"'"'
-  echo '    }'
-  echo '  }'
-  echo ']'
-} > "${TARGETS_FILE}"
+write_targets_json() {
+  local -a entries=("$@")
+  {
+    echo '['
+    local i=0
+    for entry in "${entries[@]}"; do
+      [[ -n "${entry}" ]] || continue
+      IFS=$'\t' read -r pod_name target_hostport <<< "${entry}"
+      [[ ${i} -gt 0 ]] && echo ','
+      echo '  {'
+      echo "    \"targets\": [\"${target_hostport}\"],"
+      echo '    "labels": {'
+      echo '      "job": "africa-meals-ws-pods",'
+      echo '      "service": "africa-meals-ws",'
+      echo "      \"namespace\": \"${NAMESPACE}\","
+      echo "      \"pod\": \"${pod_name}\""
+      echo '    }'
+      echo -n '  }'
+      i=$((i + 1))
+    done
+    echo ''
+    echo ']'
+  } > "${TARGETS_FILE}"
+}
 
-echo "Prometheus targets : ${#IPS[@]} pod(s) → ${TARGETS_FILE}"
+ENTRIES=()
+RELAY_OK=true
+
+if [[ "${USE_RELAY}" == "1" ]] && command -v socat >/dev/null 2>&1; then
+  ws_stop_relays
+  idx=0
+  for line in "${POD_LINES[@]}"; do
+    IFS=$'\t' read -r pod_name pod_ip <<< "${line}"
+    [[ -n "${pod_name}" && -n "${pod_ip}" ]] || continue
+    port=$((RELAY_BASE + idx))
+    idx=$((idx + 1))
+    if ! socat "TCP-LISTEN:${port},fork,reuseaddr,bind=0.0.0.0" "TCP:${pod_ip}:8000" </dev/null >/dev/null 2>&1 &
+    then
+      RELAY_OK=false
+      break
+    fi
+    echo $! > "${PID_DIR}/${pod_name}.pid"
+    ENTRIES+=("${pod_name}"$'\t'"${SCRAPE_HOST}:${port}")
+  done
+  if [[ "${RELAY_OK}" == "true" && ${#ENTRIES[@]} -gt 0 ]]; then
+    write_targets_json "${ENTRIES[@]}"
+    echo "Prometheus targets (relais socat) : ${#ENTRIES[@]} pod(s) → ports ${RELAY_BASE}-$((RELAY_BASE + idx - 1))"
+  else
+    ws_stop_relays
+    RELAY_OK=false
+  fi
+else
+  RELAY_OK=false
+fi
+
+if [[ "${RELAY_OK}" == "false" ]]; then
+  if [[ "${USE_RELAY}" == "1" ]] && ! command -v socat >/dev/null 2>&1; then
+    echo "socat absent — secours NodePort :${NODEPORT} (apt install socat pour scrape par pod)." >&2
+  fi
+  write_targets_json "nodeport-aggregate"$'\t'"${SCRAPE_HOST}:${NODEPORT}"
+  echo "Prometheus targets (NodePort) : ${SCRAPE_HOST}:${NODEPORT} → ${TARGETS_FILE}"
+fi
+
+echo "Fichier : ${TARGETS_FILE}"
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
-  curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null \
-    && echo "Prometheus rechargé (/-/reload)." \
-    || echo "Recharger Prometheus : docker restart wise-eat-prometheus" >&2
+  if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null; then
+    echo "Prometheus rechargé (/-/reload)."
+  else
+    echo "Recharger Prometheus : docker restart wise-eat-prometheus" >&2
+  fi
 fi

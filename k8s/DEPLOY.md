@@ -174,7 +174,7 @@ Rolling update sans coupure (`maxUnavailable: 0`).
 |----------|--------|
 | Pod CrashLoop | `kubectl logs -n wise-eat deployment/africa-meals-ws --tail=100` |
 | 502 ws.wise-eat.com | `kubectl get pods -n wise-eat` + `curl 127.0.0.1:30800/api/health` |
-| Grafana vide | `sync-prometheus-ws-targets.sh` + `docker restart wise-eat-prometheus` |
+| Grafana « No data » | `apt install socat` puis `sudo k8s/scripts/repair-ws-prometheus.sh` + `docker restart wise-eat-grafana` |
 | Certificat WS | `sudo STUNNEL_TLS_EMAIL=… k8s/scripts/enable-ws-nginx-ssl.sh` |
 | packages manquants | vérifier `/opt/packages/africa-meals-proto` |
 

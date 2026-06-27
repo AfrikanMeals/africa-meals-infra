@@ -226,6 +226,8 @@ scrape_configs:
           - /etc/prometheus/targets/ws-pods.json
         refresh_interval: 30s
     relabel_configs:
+      - source_labels: [pod]
+        target_label: pod
       - source_labels: [__address__]
         target_label: instance
 
