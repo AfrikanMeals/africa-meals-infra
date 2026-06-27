@@ -10,14 +10,24 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=prometheus-host-gateway.sh
+source "${SCRIPT_DIR}/prometheus-host-gateway.sh"
 TARGETS_DIR="${INFRA_ROOT}/monitoring/prometheus/targets"
 TARGETS_FILE="${TARGETS_DIR}/ws-pods.json"
+K8S_HOST_TARGETS="${TARGETS_DIR}/k8s-host.json"
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
 RELAY_BASE="${WS_METRICS_RELAY_BASE_PORT:-28080}"
 PID_DIR="${WS_METRICS_RELAY_PID_DIR:-/var/run/ws-prometheus-relay}"
 USE_RELAY="${WS_POD_METRICS_RELAY:-1}"
-SCRAPE_HOST="${PROMETHEUS_HOST_GATEWAY:-host.docker.internal}"
 NODEPORT="${WS_NODEPORT:-30800}"
+KSM_PORT="${KUBE_STATE_METRICS_NODEPORT:-30080}"
+
+SCRAPE_HOST="$(prometheus_resolve_host_gateway)" || {
+  echo "Impossible de résoudre l'IP hôte pour Prometheus (réseau wise-eat-infra ?)." >&2
+  exit 1
+}
+prometheus_host_gateway_warn
+echo "Passerelle scrape Prometheus : ${SCRAPE_HOST} (hôte VPS)"
 
 KUBECTL=(kubectl)
 if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
@@ -127,6 +137,26 @@ fi
 
 echo "Fichier : ${TARGETS_FILE}"
 cat "${TARGETS_FILE}"
+
+{
+  echo '['
+  echo '  {'
+  echo "    \"targets\": [\"${SCRAPE_HOST}:${KSM_PORT}\"],"
+  echo '    "labels": {'
+  echo '      "namespace": "kube-system",'
+  echo '      "service": "kube-state-metrics"'
+  echo '    }'
+  echo '  },'
+  echo '  {'
+  echo "    \"targets\": [\"${SCRAPE_HOST}:${NODEPORT}\"],"
+  echo '    "labels": {'
+  echo '      "service": "africa-meals-ws",'
+  echo '      "scrape": "nodeport"'
+  echo '    }'
+  echo '  }'
+  echo ']'
+} > "${K8S_HOST_TARGETS}"
+echo "Passerelle k8s : ${K8S_HOST_TARGETS} (${SCRAPE_HOST}:${KSM_PORT}, :${NODEPORT})"
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
   if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null; then

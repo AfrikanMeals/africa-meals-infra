@@ -4,6 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=prometheus-host-gateway.sh
+source "${SCRIPT_DIR}/prometheus-host-gateway.sh"
 PROM_URL="${PROMETHEUS_URL:-http://127.0.0.1:9090}"
 
 prom_query() {
@@ -34,18 +36,19 @@ else
 fi
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+  SCRAPE_HOST="$(prometheus_resolve_host_gateway 2>/dev/null || echo '127.0.0.1')"
   echo ""
-  echo "== 4/5 Sonde depuis le conteneur Prometheus =="
-  if docker exec wise-eat-prometheus wget -qO- --timeout=5 http://host.docker.internal:30080/metrics 2>/dev/null | head -1 | grep -q .; then
-    echo "OK Prometheus → host.docker.internal:30080"
+  echo "== 4/5 Sonde depuis le conteneur Prometheus (IP ${SCRAPE_HOST}) =="
+  if docker exec wise-eat-prometheus wget -qO- --timeout=5 "http://${SCRAPE_HOST:-127.0.0.1}:30080/metrics" 2>/dev/null | head -1 | grep -q .; then
+    echo "OK Prometheus → ${SCRAPE_HOST}:30080 (kube-state-metrics)"
   else
-    echo "Prometheus ne joint pas kube-state-metrics (host.docker.internal:30080)" >&2
+    echo "Prometheus ne joint pas kube-state-metrics (${SCRAPE_HOST}:30080)" >&2
   fi
 
-  if docker exec wise-eat-prometheus wget -qO- --timeout=5 "http://host.docker.internal:${WS_NODEPORT:-30800}/api/metrics" 2>/dev/null | grep -q ws_up; then
-    echo "OK Prometheus → host.docker.internal:${WS_NODEPORT:-30800}/api/metrics"
+  if docker exec wise-eat-prometheus wget -qO- --timeout=5 "http://${SCRAPE_HOST}:${WS_NODEPORT:-30800}/api/metrics" 2>/dev/null | grep -q ws_up; then
+    echo "OK Prometheus → ${SCRAPE_HOST}:${WS_NODEPORT:-30800}/api/metrics"
   else
-    echo "Prometheus ne joint pas WS NodePort — vérifier extra_hosts host-gateway" >&2
+    echo "Prometheus ne joint pas WS (IP passerelle ${SCRAPE_HOST})" >&2
   fi
 
   echo ""
