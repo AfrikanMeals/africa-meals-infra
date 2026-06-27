@@ -447,7 +447,7 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
   echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
   echo "  8. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
-  echo "  9. WS k8s Grafana : sudo k8s/scripts/repair-ws-prometheus.sh && docker restart wise-eat-grafana"
+  echo "  9. WS/API k8s Grafana : sudo k8s/scripts/repair-grafana-monitoring.sh"
   exit 1
 fi
 

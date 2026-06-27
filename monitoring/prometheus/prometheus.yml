@@ -5,6 +5,8 @@ global:
 rule_files:
   - /etc/prometheus/alerts/*.yml
 
+# Prometheus tourne en network_mode=host (docker-compose + recreate-prometheus-host.sh).
+# Les exporters publient sur 127.0.0.1 — ne pas utiliser les noms DNS Docker (node-exporter, cadvisor…).
 scrape_configs:
   - job_name: prometheus
     static_configs:
@@ -13,7 +15,7 @@ scrape_configs:
   # Métriques hôte Ubuntu (dashboard Grafana Node Exporter Full #1860)
   - job_name: node
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['127.0.0.1:9100']
         labels:
           namespace: wise-eat
           host_role: vps
@@ -21,10 +23,10 @@ scrape_configs:
       - target_label: instance
         replacement: wise-eat:9100
 
-  # Conteneurs Docker (dashboard Grafana #4271 — avec node_exporter ci-dessus)
+  # Conteneurs Docker (dashboard Grafana #4271 — cAdvisor host :8088 → conteneur :8080)
   - job_name: cadvisor
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets: ['127.0.0.1:8088']
         labels:
           namespace: wise-eat
           host_role: vps
@@ -34,7 +36,7 @@ scrape_configs:
 
   - job_name: redis-cache
     static_configs:
-      - targets: ['redis-exporter-cache:9121']
+      - targets: ['127.0.0.1:9121']
         labels:
           namespace: wise-eat
           redis_role: primary
@@ -43,7 +45,7 @@ scrape_configs:
 
   - job_name: redis-bullmq
     static_configs:
-      - targets: ['redis-exporter-bullmq:9121']
+      - targets: ['127.0.0.1:9122']
         labels:
           namespace: wise-eat
           redis_role: primary
@@ -52,7 +54,7 @@ scrape_configs:
 
   - job_name: memcached
     static_configs:
-      - targets: ['memcached-exporter:9150']
+      - targets: ['127.0.0.1:9150']
         labels:
           namespace: wise-eat
           memcached_role: primary
@@ -60,7 +62,7 @@ scrape_configs:
 
   - job_name: redis-cache-replica-1
     static_configs:
-      - targets: ['redis-exporter-cache-replica-1:9121']
+      - targets: ['127.0.0.1:9123']
         labels:
           namespace: wise-eat
           redis_role: replica
@@ -70,7 +72,7 @@ scrape_configs:
 
   - job_name: redis-cache-replica-2
     static_configs:
-      - targets: ['redis-exporter-cache-replica-2:9121']
+      - targets: ['127.0.0.1:9125']
         labels:
           namespace: wise-eat
           redis_role: replica
@@ -80,7 +82,7 @@ scrape_configs:
 
   - job_name: redis-bullmq-replica-1
     static_configs:
-      - targets: ['redis-exporter-bullmq-replica-1:9121']
+      - targets: ['127.0.0.1:9124']
         labels:
           namespace: wise-eat
           redis_role: replica
@@ -90,7 +92,7 @@ scrape_configs:
 
   - job_name: redis-bullmq-replica-2
     static_configs:
-      - targets: ['redis-exporter-bullmq-replica-2:9121']
+      - targets: ['127.0.0.1:9126']
         labels:
           namespace: wise-eat
           redis_role: replica
@@ -100,7 +102,7 @@ scrape_configs:
 
   - job_name: memcached-replica-1
     static_configs:
-      - targets: ['memcached-exporter-replica-1:9150']
+      - targets: ['127.0.0.1:9151']
         labels:
           namespace: wise-eat
           memcached_role: replica
@@ -109,23 +111,21 @@ scrape_configs:
 
   - job_name: memcached-replica-2
     static_configs:
-      - targets: ['memcached-exporter-replica-2:9150']
+      - targets: ['127.0.0.1:9152']
         labels:
           namespace: wise-eat
           memcached_role: replica
           memcached_replica: '2'
           memcached_port: '11214'
 
-  # MinIO — scrape via réseau Docker (NE PAS utiliser host.docker.internal:9000 :
-  # l'API Nest écoute sur 0.0.0.0:9000 et répond 404 à /minio/v2/metrics/cluster).
-  # Deux jobs distincts (noms uniques Prometheus) ; Grafana filtre minio-cluster|minio-node.
+  # MinIO — API locale 127.0.0.1:9000 (NE PAS scraper host.docker.internal:9000 : Nest écoute aussi :9000).
   - job_name: minio-cluster
     metrics_path: /minio/v2/metrics/cluster
     scheme: http
     scrape_interval: 30s
     scrape_timeout: 25s
     static_configs:
-      - targets: ['wise-eat-minio:9000']
+      - targets: ['127.0.0.1:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
@@ -139,7 +139,7 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 25s
     static_configs:
-      - targets: ['wise-eat-minio:9000']
+      - targets: ['127.0.0.1:9000']
         labels:
           namespace: wise-eat
           storage_engine: minio
@@ -147,30 +147,22 @@ scrape_configs:
       - target_label: instance
         replacement: wise-eat-minio:9000
 
-  # EMQX — /api/v5/prometheus/stats (primary + réplicas, réseau wise-eat-infra)
+  # EMQX — primary sur localhost ; réplicas via file_sd (IP Docker, sync-emqx-prometheus-targets.sh)
   - job_name: emqx
     metrics_path: /api/v5/prometheus/stats
     scheme: http
     scrape_interval: 15s
     scrape_timeout: 10s
     static_configs:
-      - targets: ['wise-eat-emqx-1:18083']
+      - targets: ['127.0.0.1:18083']
         labels:
           namespace: wise-eat
           emqx_role: primary
           emqx_scrape: wise-eat-emqx-1
-      - targets: ['wise-eat-emqx-2:18083']
-        labels:
-          namespace: wise-eat
-          emqx_role: replica
-          emqx_replica: '1'
-          emqx_scrape: wise-eat-emqx-2
-      - targets: ['wise-eat-emqx-3:18083']
-        labels:
-          namespace: wise-eat
-          emqx_role: replica
-          emqx_replica: '2'
-          emqx_scrape: wise-eat-emqx-3
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/emqx-docker.json
+        refresh_interval: 60s
     metric_relabel_configs:
       # Unifie instance pour Grafana (sinon emqx~IP vs wise-eat-emqx-N:18083).
       - source_labels: [emqx_scrape]
@@ -183,7 +175,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 55s
     static_configs:
-      - targets: ['mongodb-exporter:9216']
+      - targets: ['127.0.0.1:9216']
         labels:
           namespace: wise-eat
           mongo_role: cluster
@@ -196,7 +188,7 @@ scrape_configs:
   - job_name: ollama
     scrape_interval: 15s
     static_configs:
-      - targets: ['ollama-exporter:9400']
+      - targets: ['127.0.0.1:9400']
         labels:
           namespace: wise-eat
           service: ollama

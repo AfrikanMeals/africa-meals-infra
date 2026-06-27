@@ -99,8 +99,15 @@ fi
 bash "${SCRIPT_DIR}/verify-monitoring.sh" || true
 
 if command -v k3s >/dev/null 2>&1 && [[ -x "${INFRA_ROOT}/k8s/scripts/repair-ws-prometheus.sh" ]]; then
-  log "k3s détecté — scrape africa-meals-ws (Grafana Servers)"
+  log "k3s détecté — scrape africa-meals-ws + API (Grafana Servers)"
   bash "${INFRA_ROOT}/k8s/scripts/repair-ws-prometheus.sh" || warn "repair-ws-prometheus partiel — voir k8s/DEPLOY.md"
+  if [[ -x "${INFRA_ROOT}/k8s/scripts/repair-api-prometheus.sh" ]]; then
+    bash "${INFRA_ROOT}/k8s/scripts/repair-api-prometheus.sh" || warn "repair-api-prometheus partiel"
+  fi
+fi
+
+if [[ -x "${SCRIPT_DIR}/sync-emqx-prometheus-targets.sh" ]]; then
+  bash "${SCRIPT_DIR}/sync-emqx-prometheus-targets.sh" || true
 fi
 
 echo ""
