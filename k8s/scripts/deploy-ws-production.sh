@@ -35,7 +35,7 @@ Options:
   --skip-tls          ne pas émettre le certificat LE ws.wise-eat.com
 
 VPS (/opt) :
-  sudo deploy-ws-production.sh /opt/wise-eat-ws/.env
+  sudo deploy-ws-production.sh /opt/wise-eat-ws/.env.prod
 EOF
       exit 0
       ;;
@@ -62,6 +62,9 @@ fi
 rm -f /tmp/ws-env-tried.$$
 
 echo "== .env : ${ENV_FILE} =="
+if grep -qE '^MONGODB_URI=mongodb\+srv://' "${ENV_FILE}" 2>/dev/null; then
+  echo "ATTENTION: .env Atlas détecté — en prod VPS préférez /opt/wise-eat-ws/.env.prod" >&2
+fi
 
 echo "== 1/7 k3s (swap VPS + kubelet) =="
 if [[ "${SKIP_K3S}" == "false" ]]; then

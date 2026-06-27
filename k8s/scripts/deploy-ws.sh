@@ -33,6 +33,28 @@ if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
   KUBECTL=(sudo k3s kubectl)
 fi
 
+ws_print_rollout_diagnostics() {
+  local ns="${1:-${NAMESPACE:-wise-eat}}"
+  local app="${2:-${DEPLOYMENT:-africa-meals-ws}}"
+  echo ""
+  echo "=== Pods ==="
+  "${KUBECTL[@]}" get pods -n "${ns}" -l "app.kubernetes.io/name=${app}" -o wide 2>/dev/null || true
+  echo ""
+  echo "=== Événements récents ==="
+  "${KUBECTL[@]}" get events -n "${ns}" --sort-by=.lastTimestamp 2>/dev/null | tail -20 || true
+  echo ""
+  echo "=== describe (dernier pod) ==="
+  local pod
+  pod="$("${KUBECTL[@]}" get pods -n "${ns}" -l "app.kubernetes.io/name=${app}" \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  if [[ -n "${pod}" ]]; then
+    "${KUBECTL[@]}" describe pod "${pod}" -n "${ns}" 2>/dev/null | tail -80 || true
+    echo ""
+    echo "=== logs ${pod} (100 dernières lignes) ==="
+    "${KUBECTL[@]}" logs "${pod}" -n "${ns}" --tail=100 2>/dev/null || true
+  fi
+}
+
 if [[ "${DO_BUILD}" == "true" ]]; then
   "${SCRIPT_DIR}/build-ws-image.sh"
 fi
@@ -51,7 +73,16 @@ echo "Application kustomize (${K8S_WS_DIR})..."
 "${KUBECTL[@]}" apply -k "${K8S_WS_DIR}"
 
 echo "Rollout deployment/${DEPLOYMENT} (maxUnavailable=0, restartPolicy=Always)..."
-"${KUBECTL[@]}" rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}" --timeout=300s
+if ! "${KUBECTL[@]}" rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}" --timeout=300s; then
+  echo "Rollout timeout — aucun pod ready après 300s." >&2
+  ws_print_rollout_diagnostics
+  echo "" >&2
+  echo "Pistes fréquentes :" >&2
+  echo "  • Secret avec .env.prod (Mongo Stunnel host.k3s.internal), pas .env Atlas" >&2
+  echo "  • Stunnel / Redis / Memcached actifs sur le VPS (ports 27018, 6381, 11212…)" >&2
+  echo "  • kubectl logs -n ${NAMESPACE} -l app.kubernetes.io/name=${DEPLOYMENT} --tail=200" >&2
+  exit 1
+fi
 
 READY=$("${KUBECTL[@]}" get deployment "${DEPLOYMENT}" -n "${NAMESPACE}" \
   -o jsonpath='{.status.readyReplicas}')

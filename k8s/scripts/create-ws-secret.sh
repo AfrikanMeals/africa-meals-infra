@@ -35,6 +35,12 @@ if [[ ! -s "${FILTERED}" ]]; then
   exit 1
 fi
 
+if [[ "${VPS_K8S_LOCAL}" == "1" ]] && grep -qE '^MONGODB_URI=mongodb\+srv://' "${FILTERED}"; then
+  echo "ATTENTION: MONGODB_URI Atlas (mongodb+srv) dans ${ENV_FILE}." >&2
+  echo "En prod k8s sur le VPS, utilisez .env.prod (Mongo Stunnel host.k3s.internal:27018)." >&2
+  echo "Le ConfigMap force MONGODB_TLS_SERVERNAME=db.wise-eat.com — incompatible avec Atlas." >&2
+fi
+
 if [[ "${VPS_K8S_LOCAL}" == "1" ]]; then
   REWRITTEN="$(mktemp)"
   sed \

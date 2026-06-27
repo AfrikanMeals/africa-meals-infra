@@ -127,7 +127,7 @@ ws_resolve_env_file() {
   for base in "${bases[@]}"; do
     [[ -n "${base}" && -d "${base}" ]] || continue
     for ws in wise-eat-ws africa-meals-ws; do
-      for env_name in .env .env.prod .env.production; do
+      for env_name in .env.prod .env.production .env; do
         candidate="${base}/${ws}/${env_name}"
         if [[ -f "${candidate}" ]]; then
           printf '%s\n' "$(cd "$(dirname "${candidate}")" && pwd)/$(basename "${candidate}")"
@@ -149,7 +149,7 @@ ws_env_file_usage_hint() {
 Fichier .env introuvable.
 
 Sur le VPS Wise Eat (dépôts séparés) :
-  sudo ${WS_PATHS_SCRIPT_DIR:-./}/deploy-ws-production.sh /opt/wise-eat-ws/.env
+  sudo ${WS_PATHS_SCRIPT_DIR:-./}/deploy-ws-production.sh /opt/wise-eat-ws/.env.prod
 
 Monorepo local :
   sudo infra/k8s/scripts/deploy-ws-production.sh africa-meals-ws/.env.prod
