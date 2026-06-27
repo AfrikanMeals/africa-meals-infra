@@ -51,7 +51,9 @@ ws_resolve_packages_dir() {
   for candidate in \
     "${WS_PATHS_MONO_ROOT}/packages" \
     "${ws_dir}/../packages" \
-    "/opt/packages"; do
+    "/opt/packages" \
+    "/opt/wise-eat-project/packages" \
+    "/opt/africa-meals-project/packages"; do
     if [[ -f "${candidate}/africa-meals-proto/package.json" ]]; then
       printf '%s\n' "$(cd "${candidate}" && pwd)"
       return 0
@@ -61,7 +63,7 @@ ws_resolve_packages_dir() {
   return 1
 }
 
-# Contexte Docker : monorepo natif ou répertoire temporaire (symlinks VPS).
+# Contexte Docker : monorepo natif ou copie réelle (VPS — Docker ne suit pas les symlinks hors contexte).
 ws_prepare_docker_context() {
   ws_paths_init
   local ws_dir packages_dir ctx
@@ -75,8 +77,28 @@ ws_prepare_docker_context() {
   fi
 
   ctx="$(mktemp -d)"
-  ln -s "${ws_dir}" "${ctx}/africa-meals-ws"
-  ln -s "${packages_dir}" "${ctx}/packages"
+  mkdir -p "${ctx}/africa-meals-ws" "${ctx}/packages/africa-meals-field-selection" "${ctx}/packages/africa-meals-proto"
+
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a \
+      --exclude node_modules \
+      --exclude dist \
+      --exclude .git \
+      "${ws_dir}/" "${ctx}/africa-meals-ws/"
+    rsync -a \
+      "${packages_dir}/africa-meals-field-selection/" "${ctx}/packages/africa-meals-field-selection/"
+    rsync -a \
+      "${packages_dir}/africa-meals-proto/" "${ctx}/packages/africa-meals-proto/"
+  else
+    tar -C "${ws_dir}" \
+      --exclude=node_modules --exclude=dist --exclude=.git \
+      -cf - . | tar -C "${ctx}/africa-meals-ws" -xf -
+    tar -C "${packages_dir}/africa-meals-field-selection" -cf - . \
+      | tar -C "${ctx}/packages/africa-meals-field-selection" -xf -
+    tar -C "${packages_dir}/africa-meals-proto" -cf - . \
+      | tar -C "${ctx}/packages/africa-meals-proto" -xf -
+  fi
+
   printf '%s\n' "${ctx}"
 }
 

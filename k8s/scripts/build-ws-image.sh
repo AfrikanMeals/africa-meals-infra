@@ -44,7 +44,15 @@ fi
 
 echo "Build ${IMAGE}"
 echo "  source WS : ${WS_DIR}"
+echo "  packages  : $(ws_resolve_packages_dir "${WS_DIR}")"
 echo "  contexte  : ${BUILD_CTX}"
+
+if [[ ! -f "${BUILD_CTX}/africa-meals-ws/src/main.ts" ]]; then
+  echo "Erreur : contexte Docker incomplet (africa-meals-ws/src/main.ts absent)." >&2
+  echo "VPS : /opt/wise-eat-ws + /opt/packages/{africa-meals-proto,africa-meals-field-selection}" >&2
+  exit 1
+fi
+
 docker build -f "${DOCKERFILE}" -t "${IMAGE}" "${BUILD_CTX}"
 
 if command -v k3s >/dev/null 2>&1; then
