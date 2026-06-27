@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Certificat Let's Encrypt + HTTPS pour k8s.wise-eat.com (Headlamp).
-# Usage :
-#   sudo STUNNEL_TLS_EMAIL=you@wise-eat.com K8S_DASHBOARD_BASIC_AUTH_PASSWORD='…' ./enable-k8s-nginx-ssl.sh
+# Usage : sudo STUNNEL_TLS_EMAIL=you@wise-eat.com ./enable-k8s-nginx-ssl.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

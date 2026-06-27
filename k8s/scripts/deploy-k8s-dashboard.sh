@@ -4,9 +4,7 @@
 # Prérequis DNS : A/AAAA k8s.wise-eat.com → VPS (DNS only, pas proxy orange CF)
 #
 # Usage :
-#   sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
-#     K8S_DASHBOARD_BASIC_AUTH_PASSWORD='mot-de-passe-fort' \
-#     ./deploy-k8s-dashboard.sh
+#   sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./deploy-k8s-dashboard.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +21,6 @@ for arg in "$@"; do
 Usage: sudo deploy-k8s-dashboard.sh [options]
 
 Variables :
-  K8S_DASHBOARD_BASIC_AUTH_PASSWORD   basic auth nginx (obligatoire 1ère install)
   STUNNEL_TLS_EMAIL                   Let's Encrypt
 
 Options :
@@ -62,8 +59,7 @@ cat <<'EOF'
 === Headlamp déployé ===
 
 URL     : https://k8s.wise-eat.com/
-Couche 1: basic auth nginx (K8S_DASHBOARD_BASIC_AUTH_USER / mot de passe)
-Couche 2: token ServiceAccount headlamp-admin (collé dans l'UI)
+Auth    : token ServiceAccount headlamp-admin (pas de mot de passe nginx)
 
 Regénérer token :
   sudo k8s/scripts/create-headlamp-admin-token.sh

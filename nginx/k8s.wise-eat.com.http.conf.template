@@ -1,4 +1,5 @@
-# HTTP — Headlamp k8s UI (k8s.wise-eat.com) — ACME + proxy NodePort 30850
+# HTTP — Headlamp (k8s.wise-eat.com) — ACME + proxy NodePort 30850
+# Pas de auth_basic (incompatible token Bearer Headlamp — voir .https template).
 map $http_upgrade $k8s_dashboard_connection_upgrade {
     default upgrade;
     ''      close;
@@ -14,17 +15,16 @@ server {
     }
 
     location / {
-        auth_basic "Kubernetes Admin";
-        auth_basic_user_file ${K8S_DASHBOARD_HTASSWD_FILE};
-
         proxy_pass http://${K8S_DASHBOARD_BACKEND_HOST}:${K8S_DASHBOARD_BACKEND_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $k8s_dashboard_connection_upgrade;
+        proxy_hide_header WWW-Authenticate;
         proxy_read_timeout 3600;
         proxy_send_timeout 3600;
         proxy_buffering off;

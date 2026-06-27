@@ -180,8 +180,8 @@ sudo WS_BACKEND_PORT=30800 infra/k8s/scripts/patch-nginx-ws-backend.sh
 
 | Couche | Auth |
 |--------|------|
-| nginx | basic auth (`K8S_DASHBOARD_BASIC_AUTH_USER` / mot de passe) |
-| Headlamp | token ServiceAccount `headlamp-admin` |
+| HTTPS | Let's Encrypt |
+| Headlamp | token ServiceAccount `headlamp-admin` (pas de basic auth nginx — incompatible Bearer) |
 
 **DNS** : `k8s.wise-eat.com` → A/AAAA VPS (**DNS only** Cloudflare).
 
@@ -189,15 +189,15 @@ sudo WS_BACKEND_PORT=30800 infra/k8s/scripts/patch-nginx-ws-backend.sh
 cd /opt/wise-eat && git pull
 chmod +x k8s/scripts/*.sh
 
-sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
-  K8S_DASHBOARD_BASIC_AUTH_PASSWORD='votre-mot-de-passe' \
-  k8s/scripts/deploy-k8s-dashboard.sh
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com k8s/scripts/deploy-k8s-dashboard.sh
+# ou si déjà déployé, corriger nginx :
+sudo k8s/scripts/install-k8s-nginx.sh
 ```
 
 Connexion :
 
-1. Ouvrir `https://k8s.wise-eat.com/` → basic auth nginx
-2. Dans Headlamp → **Token** → coller le token :
+1. Ouvrir `https://k8s.wise-eat.com/` (plus de popup basic auth)
+2. Headlamp → **Token** → coller le token :
    ```bash
    sudo k8s/scripts/create-headlamp-admin-token.sh
    ```
