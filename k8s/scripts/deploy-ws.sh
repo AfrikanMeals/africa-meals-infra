@@ -72,6 +72,9 @@ fi
 echo "Application kustomize (${K8S_WS_DIR})..."
 "${KUBECTL[@]}" apply -k "${K8S_WS_DIR}"
 
+echo "DNS host.k3s.internal → IP nœud VPS (k3s bare-metal)..."
+"${SCRIPT_DIR}/ensure-k3s-host-gateway.sh"
+
 echo "Rollout deployment/${DEPLOYMENT} (maxUnavailable=0, restartPolicy=Always)..."
 if ! "${KUBECTL[@]}" rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}" --timeout=300s; then
   echo "Rollout timeout — aucun pod ready après 300s." >&2
@@ -80,7 +83,7 @@ if ! "${KUBECTL[@]}" rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}"
   echo "Pistes fréquentes :" >&2
   echo "  • Secret avec .env.prod (Mongo Stunnel host.k3s.internal), pas .env Atlas" >&2
   echo "  • Stunnel / Redis / Memcached actifs sur le VPS (ports 27018, 6381, 11212…)" >&2
-  echo "  • kubectl logs -n ${NAMESPACE} -l app.kubernetes.io/name=${DEPLOYMENT} --tail=200" >&2
+  echo "  • host.k3s.internal : sudo ${SCRIPT_DIR}/ensure-k3s-host-gateway.sh" >&2
   exit 1
 fi
 

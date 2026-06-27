@@ -57,3 +57,9 @@ echo "  swap    : swapon --show"
 echo ""
 k3s kubectl get nodes
 swapon --show 2>/dev/null || true
+
+if [[ -x "${SCRIPT_DIR}/ensure-k3s-host-gateway.sh" ]]; then
+  echo ""
+  echo "Configuration host.k3s.internal (passerelle vers le VPS)..."
+  "${SCRIPT_DIR}/ensure-k3s-host-gateway.sh" || true
+fi
