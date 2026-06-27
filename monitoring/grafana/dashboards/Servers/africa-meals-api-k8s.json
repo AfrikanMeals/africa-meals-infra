@@ -1,0 +1,183 @@
+{
+  "annotations": { "list": [] },
+  "description": "africa-meals-api — pods k8s (REST, GraphQL, BullMQ). Dossier Grafana : Servers.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Vue d'ensemble k8s",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Pods Ready (deployment africa-meals-api, attendu 3)",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "green", "value": 3 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_status_replicas_available{deployment=\"africa-meals-api\",namespace=\"wise-eat\"} or count(api_up{job=\"africa-meals-api-pods\"} == 1)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pods disponibles",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 5, "w": 20, "x": 4, "y": 1 },
+      "id": 12,
+      "options": { "showHeader": true },
+      "targets": [
+        { "expr": "api_up{job=\"africa-meals-api-pods\"}", "format": "table", "instant": true, "refId": "scrape" },
+        { "expr": "api_process_resident_memory_bytes{job=\"africa-meals-api-pods\"}", "format": "table", "instant": true, "refId": "mem" },
+        { "expr": "api_process_uptime_seconds{job=\"africa-meals-api-pods\"}", "format": "table", "instant": true, "refId": "uptime" },
+        { "expr": "api_mongoose_ready_state{job=\"africa-meals-api-pods\"}", "format": "table", "instant": true, "refId": "mongo" }
+      ],
+      "title": "État par pod",
+      "transformations": [
+        { "id": "seriesToColumns", "options": { "byField": "pod" } },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "namespace": true, "service": true },
+            "renameByName": {
+              "Value #scrape": "Scrape",
+              "Value #mem": "Mémoire RSS",
+              "Value #uptime": "Uptime",
+              "Value #mongo": "Mongo readyState",
+              "pod": "Pod"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "id": 101,
+      "title": "Ressources process",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 800000000 },
+              { "color": "red", "value": 950000000 }
+            ]
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 3,
+      "targets": [
+        { "expr": "api_process_resident_memory_bytes{job=\"africa-meals-api-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Mémoire RSS (limite 1 Gi/pod)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "s" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 4,
+      "targets": [
+        { "expr": "api_process_uptime_seconds{job=\"africa-meals-api-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Uptime process",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 102,
+      "title": "HTTP & MongoDB",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 16 },
+      "id": 5,
+      "targets": [
+        { "expr": "api_request_stats_buffer_entries{job=\"africa-meals-api-pods\"}", "legendFormat": "buffer — {{pod}}", "refId": "A" },
+        { "expr": "api_request_stats_events{job=\"africa-meals-api-pods\",kind=\"http\"}", "legendFormat": "http events — {{pod}}", "refId": "B" }
+      ],
+      "title": "Request stats (buffer)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 16 },
+      "id": 6,
+      "targets": [
+        { "expr": "api_mongoose_ready_state{job=\"africa-meals-api-pods\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Mongoose readyState (1=connected)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "title": "Kubernetes",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "id": 11,
+      "targets": [
+        { "expr": "kube_pod_container_status_restarts_total{namespace=\"wise-eat\",pod=~\"africa-meals-api-.*\"}", "legendFormat": "{{pod}}", "refId": "A" }
+      ],
+      "title": "Redémarrages conteneur (failover k8s)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["wise-eat", "africa-meals-api", "k8s", "nestjs", "graphql"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Africa Meals API (k8s)",
+  "uid": "africa-meals-api-k8s",
+  "version": 1
+}

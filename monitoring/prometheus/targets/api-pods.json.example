@@ -1,0 +1,11 @@
+[
+  {
+    "targets": ["127.0.0.1:30900"],
+    "labels": {
+      "job": "africa-meals-api-pods",
+      "service": "africa-meals-api",
+      "namespace": "wise-eat",
+      "pod": "nodeport-aggregate"
+    }
+  }
+]

@@ -202,20 +202,45 @@ Connexion :
    sudo k8s/scripts/create-headlamp-admin-token.sh
    ```
 
+## africa-meals-api — production k8s
+
+> **Guide complet : [DEPLOY-API.md](./DEPLOY-API.md)**
+
+**3 pods**, **1 Gi RAM** / pod, NodePort **30900**, nginx **api.wise-eat.com**.
+
+```bash
+# VPS
+sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod
+
+# Monorepo
+sudo infra/k8s/scripts/deploy-api-production.sh africa-meals-api/.env.prod
+```
+
+Grafana : dossier **Servers** → **Africa Meals API (k8s)**  
+Headlamp : namespace `wise-eat` → deployment `africa-meals-api`
+
 ## Fichiers
 
 ```
 infra/k8s/
   Dockerfile.africa-meals-ws
+  Dockerfile.africa-meals-api
   africa-meals-ws/
     configmap.yaml          # host.k3s.internal + TLS SNI
     deployment.yaml         # 3 replicas, probes, preStop
     service.yaml            # NodePort 30800
     poddisruptionbudget.yaml
     secret.env.example
+  africa-meals-api/
+    configmap.yaml          # overrides k8s (1 Gi, pools, WS interne)
+    deployment.yaml         # 3 replicas, 1 Gi, probes
+    service.yaml            # NodePort 30900
+    poddisruptionbudget.yaml
+    secret.env.example
   headlamp/                 # UI Kubernetes (NodePort 30850)
   scripts/
-    deploy-ws-production.sh # ← commande principale
+    deploy-ws-production.sh # WS — commande principale
+    deploy-api-production.sh # API — commande principale
     deploy-k8s-dashboard.sh # Headlamp + k8s.wise-eat.com
     install-headlamp.sh
     install-k8s-nginx.sh

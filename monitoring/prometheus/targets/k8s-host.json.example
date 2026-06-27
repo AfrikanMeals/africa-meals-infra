@@ -12,5 +12,12 @@
       "service": "africa-meals-ws",
       "scrape": "nodeport"
     }
+  },
+  {
+    "targets": ["127.0.0.1:30900"],
+    "labels": {
+      "service": "africa-meals-api",
+      "scrape": "nodeport"
+    }
   }
 ]

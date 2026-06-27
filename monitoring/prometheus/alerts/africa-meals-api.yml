@@ -1,0 +1,54 @@
+groups:
+  - name: africa-meals-api
+    rules:
+      - alert: AfricaMealsApiPodsDown
+        expr: |
+          kube_deployment_status_replicas_available{deployment="africa-meals-api", namespace="wise-eat"} < 2
+        for: 2m
+        labels:
+          severity: critical
+          service: africa-meals-api
+        annotations:
+          summary: "Moins de 2 pods API disponibles"
+          description: "Deployment africa-meals-api : {{ $value }} pod(s) ready (attendu ≥ 2)."
+
+      - alert: AfricaMealsApiPodNotReady
+        expr: |
+          kube_pod_status_ready{namespace="wise-eat", pod=~"africa-meals-api-.*", condition="true"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-api
+        annotations:
+          summary: "Pod API not ready — {{ $labels.pod }}"
+
+      - alert: AfricaMealsApiMetricsDown
+        expr: |
+          up{job="africa-meals-api-pods"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          service: africa-meals-api
+        annotations:
+          summary: "Scrape métriques API échoué — {{ $labels.instance }}"
+
+      - alert: AfricaMealsApiHighMemory
+        expr: |
+          api_process_resident_memory_bytes{job="africa-meals-api-pods"} > 950000000
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-api
+        annotations:
+          summary: "Mémoire API élevée — pod {{ $labels.pod }}"
+          description: "RSS > 950 Mo (limite pod 1 Gi) sur {{ $labels.pod }}."
+
+      - alert: AfricaMealsApiMongodbDisconnected
+        expr: |
+          api_mongoose_ready_state{job="africa-meals-api-pods"} != 1
+        for: 5m
+        labels:
+          severity: warning
+          service: africa-meals-api
+        annotations:
+          summary: "MongoDB déconnecté — pod {{ $labels.pod }}"

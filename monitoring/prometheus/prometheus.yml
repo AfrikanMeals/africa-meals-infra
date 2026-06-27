@@ -252,3 +252,32 @@ scrape_configs:
         action: keep
       - target_label: instance
         replacement: ws-nodeport:30800
+
+  # africa-meals-api — métriques applicatives par pod (HTTP, GraphQL, BullMQ)
+  - job_name: africa-meals-api-pods
+    metrics_path: /api/metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/api-pods.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [pod]
+        target_label: pod
+      - source_labels: [__address__]
+        target_label: instance
+
+  - job_name: africa-meals-api-nodeport
+    metrics_path: /api/metrics
+    scrape_interval: 30s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/k8s-host.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '[^:]+:30900'
+        action: keep
+      - target_label: instance
+        replacement: api-nodeport:30900

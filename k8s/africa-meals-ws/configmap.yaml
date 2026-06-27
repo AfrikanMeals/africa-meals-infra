@@ -17,7 +17,7 @@ data:
   VPS_LOCAL_HOST: "host.k3s.internal"
 
   # --- API interne (Nest sur le VPS, pas PM2 prod) ---
-  AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://host.k3s.internal:9000/api"
+  AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://africa-meals-api.wise-eat.svc.cluster.local:9000/api"
   STATUS_PROBE_API_URL: "https://api.wise-eat.com/health"
 
   # --- MongoDB (Stunnel :27018 local) — URI dans le Secret, SNI dans ConfigMap ---
