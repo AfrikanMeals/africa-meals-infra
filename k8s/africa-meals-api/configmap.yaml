@@ -17,7 +17,7 @@ data:
 
   # --- MongoDB (Stunnel :27018) — URI dans Secret, SNI ici ---
   MONGODB_TLS_SERVERNAME: "db.wise-eat.com"
-  MONGOOSE_MAX_POOL: "5"
+  MONGOOSE_MAX_POOL: "3"
   MONGOOSE_MIN_POOL: "0"
   MONGOOSE_MAX_CONNECTING: "2"
   MONGOOSE_MAX_IDLE_MS: "60000"

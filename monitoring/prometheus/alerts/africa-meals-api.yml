@@ -3,14 +3,14 @@ groups:
     rules:
       - alert: AfricaMealsApiPodsDown
         expr: |
-          kube_deployment_status_replicas_available{deployment="africa-meals-api", namespace="wise-eat"} < 2
+          kube_deployment_status_replicas_available{deployment="africa-meals-api", namespace="wise-eat"} < 3
         for: 2m
         labels:
           severity: critical
           service: africa-meals-api
         annotations:
-          summary: "Moins de 2 pods API disponibles"
-          description: "Deployment africa-meals-api : {{ $value }} pod(s) ready (attendu ≥ 2)."
+          summary: "Moins de 3 pods API disponibles"
+          description: "Deployment africa-meals-api : {{ $value }} pod(s) ready (attendu ≥ 3 sur 5)."
 
       - alert: AfricaMealsApiPodNotReady
         expr: |
@@ -34,14 +34,14 @@ groups:
 
       - alert: AfricaMealsApiHighMemory
         expr: |
-          api_process_resident_memory_bytes{job="africa-meals-api-pods"} > 950000000
+          api_process_resident_memory_bytes{job="africa-meals-api-pods"} > 480000000
         for: 5m
         labels:
           severity: warning
           service: africa-meals-api
         annotations:
           summary: "Mémoire API élevée — pod {{ $labels.pod }}"
-          description: "RSS > 950 Mo (limite pod 1 Gi) sur {{ $labels.pod }}."
+          description: "RSS > 480 Mo (limite pod 512 Mo) sur {{ $labels.pod }}."
 
       - alert: AfricaMealsApiMongodbDisconnected
         expr: |

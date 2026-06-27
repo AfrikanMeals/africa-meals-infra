@@ -17,7 +17,7 @@ for arg in "$@"; do
       cat <<'EOF'
 Usage: sudo ensure-k3s-host-gateway.sh [--repair-coredns]
 
-  hostAliases sur africa-meals-ws (défaut, recommandé)
+  hostAliases sur africa-meals-ws et africa-meals-api (défaut, recommandé)
 
   --repair-coredns  Supprime coredns-custom (host-gateway) et redémarre CoreDNS
 EOF
@@ -36,9 +36,12 @@ if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
 fi
 
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
-DEPLOYMENT="${K8S_WS_DEPLOYMENT:-africa-meals-ws}"
 HOSTNAME="${VPS_LOCAL_HOST:-host.k3s.internal}"
 ENABLE_COREDNS="${ENABLE_COREDNS_HOST_GATEWAY:-0}"
+DEPLOYMENTS=(
+  "${K8S_WS_DEPLOYMENT:-africa-meals-ws}"
+  "${K8S_API_DEPLOYMENT:-africa-meals-api}"
+)
 
 ws_restart_coredns() {
   if "${KUBECTL[@]}" get deployment coredns -n kube-system >/dev/null 2>&1; then
@@ -83,12 +86,11 @@ EOF
   echo "${COREDNS_PATCH}" | "${KUBECTL[@]}" apply -f -
   ws_restart_coredns || echo "Attention: CoreDNS n'a pas redémarré proprement." >&2
 else
-  echo "CoreDNS non modifié (hostAliases suffisent pour les pods WS)."
+  echo "CoreDNS non modifié (hostAliases suffisent pour les pods WS/API)."
   echo "  Réparer CoreDNS cassé : sudo $0 --repair-coredns"
 fi
 
-if "${KUBECTL[@]}" get deployment "${DEPLOYMENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-  "${KUBECTL[@]}" patch deployment "${DEPLOYMENT}" -n "${NAMESPACE}" --type=strategic --patch "$(cat <<EOF
+HOST_ALIAS_PATCH="$(cat <<EOF
 spec:
   template:
     spec:
@@ -98,10 +100,15 @@ spec:
             - "${HOSTNAME}"
 EOF
 )"
-  echo "hostAliases appliqués sur deployment/${DEPLOYMENT} (${NAMESPACE})"
-fi
 
-echo "OK — ${HOSTNAME} → ${NODE_IP} via /etc/hosts des pods WS (Stunnel 0.0.0.0 sur le VPS)"
+for DEPLOYMENT in "${DEPLOYMENTS[@]}"; do
+  if "${KUBECTL[@]}" get deployment "${DEPLOYMENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+    "${KUBECTL[@]}" patch deployment "${DEPLOYMENT}" -n "${NAMESPACE}" --type=strategic --patch "${HOST_ALIAS_PATCH}"
+    echo "hostAliases appliqués sur deployment/${DEPLOYMENT} (${NAMESPACE})"
+  fi
+done
+
+echo "OK — ${HOSTNAME} → ${NODE_IP} via /etc/hosts des pods WS/API (Stunnel 0.0.0.0 sur le VPS)"
 echo ""
 echo "Note : un pod debug (kubectl run dns-test) n'a pas ces hostAliases —"
-echo "       tester plutôt : curl http://127.0.0.1:30800/api/health"
+echo "       tester : curl http://127.0.0.1:30800/api/health (WS) ou :30900/api/health (API)"

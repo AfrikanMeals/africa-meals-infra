@@ -90,7 +90,7 @@ else
   echo "accounts.json absent (${FIREBASE_SA}) — montage Firebase optionnel ignoré"
 fi
 
-echo "== 5/8 Déploiement 3 pods (1 Gi + restart Always) =="
+echo "== 5/8 Déploiement 5 pods (512 Mi × 5 ≈ 2,5 Gi + restart Always) =="
 "${SCRIPT_DIR}/deploy-api.sh" --verify
 
 echo "== 6/8 Mise à jour WS → API interne k8s =="

@@ -1,6 +1,6 @@
 # Déploiement africa-meals-api — VPS Wise Eat (k8s)
 
-Guide pour **3 pods k8s (1 Gi RAM)**, **https://api.wise-eat.com**, monitoring Grafana dossier **Servers**, visibilité **Headlamp**.
+Guide pour **5 pods k8s (512 Mi RAM/pod ≈ 2,5 Gi total)**, **https://api.wise-eat.com**, monitoring Grafana dossier **Servers**, visibilité **Headlamp**.
 
 ## Layout VPS
 
@@ -40,7 +40,7 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
 2. kube-state-metrics
 3. Build image Docker + import k3s
 4. Secrets K8s (`.env.prod` + `accounts.json`)
-5. **3 pods — 1 Gi RAM**, `restartPolicy: Always`, PDB `minAvailable: 2`
+5. **5 pods — 512 Mi RAM** (≈ 2,5 Gi total), `restartPolicy: Always`, PDB `minAvailable: 3`
 6. Patch WS → API interne (`africa-meals-api.wise-eat.svc.cluster.local:9000`)
 7. Cibles Prometheus `/api/metrics`
 8. nginx `api.wise-eat.com` → NodePort `:30900`
@@ -115,12 +115,13 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 
 | Paramètre | Valeur |
 |-----------|--------|
-| RAM request/limit | **1 Gi** |
-| CPU request | 200m |
-| CPU limit | 2 cores |
-| Replicas | 3 |
+| RAM request/limit | **512 Mi** / pod |
+| Total cluster API | **≈ 2,5 Gi** (5 × 512 Mi) |
+| CPU request | 100m |
+| CPU limit | 1 core |
+| Replicas | **5** |
 | NodePort | **30900** |
-| PDB | min 2 pods sur 3 |
+| PDB | min **3** pods sur 5 |
 | Probes | `/api/health` (startup + readiness + liveness) |
 
 ---

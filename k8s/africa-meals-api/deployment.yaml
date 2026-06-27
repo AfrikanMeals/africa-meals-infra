@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: africa-meals-api
     app.kubernetes.io/component: api
 spec:
-  replicas: 3
+  replicas: 5
   revisionHistoryLimit: 5
   progressDeadlineSeconds: 900
   minReadySeconds: 15
@@ -78,11 +78,11 @@ spec:
                 name: africa-meals-api
           resources:
             requests:
-              cpu: 200m
-              memory: 1Gi
+              cpu: 100m
+              memory: 512Mi
             limits:
-              cpu: "2"
-              memory: 1Gi
+              cpu: "1"
+              memory: 512Mi
           volumeMounts:
             - name: firebase-sa
               mountPath: /app/africa-meals-api/accounts.json

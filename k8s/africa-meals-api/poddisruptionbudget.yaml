@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: africa-meals-api
 spec:
-  minAvailable: 2
+  minAvailable: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: africa-meals-api

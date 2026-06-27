@@ -206,7 +206,7 @@ Connexion :
 
 > **Guide complet : [DEPLOY-API.md](./DEPLOY-API.md)**
 
-**3 pods**, **1 Gi RAM** / pod, NodePort **30900**, nginx **api.wise-eat.com**.
+**5 pods**, **512 Mi RAM** / pod (≈ 2,5 Gi total), NodePort **30900**, nginx **api.wise-eat.com**.
 
 ```bash
 # VPS
@@ -232,8 +232,8 @@ infra/k8s/
     poddisruptionbudget.yaml
     secret.env.example
   africa-meals-api/
-    configmap.yaml          # overrides k8s (1 Gi, pools, WS interne)
-    deployment.yaml         # 3 replicas, 1 Gi, probes
+    configmap.yaml          # overrides k8s (512 Mi, pools, WS interne)
+    deployment.yaml         # 5 replicas, 512 Mi, probes
     service.yaml            # NodePort 30900
     poddisruptionbudget.yaml
     secret.env.example
