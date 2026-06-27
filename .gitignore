@@ -34,6 +34,9 @@ mongodb/data-mongo-1/
 mongodb/data-mongo-3/
 mongodb/data-dbgate/
 
+# k8s — secrets locaux
+k8s/africa-meals-ws/secret.env
+
 # OS / éditeur
 .DS_Store
 *.swp

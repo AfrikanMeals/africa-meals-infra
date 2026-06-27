@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: africa-meals-ws
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: africa-meals-ws
+    app.kubernetes.io/component: websocket
+data:
+  NODE_ENV: "production"
+  PORT: "8000"
+  WS_PORT: "8000"
+  DISABLE_SWAGGER: "true"
+
+  # Depuis un pod k3s, host.k3s.internal = boucle vers les services sur 127.0.0.1 du VPS
+  # (Stunnel, nginx stream MQTT, API Nest sur le même hôte).
+  VPS_LOCAL_HOST: "host.k3s.internal"
+
+  # --- API interne (Nest sur le VPS, pas PM2 prod) ---
+  AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://host.k3s.internal:9000/api"
+  STATUS_PROBE_API_URL: "http://host.k3s.internal:9000/health"
+
+  # --- MongoDB (Stunnel TLS local :27018) — URI complète dans le Secret ---
+  REDIS_HOST: "host.k3s.internal"
+  REDIS_PORT: "6381"
+  REDIS_TLS: "true"
+  REDIS_TLS_REJECT_UNAUTHORIZED: "true"
+  REDIS_TLS_SERVERNAME: "cache.wise-eat.com"
+  REDIS_REPLICA_1_PORT: "6383"
+  REDIS_REPLICA_2_PORT: "6384"
+  REDIS_CONNECT_TIMEOUT_MS: "20000"
+  DNS_RESULT_ORDER: "ipv4first"
+
+  # --- Redis BullMQ (Stunnel :6382 + réplicas :6385/:6386) ---
+  BULLMQ_REDIS_HOST: "host.k3s.internal"
+  BULLMQ_REDIS_PORT: "6382"
+  BULLMQ_REDIS_TLS: "true"
+  BULLMQ_REDIS_TLS_REJECT_UNAUTHORIZED: "true"
+  BULLMQ_REDIS_TLS_SERVERNAME: "cache.wise-eat.com"
+  BULLMQ_REDIS_REPLICA_1_PORT: "6385"
+  BULLMQ_REDIS_REPLICA_2_PORT: "6386"
+
+  # --- Memcached (Stunnel :11212 + réplicas :11213/:11214) ---
+  CACHE_STORE: "memcached"
+  MEMCACHED_SERVERS: "host.k3s.internal:11212"
+  MEMCACHED_TLS: "true"
+  MEMCACHED_TLS_REJECT_UNAUTHORIZED: "true"
+  MEMCACHED_TLS_SERVERNAME: "cache.wise-eat.com"
+  MEMCACHED_CONNECT_TIMEOUT_MS: "15000"
+  MEMCACHED_REPLICA_1_SERVERS: "host.k3s.internal:11213"
+  MEMCACHED_REPLICA_2_SERVERS: "host.k3s.internal:11214"
+
+  # --- MQTT EMQX (nginx stream MQTTS local :8883) ---
+  MQTT_BROKER_HOST: "host.k3s.internal"
+  MQTT_BROKER_PORT: "8883"
+  MQTT_BROKER_WS_PORT: "8884"
+  MQTT_BROKER_PROTOCOL: "mqtts"
+  MQTT_BROKER_URL: "mqtts://host.k3s.internal:8883"
+  MQTT_BROKER_WS_URL: "wss://host.k3s.internal:8884/mqtt"
+  MQTT_BROKER_USERNAME: "wise-eat-mqtt"
+  MQTT_BROKER_TLS_SERVERNAME: "broker.wise-eat.com"
+  MQTT_TLS_REJECT_UNAUTHORIZED: "true"
+  MQTT_TOPIC_PREFIX: "wiseeat/internal/ws"
+  DOMAIN_EVENTS_MQTT_TOPIC_PREFIX: "wiseeat/domain"
+  DOMAIN_EVENTS_ENABLED: "true"
+  DOMAIN_EVENTS_WS_VIA_BUS: "true"
+  DOMAIN_EVENTS_HANDLERS_ASYNC: "true"
+  MQTT_QOS: "1"
+  MQTT_CONNECT_TIMEOUT_MS: "8000"
+  MQTT_KEEPALIVE_SEC: "30"
+  MQTT_RECONNECT_MS: "2000"
+
+  # --- MongoDB pool (3 pods × 3 = 9 connexions max) ---
+  MONGOOSE_MAX_POOL: "3"
+  MONGOOSE_MIN_POOL: "0"
+  MONGOOSE_SERVER_SELECTION_MS: "8000"
+  MONGODB_APP_NAME: "africa-meals-ws-k8s"
+
+  # --- BullMQ dispatch interne ---
+  WS_INTERNAL_DISPATCH_QUEUE_NAME: "ws-internal-dispatch"
+  WS_INTERNAL_DISPATCH_CONCURRENCY: "40"
+  WS_INTERNAL_DISPATCH_ATTEMPTS: "3"
+  WS_INTERNAL_DISPATCH_BACKOFF_MS: "500"
+  WS_INTERNAL_DISPATCH_KEEP_COMPLETED: "1000"
+  WS_INTERNAL_DISPATCH_KEEP_FAILED: "3000"
+
+  # --- SSE + STOMP ---
+  SSE_HTTP_ON_WS: "true"
+  SSE_HEARTBEAT_MS: "20000"
+  SSE_MAX_CONNECTIONS_PER_USER: "5"
+  REQUEST_STATS_SSE_PUSH_MS: "10000"
+  STOMP_ENABLED: "true"
+  STOMP_WS_PATH: "/stomp"
+  SOCKET_IO_ENABLED: "true"
+  STOMP_FANOUT_CHANNEL: "stomp:fanout"
+
+  # --- gRPC (désactivé — HTTP/MQTT suffisent en prod k8s) ---
+  GRPC_WS_SERVER_ENABLED: "false"

@@ -1,0 +1,39 @@
+# Build africa-meals-ws depuis la racine du monorepo AfrikaMeals.
+#   docker build -f infra/k8s/Dockerfile.africa-meals-ws -t africa-meals/ws:latest .
+#
+# Contexte requis : packages/africa-meals-{proto,field-selection} + africa-meals-ws/
+
+FROM node:20-alpine AS packages
+WORKDIR /app/packages/africa-meals-field-selection
+COPY packages/africa-meals-field-selection/package*.json ./
+RUN npm ci --ignore-scripts 2>/dev/null || npm install --ignore-scripts
+COPY packages/africa-meals-field-selection/ ./
+RUN npm run build
+
+WORKDIR /app/packages/africa-meals-proto
+COPY packages/africa-meals-proto/package*.json ./
+RUN npm ci --ignore-scripts 2>/dev/null || npm install --ignore-scripts
+COPY packages/africa-meals-proto/ ./
+RUN npm run build
+
+FROM node:20-alpine AS builder
+WORKDIR /app/africa-meals-ws
+COPY africa-meals-ws/package.json africa-meals-ws/package-lock.json* ./
+COPY --from=packages /app/packages /app/packages
+RUN npm ci --legacy-peer-deps
+COPY africa-meals-ws/tsconfig.json africa-meals-ws/tsconfig.build.json africa-meals-ws/nest-cli.json ./
+COPY africa-meals-ws/src ./src
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app/africa-meals-ws
+ENV NODE_ENV=production
+ENV PORT=8000
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
+COPY africa-meals-ws/package.json africa-meals-ws/package-lock.json* ./
+COPY --from=packages /app/packages /app/packages
+RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
+COPY --from=builder /app/africa-meals-ws/dist ./dist
+USER nodejs
+EXPOSE 8000
+CMD ["node", "dist/main.js"]

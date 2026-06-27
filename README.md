@@ -147,7 +147,7 @@ Détails techniques :
 | `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 10G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
-| `WS_BACKEND_PORT` | `8000` | PM2 WS prod |
+| `WS_BACKEND_PORT` | `8000` | PM2 WS prod (k8s NodePort : `30800` — voir `k8s/README.md`) |
 | `STUNNEL_TLS_EMAIL` | — | Let's Encrypt |
 | `WEB_SERVER` | `nginx` | pour `./install.sh web` |
 | `VPS_SWAP_SIZE_GB` | `2` | Swap hôte (créé par `ensure_vps_swap` si absent) |
