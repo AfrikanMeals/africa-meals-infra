@@ -37,4 +37,4 @@ RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 COPY --from=builder /app/africa-meals-api/dist ./dist
 USER nodejs
 EXPOSE 9000
-CMD ["node", "-r", "tsconfig-paths/register", "dist/main.js"]
+CMD ["node", "dist/main.js"]
