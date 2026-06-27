@@ -3,7 +3,7 @@
 #
 # Prometheus tourne dans Docker : il ne peut PAS joindre les IP pods k3s (10.42.x.x).
 # Mécanisme : relais socat sur l'hôte (0.0.0.0:2808x → podIP:8000), cibles host.docker.internal:2808x
-# Secours sans socat : NodePort 30800 (métriques avec label pod= depuis l'app, scrape round-robin).
+# Secours sans socat : NodePort 30800 (métriques avec label pod= depuis l'app).
 #
 # Usage : sudo ./sync-prometheus-ws-targets.sh
 set -euo pipefail
@@ -28,13 +28,13 @@ mkdir -p "${TARGETS_DIR}" "${PID_DIR}"
 
 ws_stop_relays() {
   local f pid
+  shopt -s nullglob
   for f in "${PID_DIR}"/*.pid; do
-    [[ -f "${f}" ]] || continue
     pid="$(cat "${f}" 2>/dev/null || true)"
     [[ -n "${pid}" ]] && kill "${pid}" 2>/dev/null || true
     rm -f "${f}"
   done
-  # Anciennes relais sans pid file
+  shopt -u nullglob
   pkill -f "socat TCP-LISTEN:${RELAY_BASE}" 2>/dev/null || true
 }
 
@@ -89,12 +89,21 @@ if [[ "${USE_RELAY}" == "1" ]] && command -v socat >/dev/null 2>&1; then
     [[ -n "${pod_name}" && -n "${pod_ip}" ]] || continue
     port=$((RELAY_BASE + idx))
     idx=$((idx + 1))
-    if ! socat "TCP-LISTEN:${port},fork,reuseaddr,bind=0.0.0.0" "TCP:${pod_ip}:8000" </dev/null >/dev/null 2>&1 &
-    then
+    socat "TCP-LISTEN:${port},fork,reuseaddr,bind=0.0.0.0" "TCP:${pod_ip}:8000" </dev/null >/dev/null 2>&1 &
+    relay_pid=$!
+    sleep 0.15
+    if ! kill -0 "${relay_pid}" 2>/dev/null; then
+      echo "Échec relais socat port ${port} → ${pod_ip}:8000" >&2
       RELAY_OK=false
       break
     fi
-    echo $! > "${PID_DIR}/${pod_name}.pid"
+    if ! curl -sf --max-time 2 "http://127.0.0.1:${port}/api/health" >/dev/null; then
+      echo "Relais port ${port} ne répond pas (/api/health)" >&2
+      kill "${relay_pid}" 2>/dev/null || true
+      RELAY_OK=false
+      break
+    fi
+    echo "${relay_pid}" > "${PID_DIR}/${pod_name}.pid"
     ENTRIES+=("${pod_name}"$'\t'"${SCRAPE_HOST}:${port}")
   done
   if [[ "${RELAY_OK}" == "true" && ${#ENTRIES[@]} -gt 0 ]]; then
@@ -110,18 +119,22 @@ fi
 
 if [[ "${RELAY_OK}" == "false" ]]; then
   if [[ "${USE_RELAY}" == "1" ]] && ! command -v socat >/dev/null 2>&1; then
-    echo "socat absent — secours NodePort :${NODEPORT} (apt install socat pour scrape par pod)." >&2
+    echo "socat absent — secours NodePort :${NODEPORT} (apt install -y socat)." >&2
   fi
   write_targets_json "nodeport-aggregate"$'\t'"${SCRAPE_HOST}:${NODEPORT}"
-  echo "Prometheus targets (NodePort) : ${SCRAPE_HOST}:${NODEPORT} → ${TARGETS_FILE}"
+  echo "Prometheus targets (NodePort) : ${SCRAPE_HOST}:${NODEPORT}"
 fi
 
 echo "Fichier : ${TARGETS_FILE}"
+cat "${TARGETS_FILE}"
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
   if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null; then
     echo "Prometheus rechargé (/-/reload)."
   else
-    echo "Recharger Prometheus : docker restart wise-eat-prometheus" >&2
+    echo "Reload échoué — redémarrage conteneur..." >&2
+    docker restart wise-eat-prometheus >/dev/null
+    sleep 3
+    echo "Prometheus redémarré."
   fi
 fi
