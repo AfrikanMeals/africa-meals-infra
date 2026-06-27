@@ -22,6 +22,7 @@ ENABLED="/etc/nginx/sites-enabled/${API_WISE_EAT_DOMAIN}.conf"
 export API_WISE_EAT_DOMAIN API_BACKEND_HOST API_BACKEND_PORT CERTBOT_WEBROOT
 
 if [[ -f "/etc/letsencrypt/live/${API_WISE_EAT_DOMAIN}/fullchain.pem" ]]; then
+  ensure_letsencrypt_nginx_tls_files
   envsubst '${API_WISE_EAT_DOMAIN} ${API_BACKEND_HOST} ${API_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
     < "${NGINX_CONF_SRC}/api.wise-eat.com.https.conf.template" > "${SITE}"
   log "nginx HTTPS api → ${API_BACKEND_HOST}:${API_BACKEND_PORT}"

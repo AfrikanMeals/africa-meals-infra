@@ -43,7 +43,36 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
 5. **5 pods — 512 Mi RAM** (≈ 2,5 Gi total), `restartPolicy: Always`, PDB `minAvailable: 3`
 6. Patch WS → API interne (`africa-meals-api.wise-eat.svc.cluster.local:9000`)
 7. Cibles Prometheus `/api/metrics`
-8. nginx `api.wise-eat.com` → NodePort `:30900`
+8. nginx `api.wise-eat.com` → NodePort `:30900` (+ TLS Let's Encrypt si `STUNNEL_TLS_EMAIL` défini)
+
+---
+
+## HTTPS / TLS (api.wise-eat.com)
+
+Terminaison TLS sur **nginx** (Let's Encrypt) → backend HTTP **NodePort :30900** (pods k8s).
+
+**Prérequis** : DNS `api.wise-eat.com` → VPS, port **80** ouvert (validation ACME webroot), pods API up sur `:30900`.
+
+```bash
+cd /opt/wise-eat && git pull
+
+# Certificat + vhost HTTPS (redirect HTTP → HTTPS, HSTS)
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com k8s/scripts/enable-api-nginx-ssl.sh
+
+# Vérifier
+curl -sI https://api.wise-eat.com/api/health | head -8
+openssl s_client -connect api.wise-eat.com:443 -servername api.wise-eat.com </dev/null 2>/dev/null | openssl x509 -noout -dates
+sudo scripts/verify-tls.sh
+```
+
+Renouvellement auto : hook `certbot renew` → `install-api-nginx.sh` (inclus dans `./install.sh certbot`).
+
+Si certificat déjà présent (renouvellement manuel du vhost uniquement) :
+
+```bash
+sudo k8s/scripts/install-api-nginx.sh
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ---
 

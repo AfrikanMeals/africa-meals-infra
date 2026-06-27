@@ -78,6 +78,8 @@ export EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 export MONGO_TLS_DOMAIN=${MONGO_TLS_DOMAIN}
 export MONGO_ADMIN_DOMAIN=${MONGO_ADMIN_DOMAIN}
 export OLLAMA_GATEWAY_DOMAIN=${OLLAMA_GATEWAY_DOMAIN}
+export API_WISE_EAT_DOMAIN=${API_WISE_EAT_DOMAIN}
+export WS_WISE_EAT_DOMAIN=${WS_WISE_EAT_DOMAIN}
 export INFRA_ROOT=${INFRA_ROOT}
 STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
 STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-mongodb-stunnel-certs.sh 2>/dev/null || true
@@ -125,6 +127,12 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ -f "/etc/letsencrypt/live/${OLLAMA_GATEWAY_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-ollama-gateway-ssl.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${API_WISE_EAT_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/k8s/scripts/install-api-nginx.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${WS_WISE_EAT_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/k8s/scripts/install-ws-nginx.sh 2>/dev/null || true
   fi
 fi
 if systemctl is-active apache2 >/dev/null 2>&1; then

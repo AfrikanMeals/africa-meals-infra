@@ -66,7 +66,9 @@ Composants:
   nginx         nginx + reverse-proxy WS + webroot Certbot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
-  certbot       Let's Encrypt (WS + Redis Stunnel + Grafana + Prometheus + MinIO)
+  certbot       Let's Encrypt (WS + API + Redis Stunnel + Grafana + …)
+  api-tls       HTTPS api.wise-eat.com → k3s :30900 (Let's Encrypt nginx)
+  ws-tls        HTTPS ws.wise-eat.com → k3s :30800 (Let's Encrypt nginx)
   stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
   tls           certbot + stunnel (nginx requis pour webroot)
   verify-tls    Vérifie certs LE + Stunnel
@@ -219,6 +221,12 @@ run_component() {
       ;;
     certbot)
       bash "${SCRIPTS}/install-certbot.sh"
+      ;;
+    api-tls)
+      bash "${INFRA_ROOT}/k8s/scripts/enable-api-nginx-ssl.sh"
+      ;;
+    ws-tls)
+      bash "${INFRA_ROOT}/k8s/scripts/enable-ws-nginx-ssl.sh"
       ;;
     stunnel)
       bash "${SCRIPTS}/install-stunnel.sh"

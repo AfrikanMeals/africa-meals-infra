@@ -23,6 +23,8 @@ check_le_file() {
 }
 
 check_le_file "WS nginx" "${WISE_EAT_DOMAIN}"
+check_le_file "API Nest (k8s)" "${API_WISE_EAT_DOMAIN}"
+check_le_file "WS k8s" "${WS_WISE_EAT_DOMAIN}"
 check_le_file "Redis Stunnel" "${REDIS_TLS_DOMAIN}"
 check_le_file "Grafana console" "${GRAFANA_CONSOLE_DOMAIN}"
 check_le_file "EMQX broker" "${EMQX_BROKER_DOMAIN}"
