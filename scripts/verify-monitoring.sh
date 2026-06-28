@@ -446,8 +446,9 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  5. EMQX : sudo ./install.sh repair-emqx-prometheus"
   echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
   echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
-  echo "  8. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
-  echo "  9. WS/API k8s Grafana : sudo k8s/scripts/repair-grafana-monitoring.sh"
+  echo "  8. node_exporter DOWN : sudo ./install.sh repair-prometheus-host-targets"
+  echo "  9. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
+  echo " 10. WS/API k8s Grafana : sudo k8s/scripts/repair-grafana-monitoring.sh"
   exit 1
 fi
 

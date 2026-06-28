@@ -21,23 +21,24 @@ if [[ -x "${INFRA_ROOT}/scripts/sync-emqx-prometheus-targets.sh" ]]; then
 fi
 
 echo ""
-echo "== 2/6 Reload Prometheus (prometheus.yml host targets) =="
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
-  if curl -sf -X POST "${PROM_URL}/-/reload" >/dev/null; then
-    echo "OK Prometheus rechargé"
-  else
-    echo "Reload HTTP échoué — restart Prometheus"
-    docker restart wise-eat-prometheus
-    sleep 3
-  fi
+echo "== 2/6 Cibles Prometheus host (node_exporter :9100) =="
+if [[ -x "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" ]]; then
+  "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" || true
 else
-  echo "Conteneur wise-eat-prometheus absent — sudo ${SCRIPT_DIR}/recreate-prometheus-host.sh" >&2
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+    if curl -sf -X POST "${PROM_URL}/-/reload" >/dev/null; then
+      echo "OK Prometheus rechargé"
+    else
+      docker restart wise-eat-prometheus
+      sleep 3
+    fi
+  fi
 fi
 
 echo ""
 echo "== 3/6 node_exporter + Grafana host network =="
-if ! prom_query 'up{job="node"}' | grep -q '"value":\[".*","1"\]'; then
-  echo "node_exporter DOWN — vérifier prometheus.yml (127.0.0.1:9100) et wise-eat-node-exporter" >&2
+if ! prom_query 'up{job="node",instance="wise-eat:9100"}' | grep -q '"value":\[".*","1"\]'; then
+  echo "node_exporter DOWN — sudo ${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" >&2
   curl -sf http://127.0.0.1:9100/metrics | head -1 || echo "  :9100 injoignable" >&2
 else
   echo "OK up{job=node}=1"

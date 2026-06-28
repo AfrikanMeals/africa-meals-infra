@@ -74,6 +74,10 @@ fi
 
 bash "${SCRIPT_DIR}/install-monitoring.sh"
 
+if [[ -x "${SCRIPT_DIR}/repair-prometheus-host-targets.sh" ]]; then
+  bash "${SCRIPT_DIR}/repair-prometheus-host-targets.sh" || true
+fi
+
 cd "${MON_DIR}"
 COMPOSE_ARGS=(--env-file .env.monitoring)
 if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
