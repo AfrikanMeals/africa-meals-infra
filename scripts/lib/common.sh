@@ -37,6 +37,10 @@ WS_WISE_EAT_DOMAIN="${WS_WISE_EAT_DOMAIN:-ws.wise-eat.com}"
 WS_BACKEND_HOST="${WS_BACKEND_HOST:-127.0.0.1}"
 WS_BACKEND_PORT="${WS_BACKEND_PORT:-30800}"
 REDIS_TLS_DOMAIN="${REDIS_TLS_DOMAIN:-cache.wise-eat.com}"
+# Limite globale connexions TLS (défaut stunnel = 500 — trop bas pour k8s + dev + réplicas).
+STUNNEL_MAX_CLIENTS="${STUNNEL_MAX_CLIENTS:-5000}"
+# Fermer les tunnels idle (secondes) — limite l’accumulation côté Stunnel.
+STUNNEL_TIMEOUT_IDLE="${STUNNEL_TIMEOUT_IDLE:-120}"
 MEMCACHED_TLS_PORT="${MEMCACHED_TLS_PORT:-11212}"
 GRAFANA_CONSOLE_DOMAIN="${GRAFANA_CONSOLE_DOMAIN:-console.wise-eat.com}"
 GRAFANA_BACKEND_HOST="${GRAFANA_BACKEND_HOST:-127.0.0.1}"
@@ -1375,15 +1379,20 @@ ensure_stunnel_runtime() {
     log "Sauvegarde ${main} → ${main}.bak.*"
   fi
 
-  cat > "${main}" <<'EOF'
+  cat > "${main}" <<EOF
 ; Wise Eat — global stunnel (un seul daemon, services dans conf.d)
 foreground = no
+; Défaut stunnel = 500 — insuffisant (API/WS k8s, dev Mac, réplicas Redis/Mongo v4+v6).
+maxClients = ${STUNNEL_MAX_CLIENTS}
+; Recycler les tunnels TLS inactifs (évite saturation maxClients).
+TIMEOUTidle = ${STUNNEL_TIMEOUT_IDLE}
 pid = /var/run/stunnel4/stunnel.pid
 output = /var/log/stunnel4/stunnel.log
 setuid = stunnel4
 setgid = stunnel4
 include = /etc/stunnel/conf.d
 EOF
+  log "stunnel.conf — maxClients=${STUNNEL_MAX_CLIENTS} TIMEOUTidle=${STUNNEL_TIMEOUT_IDLE}s"
 
   local stray
   shopt -s nullglob
