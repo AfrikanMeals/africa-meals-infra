@@ -458,9 +458,79 @@ refresh_cadvisor_if_present() {
 
 cadvisor_has_container_metrics() {
   local metrics
-  metrics="$(curl -sf http://127.0.0.1:8088/metrics 2>/dev/null || true)"
+  metrics="$(curl -sf --max-time 5 http://127.0.0.1:8088/metrics 2>/dev/null || true)"
   [[ -n "${metrics}" ]] || return 1
   echo "${metrics}" | grep '^container_cpu_usage_seconds_total' | grep -v 'id="/"' | grep -q .
+}
+
+cadvisor_scrape_up() {
+  curl -sfG --max-time 5 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=up{job="cadvisor",instance="wise-eat:8080"}' 2>/dev/null \
+    | grep -q '"value":\[".*","1"\]'
+}
+
+diagnose_cadvisor_port() {
+  echo "Diagnostic cAdvisor :8088 :" >&2
+  if command -v ss >/dev/null 2>&1; then
+    ss -tlnp 2>/dev/null | grep ':8088' || echo "  rien n'écoute sur :8088" >&2
+  fi
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-cadvisor'; then
+    docker inspect wise-eat-cadvisor \
+      --format '  status={{.State.Status}} restarts={{.RestartCount}} net={{.HostConfig.NetworkMode}}' \
+      2>/dev/null >&2 || true
+    docker logs wise-eat-cadvisor --tail 20 2>&1 | sed 's/^/  log /' >&2 || true
+  else
+    echo "  conteneur wise-eat-cadvisor absent" >&2
+  fi
+}
+
+ensure_cadvisor() {
+  ensure_docker
+  ensure_wise_eat_infra_network
+  cd "${MON_DIR}"
+  monitoring_compose_args
+
+  if cadvisor_has_container_metrics && cadvisor_scrape_up; then
+    log "OK cAdvisor :8088 + scrape Prometheus"
+    return 0
+  fi
+
+  if cadvisor_has_container_metrics; then
+    log "OK cAdvisor :8088 — reload Prometheus scrape"
+    curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 \
+      || docker restart wise-eat-prometheus >/dev/null 2>&1 || true
+    sleep 5
+    cadvisor_scrape_up && return 0
+  fi
+
+  warn "cAdvisor :8088 injoignable — recréation conteneur..."
+  diagnose_cadvisor_port
+
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-cadvisor'; then
+    docker compose "${MONITORING_COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps cadvisor
+  else
+    docker compose "${MONITORING_COMPOSE_ARGS[@]}" up -d --no-deps cadvisor
+  fi
+
+  if wait_for_cadvisor_container_metrics 60; then
+    curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 \
+      || docker restart wise-eat-prometheus >/dev/null 2>&1 || true
+    sleep 5
+    if cadvisor_scrape_up; then
+      log "OK cAdvisor scrape up{job=cadvisor,instance=wise-eat:8080}=1"
+      return 0
+    fi
+    warn "cAdvisor :8088 OK mais scrape Prometheus DOWN — sudo scripts/repair-prometheus-host-targets.sh"
+    return 0
+  fi
+
+  diagnose_cadvisor_port
+  local storage_driver
+  storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"
+  if [[ "${storage_driver}" == "overlayfs" ]]; then
+    warn "Docker 29 overlayfs — essayer : sudo ./install.sh repair-docker-daemon-cadvisor"
+  fi
+  return 1
 }
 
 wait_for_cadvisor_container_metrics() {

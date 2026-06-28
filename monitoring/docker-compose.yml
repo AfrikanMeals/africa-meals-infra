@@ -31,11 +31,13 @@ services:
     container_name: wise-eat-cadvisor
     restart: unless-stopped
     privileged: true
+    # host : évite les mappings port Docker cassés (Prometheus scrape 127.0.0.1:8088)
+    network_mode: host
     # cgroup v2 : namespace hôte requis pour lire les stats des autres conteneurs
     cgroup: host
-    networks:
-      - wise-eat-infra
     command:
+      - --port=8088
+      - --listen_ip=127.0.0.1
       - --docker_only=true
       - --store_container_labels=true
       - --housekeeping_interval=10s
@@ -51,8 +53,6 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-    ports:
-      - "127.0.0.1:8088:8080"
 
   ollama-exporter:
     image: ghcr.io/maravexa/ollama-exporter:latest

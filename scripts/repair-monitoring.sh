@@ -39,7 +39,12 @@ fi
 
 if ! node_exporter_metrics_ok; then
   warn "node_exporter :9100 injoignable — recréation"
-  ensure_node_exporter
+  ensure_node_exporter || true
+fi
+
+if ! cadvisor_has_container_metrics; then
+  warn "cAdvisor :8088 injoignable — recréation"
+  ensure_cadvisor || true
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-cadvisor$'; then
@@ -85,6 +90,10 @@ if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
 fi
 log "Recréation node_exporter + cAdvisor (métriques hôte / conteneurs)…"
 docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps node-exporter cadvisor
+
+if ! ensure_cadvisor; then
+  warn "cAdvisor toujours KO après recréation"
+fi
 
 if ! wait_for_cadvisor_container_metrics 45; then
   storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"

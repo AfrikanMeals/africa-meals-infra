@@ -45,6 +45,13 @@ if ! node_exporter_metrics_ok; then
 fi
 
 echo ""
+log "== 1b/7 cAdvisor (Docker Monitoring #4271) =="
+if ! ensure_cadvisor; then
+  warn "cAdvisor :8088 KO — dashboard Docker Monitoring vide"
+  fail=1
+fi
+
+echo ""
 log "== 2/7 Prometheus (host network + prometheus.yml 127.0.0.1) =="
 if [[ -x "${SCRIPT_DIR}/repair-prometheus-host-targets.sh" ]]; then
   bash "${SCRIPT_DIR}/repair-prometheus-host-targets.sh" || {
