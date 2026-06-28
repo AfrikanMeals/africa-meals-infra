@@ -1322,9 +1322,22 @@ stunnel_sync_conf_d() {
   chmod 644 /etc/stunnel/conf.d/*.conf 2>/dev/null || true
 }
 
+stunnel_stop_all() {
+  systemctl stop stunnel4 2>/dev/null || true
+  if pgrep -x stunnel4 >/dev/null 2>&1; then
+    log "Arrêt processus stunnel4 orphelins…"
+    pkill -TERM stunnel4 2>/dev/null || true
+    sleep 2
+    pkill -KILL stunnel4 2>/dev/null || true
+    sleep 1
+  fi
+  rm -f /var/run/stunnel4/stunnel.pid
+}
+
 stunnel_restart_or_die() {
   ensure_stunnel_runtime
-  if ! systemctl restart stunnel4; then
+  stunnel_stop_all
+  if ! systemctl start stunnel4; then
     warn "stunnel4 a échoué — journal (40 dernières lignes) :"
     journalctl -u stunnel4 -n 40 --no-pager 2>/dev/null || true
     stunnel_diagnose
