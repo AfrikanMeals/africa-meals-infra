@@ -1,4 +1,10 @@
 apiVersion: 1
+
+# Force la datasource correcte (volume Grafana peut garder une URL obsolète → tout N/A).
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
 datasources:
   - name: Prometheus
     uid: prometheus

@@ -20,6 +20,35 @@ check() {
 
 fail=0
 
+log "=== Grafana → Prometheus (N/A partout si KO) ==="
+if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
+  warn "FAIL Grafana absent — sudo ./install.sh repair-grafana-stack"
+  fail=1
+else
+  grafana_net="$(docker inspect wise-eat-grafana -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${grafana_net}" != "host" ]]; then
+    warn "FAIL Grafana network_mode=${grafana_net} (attendu host) — datasource 127.0.0.1:9090 injoignable"
+    warn "      sudo ./install.sh repair-grafana-stack"
+    fail=1
+  elif docker exec wise-eat-grafana wget -qO- --timeout=5 http://127.0.0.1:9090/-/ready 2>/dev/null \
+    | grep -qi prometheus; then
+    log "OK  Grafana → Prometheus (127.0.0.1:9090)"
+  else
+    warn "FAIL Grafana ne joint pas Prometheus — sudo ./install.sh repair-grafana-stack"
+    fail=1
+  fi
+fi
+
+if ! curl -sf --max-time 5 http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
+  warn "FAIL Prometheus :9090 injoignable"
+  fail=1
+elif prometheus_has_series 2>/dev/null; then
+  log "OK  Prometheus remonte des cibles UP"
+else
+  warn "FAIL Prometheus sans série up==1 — scrapes DOWN ou prometheus.yml obsolète"
+  fail=1
+fi
+
 log "=== Node exporter (hôte VPS) ==="
 if curl -sf "http://127.0.0.1:9100/metrics" | grep -q '^node_cpu_seconds_total'; then
   log "OK  node_exporter (:9100) — métriques CPU présentes"
@@ -445,7 +474,7 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "  4. MinIO : sudo ./install.sh minio (réseau wise-eat-infra + métriques public)"
   echo "  5. EMQX : sudo ./install.sh repair-emqx-prometheus"
   echo "  6. Prometheus : curl -X POST http://127.0.0.1:9090/-/reload"
-  echo "  7. Grafana : sudo ./install.sh repair-monitoring (recharge dashboards)"
+  echo "  7. Grafana N/A partout : sudo ./install.sh repair-grafana-stack"
   echo "  8. node_exporter DOWN : sudo ./install.sh repair-prometheus-host-targets"
   echo "  9. cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus grafana"
   echo " 10. WS/API k8s Grafana : sudo k8s/scripts/repair-grafana-monitoring.sh"

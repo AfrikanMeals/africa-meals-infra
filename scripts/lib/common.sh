@@ -533,7 +533,83 @@ ensure_node_exporter() {
   done
 
   diagnose_node_exporter_port
-  die "wise-eat-node-exporter ne répond pas sur :9100"
+  return 1
+}
+
+ensure_prometheus_ready() {
+  local k8s_scripts="${INFRA_ROOT}/k8s/scripts"
+  if ! curl -sf --max-time 5 http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
+    warn "Prometheus :9090 injoignable"
+    if [[ -x "${k8s_scripts}/recreate-prometheus-host.sh" ]]; then
+      "${k8s_scripts}/recreate-prometheus-host.sh" || return 1
+    else
+      return 1
+    fi
+  fi
+
+  local prom_mode
+  prom_mode="$(docker inspect wise-eat-prometheus -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${prom_mode}" != "host" ]]; then
+    warn "Prometheus pas en network_mode=host — migration..."
+    [[ -x "${k8s_scripts}/recreate-prometheus-host.sh" ]] \
+      && "${k8s_scripts}/recreate-prometheus-host.sh" \
+      || return 1
+  fi
+
+  if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
+    log "Prometheus rechargé (/-/reload)"
+  else
+    docker restart wise-eat-prometheus >/dev/null 2>&1 || return 1
+    sleep 3
+  fi
+  return 0
+}
+
+ensure_grafana_prometheus_link() {
+  local k8s_scripts="${INFRA_ROOT}/k8s/scripts"
+
+  ensure_prometheus_ready || {
+    warn "Prometheus indisponible — Grafana affichera N/A partout"
+    return 1
+  }
+
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
+    warn "Grafana absent — recréation (host network + datasource 127.0.0.1:9090)"
+    [[ -x "${k8s_scripts}/recreate-grafana-host.sh" ]] \
+      && "${k8s_scripts}/recreate-grafana-host.sh" \
+      || return 1
+    return 0
+  fi
+
+  local grafana_net
+  grafana_net="$(docker inspect wise-eat-grafana -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${grafana_net}" != "host" ]]; then
+    warn "Grafana en réseau « ${grafana_net} » — 127.0.0.1:9090 injoignable → dashboards N/A"
+    [[ -x "${k8s_scripts}/recreate-grafana-host.sh" ]] \
+      && "${k8s_scripts}/recreate-grafana-host.sh" \
+      || return 1
+    sleep 3
+  fi
+
+  if docker exec wise-eat-grafana wget -qO- --timeout=5 http://127.0.0.1:9090/-/ready 2>/dev/null \
+    | grep -qi prometheus; then
+    log "OK Grafana → Prometheus (127.0.0.1:9090)"
+    return 0
+  fi
+
+  warn "Grafana ne joint pas Prometheus — recréation conteneur + reprovision datasource"
+  [[ -x "${k8s_scripts}/recreate-grafana-host.sh" ]] \
+    && "${k8s_scripts}/recreate-grafana-host.sh" \
+    || return 1
+  sleep 3
+  docker exec wise-eat-grafana wget -qO- --timeout=5 http://127.0.0.1:9090/-/ready 2>/dev/null \
+    | grep -qi prometheus
+}
+
+prometheus_has_series() {
+  curl -sfG --max-time 10 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=count(up==1)' 2>/dev/null \
+    | grep -q '"value":\[".*","[1-9]'
 }
 
 verify_ollama_exporter_metrics() {

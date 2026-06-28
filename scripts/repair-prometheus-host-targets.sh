@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Corrige le scrape node_exporter (Grafana « node_exporter scrape DOWN »).
+# Corrige le scrape Prometheus host (node_exporter, cadvisor, redis, …).
 #
 # Cause fréquente : Prometheus en network_mode=host mais prometheus.yml pointe
 # encore vers node-exporter:9100 (DNS Docker injoignable).
@@ -27,7 +27,9 @@ node_scrape_up() {
   prom_query 'up{job="node",instance="wise-eat:9100"}' | grep -q '"value":\[".*","1"\]'
 }
 
-log "=== Réparation scrape node_exporter (Grafana Core System) ==="
+node_fail=0
+
+log "=== Réparation scrape Prometheus host ==="
 
 if [[ ! -f "${PROM_FILE}" ]]; then
   die "Fichier absent : ${PROM_FILE}"
@@ -44,10 +46,13 @@ if grep -qE "targets: \['node-exporter:9100'\]|targets: \['cadvisor:8080'\]" "${
   log "prometheus.yml corrigé (127.0.0.1:9100)"
 fi
 
-if ! node_exporter_metrics_ok; then
-  ensure_node_exporter
-else
+if node_exporter_metrics_ok; then
   log "OK node_exporter local :9100"
+elif ensure_node_exporter; then
+  log "OK node_exporter recréé :9100"
+else
+  warn "node_exporter :9100 KO — on continue Prometheus/Grafana"
+  node_fail=1
 fi
 
 if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
@@ -55,13 +60,7 @@ if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus
   bash "${SCRIPT_DIR}/install-monitoring.sh"
 fi
 
-prom_mode="$(docker inspect wise-eat-prometheus -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
-if [[ "${prom_mode}" != "host" ]]; then
-  warn "Prometheus pas en network_mode=host — migration..."
-  [[ -x "${K8S_SCRIPTS}/recreate-prometheus-host.sh" ]] \
-    && "${K8S_SCRIPTS}/recreate-prometheus-host.sh" \
-    || die "Exécuter : sudo ${K8S_SCRIPTS}/recreate-prometheus-host.sh"
-fi
+ensure_prometheus_ready || die "Prometheus indisponible"
 
 if ! node_scrape_up; then
   log "Recréation Prometheus (montage prometheus.yml à jour)..."
@@ -69,16 +68,12 @@ if ! node_scrape_up; then
     "${K8S_SCRIPTS}/recreate-prometheus-host.sh"
   else
     cd "${MON_DIR}"
-    COMPOSE_ARGS=(--env-file .env.monitoring)
-    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate prometheus
+    monitoring_compose_args
+    docker compose "${MONITORING_COMPOSE_ARGS[@]}" up -d --force-recreate prometheus
   fi
   sleep 3
-fi
-
-if curl -sf -X POST "${PROM_URL}/-/reload" >/dev/null 2>&1; then
-  log "Prometheus rechargé (/-/reload)"
-else
-  docker restart wise-eat-prometheus >/dev/null
+  curl -sf -X POST "${PROM_URL}/-/reload" >/dev/null 2>&1 \
+    || docker restart wise-eat-prometheus >/dev/null 2>&1 || true
   sleep 3
 fi
 
@@ -94,7 +89,7 @@ if r:
     print(f\"  nodename={m.get('nodename','?')} instance={m.get('instance','?')}\")
 " 2>/dev/null || true
     echo ""
-    log "Grafana : docker restart wise-eat-grafana puis rafraîchir « Wise Eat — System (Node Exporter) »"
+    log "Pour Grafana N/A partout : sudo ${SCRIPT_DIR}/repair-grafana-stack.sh"
     exit 0
   fi
   sleep 2
@@ -109,4 +104,9 @@ for t in d.get('data',{}).get('activeTargets',[]):
     if t.get('labels',{}).get('job')=='node':
         print(f\"  job=node health={t.get('health')} url={t.get('scrapeUrl')} error={t.get('lastError','')}\")
 " 2>/dev/null || true
+
+if [[ "${node_fail}" -eq 1 ]]; then
+  warn "node_exporter à réparer manuellement — stack Prometheus/Grafana peut quand même fonctionner"
+  warn "  sudo ${SCRIPT_DIR}/repair-grafana-stack.sh"
+fi
 exit 1
