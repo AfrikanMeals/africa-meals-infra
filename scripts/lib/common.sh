@@ -37,9 +37,10 @@ WS_WISE_EAT_DOMAIN="${WS_WISE_EAT_DOMAIN:-ws.wise-eat.com}"
 WS_BACKEND_HOST="${WS_BACKEND_HOST:-127.0.0.1}"
 WS_BACKEND_PORT="${WS_BACKEND_PORT:-30800}"
 REDIS_TLS_DOMAIN="${REDIS_TLS_DOMAIN:-cache.wise-eat.com}"
-# Limite globale connexions TLS (défaut stunnel = 500 — trop bas pour k8s + dev + réplicas).
+# Limite connexions TLS Stunnel 5.x (défaut ≈500 si ulimit=1024 — trop bas pour k8s + dev + réplicas).
+# Stunnel calcule max_clients = max_fds×125/256 ; on règle RLIMITS=-n dans /etc/default/stunnel4.
 STUNNEL_MAX_CLIENTS="${STUNNEL_MAX_CLIENTS:-5000}"
-# Fermer les tunnels idle (secondes) — limite l’accumulation côté Stunnel.
+# Fermer les tunnels idle (secondes) — option service-level, injectée dans conf.d.
 STUNNEL_TIMEOUT_IDLE="${STUNNEL_TIMEOUT_IDLE:-120}"
 MEMCACHED_TLS_PORT="${MEMCACHED_TLS_PORT:-11212}"
 GRAFANA_CONSOLE_DOMAIN="${GRAFANA_CONSOLE_DOMAIN:-console.wise-eat.com}"
@@ -1258,6 +1259,36 @@ wise_eat_compose_profiles() {
   echo "cluster-b"
 }
 
+# Stunnel 5.x : max_clients = max_fds×125/256 (voir src/fd.c) — pas d’option maxClients en conf.
+stunnel_nofile_for_clients() {
+  local clients="${1:-${STUNNEL_MAX_CLIENTS}}"
+  echo $(( (clients * 256 + 124) / 125 ))
+}
+
+stunnel_apply_service_defaults() {
+  local conf idle="${STUNNEL_TIMEOUT_IDLE}"
+  for conf in /etc/stunnel/conf.d/*.conf; do
+    [[ -f "${conf}" ]] || continue
+    if grep -q '^TIMEOUTidle' "${conf}"; then
+      sed -i "s/^TIMEOUTidle = .*/TIMEOUTidle = ${idle}/" "${conf}"
+    else
+      sed -i "/^connect = /a TIMEOUTidle = ${idle}" "${conf}"
+    fi
+  done
+}
+
+stunnel_configure_rlimits() {
+  local nofile
+  nofile="$(stunnel_nofile_for_clients)"
+  [[ -f /etc/default/stunnel4 ]] || return 0
+  if grep -q '^RLIMITS=' /etc/default/stunnel4; then
+    sed -i "s|^RLIMITS=.*|RLIMITS=\"-n ${nofile}\"|" /etc/default/stunnel4
+  else
+    echo "RLIMITS=\"-n ${nofile}\"" >> /etc/default/stunnel4
+  fi
+  log "stunnel4 RLIMITS=-n ${nofile} (≈${STUNNEL_MAX_CLIENTS} clients TLS max)"
+}
+
 # Stunnel : accept = :::PORT (pas [::]:PORT — résolu comme hostname par stunnel4).
 # Si net.ipv6.bindv6only=0, :::PORT accepte déjà v4+v6 → retirer les sections accept=PORT seules.
 stunnel_ipv6_bindv6only() {
@@ -1323,6 +1354,7 @@ stunnel_sync_conf_d() {
     log "bindv6only=0 — listeners :::PORT couvrent v4+v6 ; retrait sections accept=PORT seules"
     stunnel_strip_redundant_v4_listeners
   fi
+  stunnel_apply_service_defaults
   chmod 644 /etc/stunnel/conf.d/*.conf 2>/dev/null || true
 }
 
@@ -1382,17 +1414,14 @@ ensure_stunnel_runtime() {
   cat > "${main}" <<EOF
 ; Wise Eat — global stunnel (un seul daemon, services dans conf.d)
 foreground = no
-; Défaut stunnel = 500 — insuffisant (API/WS k8s, dev Mac, réplicas Redis/Mongo v4+v6).
-maxClients = ${STUNNEL_MAX_CLIENTS}
-; Recycler les tunnels TLS inactifs (évite saturation maxClients).
-TIMEOUTidle = ${STUNNEL_TIMEOUT_IDLE}
 pid = /var/run/stunnel4/stunnel.pid
 output = /var/log/stunnel4/stunnel.log
 setuid = stunnel4
 setgid = stunnel4
 include = /etc/stunnel/conf.d
 EOF
-  log "stunnel.conf — maxClients=${STUNNEL_MAX_CLIENTS} TIMEOUTidle=${STUNNEL_TIMEOUT_IDLE}s"
+  stunnel_configure_rlimits
+  log "stunnel.conf — TIMEOUTidle=${STUNNEL_TIMEOUT_IDLE}s par service (conf.d)"
 
   local stray
   shopt -s nullglob

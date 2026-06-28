@@ -72,7 +72,7 @@ else
   warn "ufw absent — configurer le pare-feu manuellement (v4 + v6 pour :6381-6386, :11212)"
 fi
 
-log "Stunnel ${STUNNEL_MODE} — maxClients=${STUNNEL_MAX_CLIENTS} · rediss://${REDIS_TLS_DOMAIN}:6381-6386 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
+log "Stunnel ${STUNNEL_MODE} — RLIMITS≈${STUNNEL_MAX_CLIENTS} clients · rediss://${REDIS_TLS_DOMAIN}:6381-6386 · memcached TLS ${REDIS_TLS_DOMAIN}:${MEMCACHED_TLS_PORT}"
 log "Dual-stack : ajouter AAAA ${VPS_IPV6_ADDR} sur ${REDIS_TLS_DOMAIN} (Cloudflare DNS only)"
 if ss -tlnp 2>/dev/null | grep -qE '638[1-6]|\[::\]:638[1-6]'; then
   log "Ports Redis Stunnel actifs (6381 primary cache, 6382 primary bull, 6383-6384 cache réplicas, 6385-6386 bull réplicas)"

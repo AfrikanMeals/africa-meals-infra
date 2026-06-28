@@ -115,7 +115,7 @@ chmod +x scripts/verify-ipv6-endpoints.sh
 Détails techniques :
 - nginx écoute déjà en dual-stack (`listen [::]:443`, `[::]:8883`, …).
 - Stunnel écoute en **v4 + v6** : `accept = PORT` (0.0.0.0) + `accept = :::PORT` (::) dans `redis/stunnel/*.conf` (syntaxe stunnel4, **pas** `[::]:PORT`).
-- Limite connexions : `maxClients` global dans `/etc/stunnel/stunnel.conf` (défaut **5000** via `STUNNEL_MAX_CLIENTS`). Si journal `too many clients (>=500)` → `sudo STUNNEL_MAX_CLIENTS=5000 ./install.sh stunnel`.
+- Limite connexions : Stunnel 5.x calcule `max_clients = max_fds×125/256` (défaut ulimit 1024 → **500**). Augmenter via `RLIMITS=-n` dans `/etc/default/stunnel4` (défaut **5000** clients via `STUNNEL_MAX_CLIENTS`). Si journal `too many clients (>=500)` → `sudo STUNNEL_MAX_CLIENTS=5000 ./install.sh stunnel`.
 - UFW doit avoir `IPV6=yes` (`/etc/default/ufw`) — activé par `repair-ipv6-ufw`.
 - Variable optionnelle : `VPS_IPV6_ADDR=2a02:4780:75:447e::1` (défaut dans `scripts/lib/common.sh`).
 
