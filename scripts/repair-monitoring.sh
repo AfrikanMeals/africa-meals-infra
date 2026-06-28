@@ -37,9 +37,9 @@ else
   bash "${SCRIPT_DIR}/install-redis.sh"
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-node-exporter$'; then
-  warn "node_exporter absent — relance monitoring"
-  bash "${SCRIPT_DIR}/install-monitoring.sh"
+if ! node_exporter_metrics_ok; then
+  warn "node_exporter :9100 injoignable — recréation"
+  ensure_node_exporter
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-cadvisor$'; then
@@ -83,8 +83,8 @@ COMPOSE_ARGS=(--env-file .env.monitoring)
 if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
   COMPOSE_ARGS+=(--profile cluster-b)
 fi
-log "Recréation cAdvisor (métriques conteneurs)…"
-docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate cadvisor
+log "Recréation node_exporter + cAdvisor (métriques hôte / conteneurs)…"
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps node-exporter cadvisor
 
 if ! wait_for_cadvisor_container_metrics 45; then
   storage_driver="$(docker info 2>/dev/null | awk -F': ' '/Storage Driver/{print $2; exit}')"

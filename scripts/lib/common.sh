@@ -476,6 +476,66 @@ wait_for_cadvisor_container_metrics() {
   return 1
 }
 
+monitoring_compose_args() {
+  MONITORING_COMPOSE_ARGS=(--env-file .env.monitoring)
+  if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
+    MONITORING_COMPOSE_ARGS+=(--profile cluster-b)
+  fi
+}
+
+node_exporter_metrics_ok() {
+  curl -sf --max-time 5 http://127.0.0.1:9100/metrics 2>/dev/null \
+    | grep -q '^node_cpu_seconds_total'
+}
+
+diagnose_node_exporter_port() {
+  echo "Diagnostic node_exporter :9100 :" >&2
+  if command -v ss >/dev/null 2>&1; then
+    ss -tlnp 2>/dev/null | grep ':9100' || echo "  rien n'écoute sur :9100" >&2
+  fi
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-node-exporter'; then
+    docker inspect wise-eat-node-exporter \
+      --format '  status={{.State.Status}} restarts={{.RestartCount}} net={{.HostConfig.NetworkMode}}' \
+      2>/dev/null >&2 || true
+    docker port wise-eat-node-exporter 2>&1 | sed 's/^/  port /' >&2 || true
+    docker logs wise-eat-node-exporter --tail 20 2>&1 | sed 's/^/  log /' >&2 || true
+  else
+    echo "  conteneur wise-eat-node-exporter absent" >&2
+  fi
+}
+
+ensure_node_exporter() {
+  ensure_docker
+  ensure_wise_eat_infra_network
+  cd "${MON_DIR}"
+  monitoring_compose_args
+
+  if node_exporter_metrics_ok; then
+    return 0
+  fi
+
+  warn "node_exporter :9100 injoignable — recréation conteneur..."
+  diagnose_node_exporter_port
+
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-node-exporter'; then
+    docker compose "${MONITORING_COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps node-exporter
+  else
+    docker compose "${MONITORING_COMPOSE_ARGS[@]}" up -d --no-deps node-exporter
+  fi
+
+  local i
+  for i in $(seq 1 15); do
+    sleep 2
+    if node_exporter_metrics_ok; then
+      log "OK node_exporter :9100 (tentative ${i}/15)"
+      return 0
+    fi
+  done
+
+  diagnose_node_exporter_port
+  die "wise-eat-node-exporter ne répond pas sur :9100"
+}
+
 verify_ollama_exporter_metrics() {
   local max="${1:-30}"
   local i

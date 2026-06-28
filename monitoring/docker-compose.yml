@@ -10,20 +10,20 @@ services:
     image: prom/node-exporter:v1.8.2
     container_name: wise-eat-node-exporter
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    # host : évite les mappings port Docker cassés (Prometheus scrape 127.0.0.1:9100)
+    network_mode: host
+    pid: host
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
+      - --web.listen-address=127.0.0.1:9100
       - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
       - --collector.pressure
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
-    ports:
-      - "127.0.0.1:9100:9100"
 
   cadvisor:
     # v0.54+ requis pour Docker 29 + containerd-snapshotter (overlayfs) — PR #3709

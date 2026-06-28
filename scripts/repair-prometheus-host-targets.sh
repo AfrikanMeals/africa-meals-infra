@@ -44,19 +44,11 @@ if grep -qE "targets: \['node-exporter:9100'\]|targets: \['cadvisor:8080'\]" "${
   log "prometheus.yml corrigé (127.0.0.1:9100)"
 fi
 
-if ! curl -sf http://127.0.0.1:9100/metrics 2>/dev/null | grep -q '^node_cpu_seconds_total'; then
-  warn "node_exporter :9100 injoignable — démarrage conteneur..."
-  ensure_docker
-  ensure_wise_eat_infra_network
-  cd "${MON_DIR}"
-  COMPOSE_ARGS=(--env-file .env.monitoring)
-  [[ -n "$(wise_eat_compose_profiles || true)" ]] && COMPOSE_ARGS+=(--profile cluster-b)
-  docker compose "${COMPOSE_ARGS[@]}" up -d node-exporter
-  sleep 2
-  curl -sf http://127.0.0.1:9100/metrics | grep -q '^node_cpu_seconds_total' \
-    || die "wise-eat-node-exporter ne répond pas sur :9100"
+if ! node_exporter_metrics_ok; then
+  ensure_node_exporter
+else
+  log "OK node_exporter local :9100"
 fi
-log "OK node_exporter local :9100"
 
 if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
   warn "Prometheus absent — installation monitoring..."
