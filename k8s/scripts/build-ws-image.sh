@@ -55,10 +55,22 @@ fi
 
 docker build -f "${DOCKERFILE}" -t "${IMAGE}" "${BUILD_CTX}"
 
+KUBECTL=(kubectl)
+if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+  KUBECTL=(sudo k3s kubectl)
+fi
+WS_NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
+WS_DEPLOYMENT="${K8S_WS_DEPLOYMENT:-africa-meals-ws}"
+
 if command -v k3s >/dev/null 2>&1; then
   echo "Import image dans k3s containerd..."
   docker save "${IMAGE}" | sudo k3s ctr images import -
   echo "Image importée : ${IMAGE}"
+  if "${KUBECTL[@]}" get deployment "${WS_DEPLOYMENT}" -n "${WS_NAMESPACE}" >/dev/null 2>&1; then
+    echo "Redémarrage deployment ${WS_DEPLOYMENT} (tag :latest — pods doivent être recréés)..."
+    "${KUBECTL[@]}" rollout restart "deployment/${WS_DEPLOYMENT}" -n "${WS_NAMESPACE}"
+    "${KUBECTL[@]}" rollout status "deployment/${WS_DEPLOYMENT}" -n "${WS_NAMESPACE}" --timeout=600s
+  fi
 elif command -v ctr >/dev/null 2>&1 && [[ -S /run/k3s/containerd/containerd.sock ]]; then
   docker save "${IMAGE}" | sudo ctr -n k8s.io images import -
 else
