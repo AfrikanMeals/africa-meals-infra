@@ -13,7 +13,13 @@ prom_query() {
 }
 
 echo ""
-echo "== 0/5 Prometheus host network (recommandé VPS) =="
+echo "== 0/5 node_exporter (Grafana Core System) =="
+if [[ -x "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" ]]; then
+  "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" || true
+fi
+
+echo ""
+echo "== 1/5 Prometheus host network (recommandé VPS) =="
 if ! prometheus_uses_host_network; then
   echo "Prometheus n'est PAS en network_mode=host — migration automatique..." >&2
   "${SCRIPT_DIR}/recreate-prometheus-host.sh"

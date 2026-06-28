@@ -3,6 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=api-paths.sh
 source "${SCRIPT_DIR}/api-paths.sh"
 
@@ -103,14 +104,20 @@ if "${KUBECTL[@]}" get configmap africa-meals-ws -n wise-eat >/dev/null 2>&1; th
 fi
 
 if [[ "${SKIP_MONITORING}" == "false" ]]; then
-  echo "== 7/8 Prometheus (cibles API) =="
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+  echo "== 7/8 Prometheus (node_exporter + cibles API) =="
+  # recreate-prometheus-host seul casse le scrape node si prometheus.yml n'est pas à jour (127.0.0.1:9100)
+  if [[ -x "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" ]]; then
+    "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" || true
+  elif docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
     "${SCRIPT_DIR}/recreate-prometheus-host.sh" || true
   fi
   "${SCRIPT_DIR}/sync-prometheus-api-targets.sh" || true
   "${SCRIPT_DIR}/sync-prometheus-ws-targets.sh" || true
   if [[ -x "${SCRIPT_DIR}/install-api-prometheus-cron.sh" ]]; then
     "${SCRIPT_DIR}/install-api-prometheus-cron.sh" || true
+  fi
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
+    docker restart wise-eat-grafana >/dev/null 2>&1 || true
   fi
 fi
 

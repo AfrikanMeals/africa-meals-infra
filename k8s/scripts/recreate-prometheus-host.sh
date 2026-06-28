@@ -16,6 +16,14 @@ if [[ ! -f "${MONITORING_DIR}/prometheus/prometheus.yml" ]]; then
   exit 1
 fi
 
+PROM_FILE="${MONITORING_DIR}/prometheus/prometheus.yml"
+if grep -qE "targets: \['node-exporter:9100'\]|targets: \['cadvisor:8080'\]" "${PROM_FILE}"; then
+  echo "prometheus.yml obsolète (cibles Docker DNS — incompatible network_mode=host)." >&2
+  echo "  cd ${INFRA_ROOT} && git pull" >&2
+  echo "  sudo ${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" >&2
+  exit 1
+fi
+
 RETENTION="${PROMETHEUS_RETENTION:-15d}"
 EXTERNAL_URL="${PROMETHEUS_EXTERNAL_URL:-http://127.0.0.1:9090/}"
 
@@ -54,6 +62,15 @@ else
   echo "Prometheus ne répond pas sur :9090" >&2
   docker logs wise-eat-prometheus --tail 30 >&2
   exit 1
+fi
+
+sleep 3
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=up{job="node",instance="wise-eat:9100"}' 2>/dev/null \
+  | grep -q '"value":\[".*","1"\]'; then
+  echo "OK — scrape node_exporter (127.0.0.1:9100)"
+else
+  echo "ATTENTION: node_exporter scrape DOWN — sudo ${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" >&2
 fi
 
 echo ""

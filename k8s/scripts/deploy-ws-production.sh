@@ -3,6 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=ws-paths.sh
 source "${SCRIPT_DIR}/ws-paths.sh"
 
@@ -86,13 +87,18 @@ echo "== 5/7 Déploiement 3 pods (512 Mi + restart Always) =="
 "${SCRIPT_DIR}/deploy-ws.sh" --verify
 
 if [[ "${SKIP_MONITORING}" == "false" ]]; then
-  echo "== 6/7 Prometheus (host network + cibles WS) =="
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
+  echo "== 6/7 Prometheus (node_exporter + cibles WS) =="
+  if [[ -x "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" ]]; then
+    "${INFRA_ROOT}/scripts/repair-prometheus-host-targets.sh" || true
+  elif docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-prometheus'; then
     "${SCRIPT_DIR}/recreate-prometheus-host.sh" || true
   fi
   "${SCRIPT_DIR}/sync-prometheus-ws-targets.sh" || true
   if [[ -x "${SCRIPT_DIR}/install-ws-prometheus-cron.sh" ]]; then
     "${SCRIPT_DIR}/install-ws-prometheus-cron.sh" || true
+  fi
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
+    docker restart wise-eat-grafana >/dev/null 2>&1 || true
   fi
 fi
 
