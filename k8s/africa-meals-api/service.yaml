@@ -20,3 +20,7 @@ spec:
       targetPort: http
       nodePort: 30900
       protocol: TCP
+    - name: grpc
+      port: 50052
+      targetPort: grpc
+      protocol: TCP

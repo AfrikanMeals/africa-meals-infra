@@ -79,13 +79,17 @@ data:
   STATUS_PROBE_WEB_URL: "https://wise-eat.com/"
   STATUS_PROBE_ADMIN_URL: "https://admin.wise-eat.com/api/health"
 
-  # --- gRPC (HTTP fallback si WS sans gRPC server) ---
+  # --- gRPC (API server :50052 + client WS notify :50051) ---
+  GRPC_VERSION: "2"
   GRPC_WS_NOTIFY_ENABLED: "true"
   GRPC_WS_HOST: "africa-meals-ws.wise-eat.svc.cluster.local"
   GRPC_WS_PORT: "50051"
   GRPC_HTTP_FALLBACK_ENABLED: "true"
   GRPC_API_SERVER_ENABLED: "true"
   GRPC_API_PORT: "50052"
+  GRPC_API_BIND_HOST: "0.0.0.0"
+  GRPC_DEADLINE_MS: "5000"
+  GRPC_MAX_RECV_MB: "4"
 
   # --- Ollama (proxy métriques VPS) ---
   OLLAMA_BASE_URL: "http://host.k3s.internal:9401"

@@ -52,6 +52,9 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
           env:
             - name: PORT
               value: "8000"

@@ -95,9 +95,16 @@ data:
   SOCKET_IO_ENABLED: "true"
   STOMP_FANOUT_CHANNEL: "stomp:fanout"
 
-  # --- gRPC (désactivé — HTTP/MQTT suffisent en prod k8s) ---
-  GRPC_WS_SERVER_ENABLED: "false"
-  GRPC_WS_TO_API_ENABLED: "false"
+  # --- gRPC interne (API ↔ WS via svc.cluster.local) ---
+  GRPC_VERSION: "2"
+  GRPC_WS_SERVER_ENABLED: "true"
+  GRPC_WS_PORT: "50051"
+  GRPC_WS_BIND_HOST: "0.0.0.0"
+  GRPC_WS_TO_API_ENABLED: "true"
+  GRPC_API_HOST: "africa-meals-api.wise-eat.svc.cluster.local"
+  GRPC_API_PORT: "50052"
+  GRPC_DEADLINE_MS: "5000"
+  GRPC_MAX_RECV_MB: "4"
   GRPC_HTTP_FALLBACK_ENABLED: "true"
   GRPC_INBOX_FEED_DEADLINE_MS: "15000"
   INBOX_FEED_CACHE_TTL_MS: "8000"

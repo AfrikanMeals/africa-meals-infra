@@ -52,6 +52,9 @@ spec:
             - name: http
               containerPort: 9000
               protocol: TCP
+            - name: grpc
+              containerPort: 50052
+              protocol: TCP
           env:
             - name: NODE_PORT
               value: "9000"
