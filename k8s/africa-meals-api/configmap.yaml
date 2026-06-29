@@ -12,8 +12,8 @@ data:
   SERVER_URL: "https://api.wise-eat.com"
   API_PUBLIC_BASE_URL: "https://api.wise-eat.com"
   DISABLE_SWAGGER: "true"
-  GOOGLE_APPLICATION_CREDENTIALS: ""
-  AM_FIREBASE_SERVICE_ACCOUNT_PATH: ""
+  GOOGLE_APPLICATION_CREDENTIALS: "/run/secrets/firebase/accounts.json"
+  AM_FIREBASE_SERVICE_ACCOUNT_PATH: "/run/secrets/firebase/accounts.json"
 
   VPS_LOCAL_HOST: "host.k3s.internal"
 
@@ -78,6 +78,8 @@ data:
   WS_BASE_URL: "https://ws.wise-eat.com"
   STATUS_PROBE_WEB_URL: "https://wise-eat.com/"
   STATUS_PROBE_ADMIN_URL: "https://admin.wise-eat.com/api/health"
+  AFRICA_MEALS_ADMIN_PUBLIC_URL: "https://admin.wise-eat.com"
+  ADMIN_APP_URL: "https://admin.wise-eat.com"
 
   # --- gRPC (API server :50052 + client WS notify :50051) ---
   GRPC_VERSION: "2"
