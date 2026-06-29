@@ -14,9 +14,9 @@ credentials-file: ~/.cloudflared/<tunnel-id>.json
 
 ingress:
   - hostname: api-dev.wise-eat.com
-    service: http://localhost:9000
+    service: http://localhost:9001
   - hostname: ws-dev.wise-eat.com
-    service: http://localhost:3001
+    service: http://localhost:8001
     originRequest:
       connectTimeout: 30s
       keepAliveTimeout: 90s
