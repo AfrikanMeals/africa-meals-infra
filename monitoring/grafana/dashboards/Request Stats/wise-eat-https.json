@@ -1,0 +1,190 @@
+{
+  "annotations": { "list": [] },
+  "description": "HTTP REST — africa-meals-api & africa-meals-ws (requêtes, statuts, latence, transfert). Dossier : Request Stats.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Vue globale",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(rate(api_http_requests_total{job=\"africa-meals-api-pods\"}[5m]))", "refId": "A" }],
+      "title": "API — req/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(rate(ws_http_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "refId": "A" }],
+      "title": "WS HTTP — req/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "targets": [{ "expr": "sum(rate(api_http_requests_success_total{job=\"africa-meals-api-pods\"}[5m])) / clamp_min(sum(rate(api_http_requests_total{job=\"africa-meals-api-pods\"}[5m])), 0.001)", "refId": "A" }],
+      "title": "API — succès",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "targets": [{ "expr": "sum(rate(api_http_requests_failure_total{job=\"africa-meals-api-pods\"}[5m])) / clamp_min(sum(rate(api_http_requests_total{job=\"africa-meals-api-pods\"}[5m])), 0.001)", "refId": "A" }],
+      "title": "API — échecs (4xx/5xx)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum(rate(api_http_response_bytes_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "API egress", "refId": "A" },
+        { "expr": "sum(rate(ws_http_response_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "WS HTTP egress", "refId": "B" }
+      ],
+      "title": "Transfert sortant (réponses)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "africa-meals-api",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 20 }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "targets": [{ "expr": "sum by (status_class) (rate(api_http_requests_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "{{status_class}}", "refId": "A" }],
+      "title": "Débit par classe HTTP",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "targets": [{ "expr": "sum(rate(api_http_request_duration_ms_sum{job=\"africa-meals-api-pods\"}[5m])) / clamp_min(sum(rate(api_http_request_duration_ms_count{job=\"africa-meals-api-pods\"}[5m])), 0.001)", "legendFormat": "avg", "refId": "A" }],
+      "title": "Latence moyenne",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15 }, "unit": "Bps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 12,
+      "targets": [
+        { "expr": "sum(rate(api_http_response_bytes_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "response", "refId": "A" },
+        { "expr": "sum(rate(api_http_request_bytes_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "request", "refId": "B" }
+      ],
+      "title": "Transfert données (req / resp)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 13,
+      "targets": [{ "expr": "topk(10, sum by (route, method) (rate(api_http_requests_total{job=\"africa-meals-api-pods\"}[5m])))", "format": "table", "instant": true, "refId": "A" }],
+      "title": "Top 10 routes (req/s)",
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "req/s", "method": "Méthode", "route": "Route" } } }],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "table", "placement": "right" } },
+      "targets": [{ "expr": "sum by (status_code) (rate(api_http_requests_by_status_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "{{status_code}}", "refId": "A" }],
+      "title": "Codes HTTP (req/s)",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "id": 15,
+      "targets": [
+        { "expr": "sum by (pod) (rate(api_http_requests_success_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "success {{pod}}", "refId": "A" },
+        { "expr": "sum by (pod) (rate(api_http_requests_failure_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "failure {{pod}}", "refId": "B" }
+      ],
+      "title": "Succès vs échecs par pod",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+      "id": 102,
+      "title": "africa-meals-ws (HTTP admin / health / metrics)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 20 }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "id": 20,
+      "targets": [{ "expr": "sum by (status_class) (rate(ws_http_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "{{status_class}}", "refId": "A" }],
+      "title": "WS — débit par classe HTTP",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "id": 21,
+      "targets": [{ "expr": "sum(rate(ws_http_request_duration_ms_sum{job=\"africa-meals-ws-pods\"}[5m])) / clamp_min(sum(rate(ws_http_request_duration_ms_count{job=\"africa-meals-ws-pods\"}[5m])), 0.001)", "legendFormat": "avg", "refId": "A" }],
+      "title": "WS — latence moyenne",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "Bps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
+      "id": 22,
+      "targets": [
+        { "expr": "sum(rate(ws_http_response_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "response", "refId": "A" },
+        { "expr": "sum(rate(ws_http_request_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "request", "refId": "B" }
+      ],
+      "title": "WS — transfert données",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
+      "id": 23,
+      "targets": [{ "expr": "topk(10, sum by (route, method) (rate(ws_http_requests_total{job=\"africa-meals-ws-pods\"}[5m])))", "format": "table", "instant": true, "refId": "A" }],
+      "title": "WS — top routes",
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "req/s", "method": "Méthode", "route": "Route" } } }],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["wise-eat", "http", "request-stats"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Wise Eat HTTPs",
+  "uid": "wise-eat-https",
+  "version": 1
+}

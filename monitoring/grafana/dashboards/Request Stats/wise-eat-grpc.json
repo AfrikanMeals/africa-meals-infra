@@ -1,0 +1,175 @@
+{
+  "annotations": { "list": [] },
+  "description": "gRPC — client africa-meals-api → serveur africa-meals-ws (NotifyService). Dossier : Request Stats.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Vue globale gRPC",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(rate(api_grpc_client_requests_total{job=\"africa-meals-api-pods\"}[5m]))", "refId": "A" }],
+      "title": "API client — RPC/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(rate(ws_grpc_server_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "refId": "A" }],
+      "title": "WS serveur — RPC/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "targets": [{ "expr": "sum(rate(api_grpc_client_requests_total{job=\"africa-meals-api-pods\",status=\"error\"}[5m])) / clamp_min(sum(rate(api_grpc_client_requests_total{job=\"africa-meals-api-pods\"}[5m])), 0.001)", "refId": "A" }],
+      "title": "API — taux erreur client",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "targets": [{ "expr": "sum(rate(ws_grpc_server_requests_total{job=\"africa-meals-ws-pods\",status=\"error\"}[5m])) / clamp_min(sum(rate(ws_grpc_server_requests_total{job=\"africa-meals-ws-pods\"}[5m])), 0.001)", "refId": "A" }],
+      "title": "WS — taux erreur serveur",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum(rate(api_grpc_client_request_bytes_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "API client", "refId": "A" },
+        { "expr": "sum(rate(ws_grpc_server_request_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "WS server", "refId": "B" }
+      ],
+      "title": "Transfert payload gRPC",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "africa-meals-api — client gRPC → WS",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15 }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "targets": [{ "expr": "sum by (method, status) (rate(api_grpc_client_requests_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "{{method}} {{status}}", "refId": "A" }],
+      "title": "RPC/s par méthode & statut",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "targets": [{ "expr": "sum by (method) (rate(api_grpc_client_request_duration_ms_sum{job=\"africa-meals-api-pods\"}[5m])) / clamp_min(sum by (method) (rate(api_grpc_client_request_duration_ms_count{job=\"africa-meals-api-pods\"}[5m])), 0.001)", "legendFormat": "{{method}}", "refId": "A" }],
+      "title": "Latence moyenne client",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 12,
+      "targets": [{ "expr": "sum(rate(api_grpc_client_fallback_total{job=\"africa-meals-api-pods\"}[5m]))", "legendFormat": "fallback HTTP", "refId": "A" }],
+      "title": "Repli HTTP après échec gRPC",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 13,
+      "targets": [{ "expr": "api_grpc_client_window_p95_ms{job=\"africa-meals-api-pods\"}", "legendFormat": "p95 window {{pod}}", "refId": "A" }],
+      "title": "Fenêtre glissante — p95 client",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 102,
+      "title": "africa-meals-ws — serveur gRPC NotifyService",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15 }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 20,
+      "targets": [{ "expr": "sum by (method, status) (rate(ws_grpc_server_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "{{method}} {{status}}", "refId": "A" }],
+      "title": "RPC/s serveur par méthode",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 21,
+      "targets": [{ "expr": "sum by (method) (rate(ws_grpc_server_request_duration_ms_sum{job=\"africa-meals-ws-pods\"}[5m])) / clamp_min(sum by (method) (rate(ws_grpc_server_request_duration_ms_count{job=\"africa-meals-ws-pods\"}[5m])), 0.001)", "legendFormat": "{{method}}", "refId": "A" }],
+      "title": "Latence moyenne serveur",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "Bps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "id": 22,
+      "targets": [{ "expr": "sum by (method) (rate(ws_grpc_server_request_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "{{method}}", "refId": "A" }],
+      "title": "Transfert payload par méthode",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "id": 23,
+      "targets": [
+        { "expr": "ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\"}", "legendFormat": "p95 {{method}}", "refId": "A" },
+        { "expr": "ws_grpc_rpc_p50_ms{job=\"africa-meals-ws-pods\"}", "legendFormat": "p50 {{method}}", "refId": "B" }
+      ],
+      "title": "Fenêtre glissante — latence p50/p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 39 },
+      "id": 24,
+      "targets": [{ "expr": "ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\"}", "legendFormat": "{{method}}", "refId": "A" }],
+      "title": "Taux d'erreur fenêtre glissante (serveur)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["wise-eat", "grpc", "request-stats"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Wise Eat gRPC",
+  "uid": "wise-eat-grpc",
+  "version": 1
+}

@@ -1,0 +1,187 @@
+{
+  "annotations": { "list": [] },
+  "description": "STOMP, Socket.IO & événements WS — africa-meals-api (HTTP) & africa-meals-ws. Dossier : Request Stats.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Vue globale WebSocket / STOMP",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(rate(ws_ws_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "refId": "A" }],
+      "title": "WS — événements/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(ws_stomp_sessions_active{job=\"africa-meals-ws-pods\"})", "refId": "A" }],
+      "title": "Sessions STOMP actives",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(ws_stomp_users_active{job=\"africa-meals-ws-pods\"})", "refId": "A" }],
+      "title": "Utilisateurs STOMP",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{ "expr": "sum(ws_stomp_admin_sessions{job=\"africa-meals-ws-pods\"})", "refId": "A" }],
+      "title": "Sessions admin STOMP",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "targets": [{ "expr": "sum(rate(ws_ws_requests_success_total{job=\"africa-meals-ws-pods\"}[5m])) / clamp_min(sum(rate(ws_ws_requests_total{job=\"africa-meals-ws-pods\"}[5m])), 0.001)", "refId": "A" }],
+      "title": "WS — taux succès",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 6,
+      "targets": [{ "expr": "sum(rate(ws_ws_response_bytes_total{job=\"africa-meals-ws-pods\"}[5m]))", "refId": "A" }],
+      "title": "Transfert WS (est.)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "africa-meals-ws — événements WebSocket / chat",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 20 }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "targets": [{ "expr": "sum by (status_class) (rate(ws_ws_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "{{status_class}}", "refId": "A" }],
+      "title": "Événements par classe de statut",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "targets": [{ "expr": "sum(rate(ws_ws_request_duration_ms_sum{job=\"africa-meals-ws-pods\"}[5m])) / clamp_min(sum(rate(ws_ws_request_duration_ms_count{job=\"africa-meals-ws-pods\"}[5m])), 0.001)", "legendFormat": "avg", "refId": "A" }],
+      "title": "Latence moyenne événements",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 12,
+      "targets": [{ "expr": "sum by (method) (rate(ws_ws_requests_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "{{method}}", "refId": "A" }],
+      "title": "Débit par type (WS / EMIT)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 13,
+      "targets": [{ "expr": "topk(12, sum by (route) (rate(ws_ws_requests_total{job=\"africa-meals-ws-pods\"}[5m])))", "format": "table", "instant": true, "refId": "A" }],
+      "title": "Top destinations /chat/*",
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "evt/s", "route": "Route" } } }],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 102,
+      "title": "STOMP — connexions & tampon",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 20,
+      "targets": [
+        { "expr": "ws_stomp_sessions_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "sessions {{pod}}", "refId": "A" },
+        { "expr": "ws_stomp_users_active{job=\"africa-meals-ws-pods\"}", "legendFormat": "users {{pod}}", "refId": "B" },
+        { "expr": "ws_stomp_admin_sessions{job=\"africa-meals-ws-pods\"}", "legendFormat": "admin {{pod}}", "refId": "C" }
+      ],
+      "title": "Connexions STOMP par pod",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 21,
+      "targets": [
+        { "expr": "sum by (pod) (rate(ws_ws_requests_success_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "ok {{pod}}", "refId": "A" },
+        { "expr": "sum by (pod) (rate(ws_ws_requests_failure_total{job=\"africa-meals-ws-pods\"}[5m]))", "legendFormat": "fail {{pod}}", "refId": "B" }
+      ],
+      "title": "Succès vs échecs par pod",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" } } },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 31 },
+      "id": 22,
+      "targets": [
+        { "expr": "ws_request_stats_buffer_entries{job=\"africa-meals-ws-pods\"}", "legendFormat": "buffer {{pod}}", "refId": "A" },
+        { "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\",kind=\"ws\"}", "legendFormat": "ws events {{pod}}", "refId": "B" },
+        { "expr": "ws_request_stats_events{job=\"africa-meals-ws-pods\",kind=\"http\"}", "legendFormat": "http events {{pod}}", "refId": "C" }
+      ],
+      "title": "Tampon request-stats",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+      "id": 103,
+      "title": "Features runtime",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 39 },
+      "id": 30,
+      "options": { "showHeader": true },
+      "targets": [{ "expr": "ws_feature_enabled{job=\"africa-meals-ws-pods\"}", "format": "table", "instant": true, "refId": "A" }],
+      "title": "STOMP / Socket.IO / gRPC activés",
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "namespace": true, "service": true }, "renameByName": { "Value": "Activé", "feature": "Feature", "pod": "Pod" } } }],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["wise-eat", "websocket", "stomp", "request-stats"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Wise Eat WebSockets",
+  "uid": "wise-eat-websockets",
+  "version": 1
+}
