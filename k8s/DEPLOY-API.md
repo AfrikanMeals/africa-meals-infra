@@ -165,3 +165,5 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 | 502 api.wise-eat.com | `curl 127.0.0.1:30900/api/health` + `patch-nginx-api-backend.sh` |
 | Grafana vide | `repair-api-prometheus.sh` + restart Grafana |
 | Atlas au lieu de Stunnel | utiliser `.env.prod` avec `host.k3s.internal:27018` |
+| Upload médias `ECONNREFUSED` MinIO `:9000` | `MINIO_ENDPOINT=https://storage.wise-eat.com` dans `.env.prod` (pas `host.k3s.internal:9000`) puis `create-api-secret.sh` + rollout restart |
+| Upload S3 `signature does not match` | vérifier `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` IAM ou désactiver moteur s3 dans admin Stockage |

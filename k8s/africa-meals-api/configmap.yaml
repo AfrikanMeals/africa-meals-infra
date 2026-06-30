@@ -98,7 +98,10 @@ data:
   # --- Ollama (proxy métriques VPS) ---
   OLLAMA_BASE_URL: "http://host.k3s.internal:9401"
 
-  # --- MinIO (Secret : endpoint host.k3s.internal:9000 ; MINIO_PUBLIC_BASE_URL reste public) ---
+  # --- MinIO (Secret) ---
+  # Écritures pods k8s : MINIO_ENDPOINT=https://storage.wise-eat.com (nginx → 127.0.0.1:9000).
+  # Ne pas utiliser host.k3s.internal:9000 — MinIO n’écoute pas sur l’IP du nœud (ECONNREFUSED).
+  # MINIO_PUBLIC_BASE_URL / MINIO_REPLICA_ENDPOINTS : URLs publiques HTTPS (dr*-storage…).
   MINIO_HEALTH_CHECK: "false"
 
   # --- SSE (connexions sur WS) ---
