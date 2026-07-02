@@ -25,7 +25,14 @@ matomo_copy_helpers() {
   mkdir -p "${MATOMO_DATA_DIR}/html/misc/wise-eat"
   cp -f "${MATOMO_DIR}/bin/sync-config-from-env.php" "${MATOMO_DATA_DIR}/html/misc/wise-eat/"
   cp -f "${MATOMO_DIR}/bin/diagnose-boot.php" "${MATOMO_DATA_DIR}/html/misc/wise-eat/"
+  cp -f "${MATOMO_DIR}/bin/resync-core-from-image.sh" "${MATOMO_DATA_DIR}/html/misc/wise-eat/"
+  chmod +x "${MATOMO_DATA_DIR}/html/misc/wise-eat/resync-core-from-image.sh" 2>/dev/null || true
   chown -R 33:33 "${MATOMO_DATA_DIR}/html/misc/wise-eat" 2>/dev/null || true
+}
+
+matomo_resync_core() {
+  log "Resync vendor/core depuis l'image Docker (fix Composer autoload)"
+  docker exec wise-eat-matomo bash /var/www/html/misc/wise-eat/resync-core-from-image.sh 2>&1 | sed 's/^/[resync] /'
 }
 
 matomo_curl() {
@@ -144,6 +151,15 @@ if docker exec wise-eat-matomo test -f /var/www/html/config/config.ini.php 2>/de
     -e MATOMO_DATABASE_TABLES_PREFIX="${MATOMO_DATABASE_TABLES_PREFIX:-matomo_}" \
     wise-eat-matomo php /var/www/html/misc/wise-eat/sync-config-from-env.php 2>&1)" || true
   echo "${sync_out}" | sed 's/^/[wise-eat] /'
+fi
+
+if [[ -n "${detected_prefix}" ]]; then
+  boot_out="$(docker exec -e MATOMO_DIAG_HOST="${MATOMO_DOMAIN}" wise-eat-matomo \
+    php /var/www/html/misc/wise-eat/diagnose-boot.php 2>&1)" || true
+  if echo "${boot_out}" | grep -qE 'ComposerAutoloader|BOOT_FAIL'; then
+    warn "vendor/composer corrompu — resync depuis l'image"
+    matomo_resync_core
+  fi
 fi
 
 if docker exec wise-eat-matomo test -f /var/www/html/console 2>/dev/null \
