@@ -72,11 +72,20 @@ Public (après TLS) : ${MATOMO_ROOT_URL}
 Local              : http://127.0.0.1:${MATOMO_HTTP_PORT}
 Volume             : ${MATOMO_DATA_DIR} (${MATOMO_STORAGE_GB:-5}G max)
 
-Première visite :
-  1. Ouvrir ${MATOMO_ROOT_URL} (ou http://127.0.0.1:${MATOMO_HTTP_PORT} avant TLS)
-  2. Terminer l'assistant si affiché (compte super utilisateur)
-  3. Administration → Système → Général → URL Matomo = ${MATOMO_ROOT_URL}
-  4. Activer « Utiliser un protocole sécurisé (HTTPS) » si derrière nginx TLS
+Première visite (assistant base de données) :
+  Database Server : matomo-db
+  Login           : ${MATOMO_DB_USER:-matomo}
+  Password        : (voir MATOMO_DB_PASSWORD dans ${MATOMO_DIR}/.env.matomo)
+  Database Name   : ${MATOMO_DB_NAME:-matomo}
+  Table Prefix    : matomo_
+  Adapter         : PDO\\MYSQL
+
+  Sur le VPS : sudo grep MATOMO_DB_ ${MATOMO_DIR}/.env.matomo
+
+Ensuite :
+  1. Terminer l'assistant (compte super utilisateur)
+  2. Administration → Système → Général → URL Matomo = ${MATOMO_ROOT_URL}
+  3. Activer « Utiliser un protocole sécurisé (HTTPS) » si derrière nginx TLS
 
 Snippet tracking (site web) :
   <!-- Matomo -->
