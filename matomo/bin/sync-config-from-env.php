@@ -35,7 +35,8 @@ $updates = [
 ];
 
 foreach ($updates as $key => $value) {
-    $line = $key . ' = "' . str_replace(['\\', '"'], ['\\\\', '\\"'], $value) . '"';
+    $escaped = str_replace('"', '\\"', $value);
+    $line = $key . ' = "' . $escaped . '"';
     if (preg_match('/^' . preg_quote($key, '/') . ' = .*$/m', $content)) {
         $content = preg_replace('/^' . preg_quote($key, '/') . ' = .*$/m', $line, $content);
     } elseif (preg_match('/^\[database\]/m', $content)) {
