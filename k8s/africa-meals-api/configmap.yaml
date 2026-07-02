@@ -15,6 +15,7 @@ data:
   DISABLE_SWAGGER: "true"
   GOOGLE_APPLICATION_CREDENTIALS: "/run/secrets/firebase/accounts.json"
   AM_FIREBASE_SERVICE_ACCOUNT_PATH: "/run/secrets/firebase/accounts.json"
+  RECAPTCHA_ENTERPRISE_SERVICE_ACCOUNT_PATH: "/run/secrets/recaptcha/accounts.json"
 
   VPS_LOCAL_HOST: "host.k3s.internal"
 

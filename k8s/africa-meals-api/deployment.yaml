@@ -88,6 +88,9 @@ spec:
             - name: firebase-sa
               mountPath: /run/secrets/firebase
               readOnly: true
+            - name: recaptcha-sa
+              mountPath: /run/secrets/recaptcha
+              readOnly: true
           lifecycle:
             preStop:
               exec:
@@ -129,4 +132,8 @@ spec:
         - name: firebase-sa
           secret:
             secretName: africa-meals-api-firebase-sa
+            optional: true
+        - name: recaptcha-sa
+          secret:
+            secretName: africa-meals-api-recaptcha-sa
             optional: true

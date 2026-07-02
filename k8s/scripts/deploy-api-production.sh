@@ -64,6 +64,7 @@ rm -f /tmp/api-env-tried.$$
 
 API_DIR="$(dirname "${ENV_FILE}")"
 FIREBASE_SA="${API_DIR}/accounts.json"
+RECAPTCHA_SA="${API_DIR}/recaptcha-accounts.json"
 
 echo "== .env : ${ENV_FILE} =="
 if grep -qE '^MONGODB_URI=mongodb\+srv://' "${ENV_FILE}" 2>/dev/null; then
@@ -89,6 +90,11 @@ if [[ -f "${FIREBASE_SA}" ]]; then
   "${SCRIPT_DIR}/create-api-firebase-secret.sh" "${FIREBASE_SA}"
 else
   echo "accounts.json absent (${FIREBASE_SA}) — montage Firebase optionnel ignoré"
+fi
+if [[ -f "${RECAPTCHA_SA}" ]]; then
+  "${SCRIPT_DIR}/create-api-recaptcha-secret.sh" "${RECAPTCHA_SA}"
+else
+  echo "recaptcha-accounts.json absent (${RECAPTCHA_SA}) — SA reCAPTCHA wise-eat-com optionnel ignoré"
 fi
 
 echo "== 5/8 Déploiement 5 pods (512 Mi × 5 ≈ 2,5 Gi + restart Always) =="

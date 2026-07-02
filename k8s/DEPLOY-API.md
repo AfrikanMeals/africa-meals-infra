@@ -19,7 +19,8 @@ PM2 = **dev local uniquement**. Production API = **k3s** (comme WS).
 - k3s + **africa-meals-ws** déjà déployé (namespace `wise-eat`, Stunnel Redis/Mongo/MQTT actifs)
 - DNS `api.wise-eat.com` → IP VPS (Cloudflare Proxied OK)
 - Fichier `/opt/wise-eat-api/.env.prod` (modèle : `africa-meals-api/.env.prod` du monorepo)
-- `accounts.json` Firebase à côté du `.env.prod` (optionnel)
+- `accounts.json` Firebase à côté du `.env.prod` (optionnel, projet **wise-eat-ca** / FCM)
+- `recaptcha-accounts.json` à côté du `.env.prod` (optionnel, projet **wise-eat-com** / formulaire contact)
 
 ---
 
@@ -166,4 +167,5 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 | Grafana vide | `repair-api-prometheus.sh` + restart Grafana |
 | Atlas au lieu de Stunnel | utiliser `.env.prod` avec `host.k3s.internal:27018` |
 | Upload médias `ECONNREFUSED` MinIO `:9000` | `MINIO_ENDPOINT=https://storage.wise-eat.com` dans `.env.prod` (pas `host.k3s.internal:9000`) puis `create-api-secret.sh` + rollout restart |
+| reCAPTCHA contact `KEY_MISMATCH` / permission denied | `RECAPTCHA_ENTERPRISE_PROJECT_ID=wise-eat-com`, clé site alignée, vider `RECAPTCHA_ENTERPRISE_API_KEY`, déposer `recaptcha-accounts.json` (SA `@wise-eat-com`) puis `create-api-recaptcha-secret.sh` + rollout restart |
 | Upload S3 `signature does not match` | vérifier `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` IAM ou désactiver moteur s3 dans admin Stockage |
