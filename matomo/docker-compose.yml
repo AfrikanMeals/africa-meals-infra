@@ -36,7 +36,6 @@ services:
         condition: service_healthy
     environment:
       MATOMO_DATABASE_HOST: matomo-db
-      MATOMO_DATABASE_ADAPTER: mysql
       MATOMO_DATABASE_TABLES_PREFIX: matomo_
       MATOMO_DATABASE_USERNAME: ${MATOMO_DB_USER:-matomo}
       MATOMO_DATABASE_PASSWORD: ${MATOMO_DB_PASSWORD:?MATOMO_DB_PASSWORD requis}

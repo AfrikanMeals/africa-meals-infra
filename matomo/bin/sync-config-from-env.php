@@ -12,7 +12,13 @@ $user = getenv('MATOMO_DATABASE_USERNAME') ?: 'matomo';
 $pass = getenv('MATOMO_DATABASE_PASSWORD') ?: '';
 $db = getenv('MATOMO_DATABASE_DBNAME') ?: 'matomo';
 $prefix = getenv('MATOMO_DATABASE_TABLES_PREFIX') ?: 'matomo_';
-$adapter = getenv('MATOMO_DATABASE_ADAPTER') ?: 'PDO\\MYSQL';
+$adapterRaw = getenv('MATOMO_DATABASE_ADAPTER') ?: 'PDO\\MYSQL';
+$adapter = strtolower($adapterRaw);
+if (in_array($adapter, ['mysql', 'pdo_mysql', 'pdo\\mysql'], true)) {
+    $adapter = 'PDO\\MYSQL';
+} else {
+    $adapter = $adapterRaw;
+}
 
 if (!is_file($file)) {
     fwrite(STDOUT, "NO_CONFIG\n");
@@ -32,6 +38,7 @@ $updates = [
     'dbname' => $db,
     'tables_prefix' => $prefix,
     'adapter' => $adapter,
+    'charset' => 'utf8mb4',
 ];
 
 foreach ($updates as $key => $value) {

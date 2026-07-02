@@ -149,6 +149,7 @@ if docker exec wise-eat-matomo test -f /var/www/html/config/config.ini.php 2>/de
     -e MATOMO_DATABASE_PASSWORD="${MATOMO_DB_PASSWORD}" \
     -e MATOMO_DATABASE_DBNAME="${MATOMO_DB_NAME}" \
     -e MATOMO_DATABASE_TABLES_PREFIX="${MATOMO_DATABASE_TABLES_PREFIX:-matomo_}" \
+    -e MATOMO_DATABASE_ADAPTER='PDO\MYSQL' \
     wise-eat-matomo php /var/www/html/misc/wise-eat/sync-config-from-env.php 2>&1)" || true
   echo "${sync_out}" | sed 's/^/[wise-eat] /'
 fi
