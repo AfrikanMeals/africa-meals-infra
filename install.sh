@@ -84,6 +84,8 @@ Composants:
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   matomo        Matomo Analytics Docker (MariaDB + Apache, :8089 local)
   matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
+  update-matomo   Mise à jour Matomo via CLI (image Docker + core:update)
+  repair-matomo   Recovery crash / 502 / update interrompue
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
@@ -277,6 +279,12 @@ run_component() {
       ;;
     matomo-gateway)
       bash "${SCRIPTS}/install-matomo-gateway.sh"
+      ;;
+    update-matomo)
+      bash "${SCRIPTS}/update-matomo.sh"
+      ;;
+    repair-matomo)
+      bash "${SCRIPTS}/repair-matomo.sh"
       ;;
     redis-stunnel-cert)
       bash "${SCRIPTS}/issue-redis-stunnel-cert.sh"
