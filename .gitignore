@@ -32,6 +32,8 @@ emqx/data-emqx-2/
 emqx/data-emqx-3/
 
 mongodb/.env.mongodb
+matomo/.env.matomo
+matomo/data/
 mongodb/keyfile
 mongodb/data-mongo-1/
 mongodb/data-mongo-3/

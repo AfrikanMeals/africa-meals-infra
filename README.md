@@ -21,6 +21,7 @@ minio/
 emqx/
 monitoring/
 ollama/
+matomo/
 ```
 
 ## Installation complète (VPS)
@@ -74,6 +75,7 @@ sudo ./install.sh verify-tls
 | `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
 | `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
 | `ai.wise-eat.com` | 80 / 443 | Ollama API (basic auth nginx, dual-stack) | proxy OK (A + AAAA) |
+| `analytics.wise-eat.com` | 80 / 443 | Matomo Analytics (self-hosted) | proxy OK |
 
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
@@ -147,6 +149,10 @@ Détails techniques :
 | `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
 | `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
 | `OLLAMA_GATEWAY_DOMAIN` | `ai.wise-eat.com` | Ollama API public (nginx + basic auth) |
+| `MATOMO_DOMAIN` | `analytics.wise-eat.com` | Matomo Analytics public (nginx + TLS) |
+| `MATOMO_HTTP_PORT` | `8089` | Matomo local (127.0.0.1 uniquement) |
+| `MATOMO_STORAGE_GB` | `5` | Taille volume données Matomo (loop ext4) |
+| `MATOMO_DATA_DIR` | `/var/lib/wise-eat/matomo` | Données Matomo + MariaDB |
 | `MONGO_STORAGE_GB` | `5` | Taille volume données MongoDB (loop ext4) |
 | `MINIO_BACKUP_DIR` | `/var/backups/wise-eat-minio` | Sauvegardes incrémentales (hors volume 10G) |
 | `VPS_IPV6_ADDR` | `2a02:4780:75:447e::1` | IPv6 publique VPS (AAAA Cloudflare) |
@@ -173,6 +179,7 @@ Profil cible : **2 vCPU / 8 Go RAM / 2 Go swap**. Chaque conteneur a un `mem_lim
 | Redis BullMQ (+ réplicas) | 640 Mo | 128 Mo | 768 Mo |
 | Memcached ×3 | 192 Mo | 64 Mo | 256 Mo |
 | MinIO | 256 Mo | 128 Mo | 384 Mo |
+| Matomo + MariaDB | 640 Mo | 256 Mo | 896 Mo |
 
 Le swap hôte est provisionné automatiquement à chaque `install.sh` (via `ensure_docker` → `scripts/lib/vps-swap.sh`). Vérification :
 
@@ -290,6 +297,29 @@ sudo ./install.sh ollama-warmup-metrics
 ```
 
 **Comportement normal** : seul **Ollama Status = UP** tant qu'aucun modèle n'est en VRAM (`/api/ps` vide) et que l'API n'utilise pas le proxy `:9401`. Les panels TPS/latence/requêtes nécessitent `OLLAMA_BASE_URL=http://127.0.0.1:9401` sur le VPS.
+
+## Matomo Analytics (self-hosted)
+
+[Matomo On-Premise](https://matomo.org/matomo-on-premise/) — analytics web first-party, données hébergées sur le VPS Wise Eat (MariaDB + Apache Docker, ~640 Mo RAM).
+
+```bash
+# DNS : A/AAAA analytics.wise-eat.com → VPS (proxy Cloudflare OK)
+
+sudo ./install.sh nginx          # si pas déjà fait
+sudo ./install.sh matomo
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh matomo-gateway
+# ou certificat global :
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh certbot
+sudo ./install.sh verify-tls
+```
+
+| Port | Rôle |
+|------|------|
+| `8089` | Matomo HTTP local (`127.0.0.1` — nginx reverse-proxy public) |
+
+Première visite : créer le compte super utilisateur dans l'assistant Matomo, puis vérifier **Administration → Système → Général** : URL = `https://analytics.wise-eat.com/` et HTTPS activé.
+
+Secrets : `matomo/.env.matomo` (chmod 600, généré au premier `install.sh matomo`).
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`

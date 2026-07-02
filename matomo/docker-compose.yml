@@ -1,0 +1,54 @@
+# Wise Eat — Matomo Analytics (self-hosted)
+# Install : sudo ./install.sh matomo
+# Local : http://127.0.0.1:8089 · Public : https://analytics.wise-eat.com
+
+services:
+  matomo-db:
+    image: mariadb:11.4
+    container_name: wise-eat-matomo-db
+    mem_limit: ${MATOMO_DB_MEM_LIMIT:-256m}
+    memswap_limit: ${MATOMO_DB_MEMSWAP_LIMIT:-384m}
+    command: --max-allowed-packet=64MB --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MATOMO_DB_ROOT_PASSWORD:?MATOMO_DB_ROOT_PASSWORD requis}
+      MYSQL_DATABASE: ${MATOMO_DB_NAME:-matomo}
+      MYSQL_USER: ${MATOMO_DB_USER:-matomo}
+      MYSQL_PASSWORD: ${MATOMO_DB_PASSWORD:?MATOMO_DB_PASSWORD requis}
+    volumes:
+      - ${MATOMO_DATA_DIR:-./data}/db:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - wise-eat-matomo
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  matomo:
+    image: matomo:${MATOMO_IMAGE_TAG:-5.2.2-apache}
+    container_name: wise-eat-matomo
+    mem_limit: ${MATOMO_MEM_LIMIT:-384m}
+    memswap_limit: ${MATOMO_MEMSWAP_LIMIT:-512m}
+    depends_on:
+      matomo-db:
+        condition: service_healthy
+    environment:
+      MATOMO_DATABASE_HOST: matomo-db
+      MATOMO_DATABASE_ADAPTER: mysql
+      MATOMO_DATABASE_TABLES_PREFIX: matomo_
+      MATOMO_DATABASE_USERNAME: ${MATOMO_DB_USER:-matomo}
+      MATOMO_DATABASE_PASSWORD: ${MATOMO_DB_PASSWORD:?MATOMO_DB_PASSWORD requis}
+      MATOMO_DATABASE_DBNAME: ${MATOMO_DB_NAME:-matomo}
+    ports:
+      - "127.0.0.1:${MATOMO_HTTP_PORT:-8089}:80"
+    volumes:
+      - ${MATOMO_DATA_DIR:-./data}/html:/var/www/html
+    restart: unless-stopped
+    networks:
+      - wise-eat-matomo
+
+networks:
+  wise-eat-matomo:
+    name: wise-eat-matomo

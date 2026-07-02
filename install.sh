@@ -82,6 +82,8 @@ Composants:
   repair-docker-daemon-cadvisor  Docker 29 overlayfs → désactive containerd-snapshotter
   reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
+  matomo        Matomo Analytics Docker (MariaDB + Apache, :8089 local)
+  matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
   redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
@@ -269,6 +271,12 @@ run_component() {
       ;;
     grafana-console)
       bash "${SCRIPTS}/install-grafana-console.sh"
+      ;;
+    matomo)
+      bash "${SCRIPTS}/install-matomo.sh"
+      ;;
+    matomo-gateway)
+      bash "${SCRIPTS}/install-matomo-gateway.sh"
       ;;
     redis-stunnel-cert)
       bash "${SCRIPTS}/issue-redis-stunnel-cert.sh"

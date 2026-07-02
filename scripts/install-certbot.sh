@@ -19,6 +19,7 @@ INSTALL_EMQX_WORKER_CERT="${INSTALL_EMQX_WORKER_CERT:-1}"
 INSTALL_MONGODB_TLS_CERT="${INSTALL_MONGODB_TLS_CERT:-1}"
 INSTALL_MONGODB_ADMIN_CERT="${INSTALL_MONGODB_ADMIN_CERT:-1}"
 INSTALL_OLLAMA_CERT="${INSTALL_OLLAMA_CERT:-1}"
+INSTALL_MATOMO_CERT="${INSTALL_MATOMO_CERT:-1}"
 INSTALL_API_CERT="${INSTALL_API_CERT:-1}"
 K8S_API_NGINX="${INFRA_ROOT}/k8s/scripts/install-api-nginx.sh"
 
@@ -69,6 +70,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-ollama-gateway.sh" 2>/dev/null || true
+  fi
+  if [[ "${INSTALL_MATOMO_CERT}" == "1" ]]; then
+    bash "${SCRIPT_DIR}/install-matomo-gateway.sh" 2>/dev/null || true
   fi
   if [[ "${INSTALL_API_CERT}" == "1" && -x "${K8S_API_NGINX}" ]]; then
     bash "${K8S_API_NGINX}" 2>/dev/null || true
@@ -146,6 +150,11 @@ if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
   issue_le_cert "${OLLAMA_GATEWAY_DOMAIN}"
 fi
 
+if [[ "${INSTALL_MATOMO_CERT}" == "1" ]]; then
+  log "=== Certificat Matomo (${MATOMO_DOMAIN}) ==="
+  issue_le_cert "${MATOMO_DOMAIN}"
+fi
+
 if [[ "${INSTALL_API_CERT}" == "1" ]]; then
   log "=== Certificat API Nest (${API_WISE_EAT_DOMAIN}) ==="
   issue_le_cert "${API_WISE_EAT_DOMAIN}"
@@ -199,6 +208,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${OLLAMA_GATEWAY_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-ollama-gateway-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${MATOMO_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-matomo-ssl.sh" 2>/dev/null || true
   fi
   if cert_exists "${API_WISE_EAT_DOMAIN}" && [[ -x "${INFRA_ROOT}/k8s/scripts/install-api-nginx.sh" ]]; then
     bash "${INFRA_ROOT}/k8s/scripts/install-api-nginx.sh" 2>/dev/null || true

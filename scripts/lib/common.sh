@@ -10,11 +10,13 @@ MINIO_DIR="${MINIO_DIR:-${WISE_EAT_ROOT}/minio}"
 EMQX_DIR="${EMQX_DIR:-${WISE_EAT_ROOT}/emqx}"
 MONGODB_DIR="${MONGODB_DIR:-${WISE_EAT_ROOT}/mongodb}"
 OLLAMA_DIR="${OLLAMA_DIR:-${WISE_EAT_ROOT}/ollama}"
+MATOMO_DIR="${MATOMO_DIR:-${WISE_EAT_ROOT}/matomo}"
 MON_DIR="${MON_DIR:-${WISE_EAT_ROOT}/monitoring}"
 REDIS_ENV="${REDIS_ENV:-${REDIS_DIR}/.env.redis}"
 MINIO_ENV="${MINIO_ENV:-${MINIO_DIR}/.env.minio}"
 EMQX_ENV="${EMQX_ENV:-${EMQX_DIR}/.env.emqx}"
 MONGODB_ENV="${MONGODB_ENV:-${MONGODB_DIR}/.env.mongodb}"
+MATOMO_ENV="${MATOMO_ENV:-${MATOMO_DIR}/.env.matomo}"
 EMQX_BROKER_DOMAIN="${EMQX_BROKER_DOMAIN:-broker.wise-eat.com}"
 EMQX_BACKEND_HOST="${EMQX_BACKEND_HOST:-127.0.0.1}"
 EMQX_MQTTS_PORT="${EMQX_MQTTS_PORT:-8883}"
@@ -46,6 +48,11 @@ MEMCACHED_TLS_PORT="${MEMCACHED_TLS_PORT:-11212}"
 GRAFANA_CONSOLE_DOMAIN="${GRAFANA_CONSOLE_DOMAIN:-console.wise-eat.com}"
 GRAFANA_BACKEND_HOST="${GRAFANA_BACKEND_HOST:-127.0.0.1}"
 GRAFANA_BACKEND_PORT="${GRAFANA_BACKEND_PORT:-3000}"
+MATOMO_DOMAIN="${MATOMO_DOMAIN:-analytics.wise-eat.com}"
+MATOMO_BACKEND_HOST="${MATOMO_BACKEND_HOST:-127.0.0.1}"
+MATOMO_BACKEND_PORT="${MATOMO_BACKEND_PORT:-8089}"
+MATOMO_DATA_DIR="${MATOMO_DATA_DIR:-/var/lib/wise-eat/matomo}"
+MATOMO_STORAGE_GB="${MATOMO_STORAGE_GB:-5}"
 K8S_DASHBOARD_DOMAIN="${K8S_DASHBOARD_DOMAIN:-k8s.wise-eat.com}"
 K8S_DASHBOARD_BACKEND_HOST="${K8S_DASHBOARD_BACKEND_HOST:-127.0.0.1}"
 K8S_DASHBOARD_BACKEND_PORT="${K8S_DASHBOARD_BACKEND_PORT:-30850}"
@@ -337,7 +344,7 @@ sync_component() {
     mkdir -p "${dst}"
     rsync -a --exclude '.env.redis' --exclude '.env.monitoring' \
       --exclude '.env.memcached' --exclude '.env.minio' --exclude '.env.emqx' \
-      --exclude '.env.mongodb' --exclude '.env.ollama' \
+      --exclude '.env.mongodb' --exclude '.env.matomo' --exclude '.env.ollama' \
       --exclude 'data-cache/' --exclude 'data-bullmq/' \
       --exclude 'data-cache-replica/' --exclude 'data-bullmq-replica/' \
       --exclude 'data-cache-replica-1/' --exclude 'data-cache-replica-2/' \
@@ -345,6 +352,7 @@ sync_component() {
       --exclude 'data-emqx-1/' --exclude 'data-emqx-2/' --exclude 'data-emqx-3/' \
       --exclude 'data-mongo-1/' --exclude 'data-mongo-2/' --exclude 'data-mongo-3/' \
       --exclude 'data-dbgate/' \
+      --exclude 'data/' \
       --exclude 'keyfile' \
       --exclude 'cache-users.acl' --exclude 'bull-users.acl' \
       --exclude 'cache-replica.generated.conf' --exclude 'bull-replica.generated.conf' \
