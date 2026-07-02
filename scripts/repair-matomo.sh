@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Répare Matomo (502, crash post-update, permissions, proxy HTTPS).
+# Répare Matomo (502, HTTP 500, crash post-update, permissions, proxy HTTPS).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -17,57 +17,86 @@ MATOMO_DOMAIN="${MATOMO_DOMAIN:-analytics.wise-eat.com}"
 MATOMO_ROOT_URL="${MATOMO_ROOT_URL:-https://${MATOMO_DOMAIN}/}"
 MATOMO_HTTP_PORT="${MATOMO_HTTP_PORT:-8089}"
 MATOMO_DATA_DIR="${MATOMO_DATA_DIR:-/var/lib/wise-eat/matomo}"
+MATOMO_REPAIR_FRESH="${MATOMO_REPAIR_FRESH:-0}"
+
+matomo_dump_logs() {
+  warn "=== Diagnostics Matomo ==="
+  docker logs --tail=30 wise-eat-matomo-db 2>&1 | sed 's/^/[wise-eat-db] /' || true
+  docker logs --tail=40 wise-eat-matomo 2>&1 | sed 's/^/[wise-eat-app] /' || true
+  docker exec wise-eat-matomo tail -n 40 /var/log/apache2/error.log 2>/dev/null \
+    | sed 's/^/[apache-err] /' || true
+  docker exec wise-eat-matomo sh -c 'for f in /var/www/html/tmp/logs/*.log; do
+    [ -f "$f" ] && echo "--- $f ---" && tail -n 30 "$f";
+  done' 2>/dev/null | sed 's/^/[matomo-log] /' || true
+  if [[ -f "${MATOMO_DATA_DIR}/html/config/config.ini.php" ]]; then
+    warn "config.ini.php [database] (sans mot de passe) :"
+    grep -E '^(host|username|dbname|tables_prefix|adapter) ' "${MATOMO_DATA_DIR}/html/config/config.ini.php" 2>/dev/null \
+      | sed 's/^/[config] /' || true
+  else
+    warn "config.ini.php absent — assistant d'installation requis"
+  fi
+}
+
+matomo_http_ok() {
+  local code
+  code="$(curl -sf -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${MATOMO_HTTP_PORT}/" 2>/dev/null || echo 000)"
+  [[ "${code}" =~ ^(200|302|301)$ ]]
+}
 
 log "=== Réparation Matomo (${MATOMO_DOMAIN}) ==="
 
+if [[ "${MATOMO_REPAIR_FRESH}" == "1" ]]; then
+  ts="$(date +%Y%m%d%H%M%S)"
+  for f in config.ini.php config.ini.php.bak; do
+    if [[ -f "${MATOMO_DATA_DIR}/html/config/${f}" ]]; then
+      mv "${MATOMO_DATA_DIR}/html/config/${f}" "${MATOMO_DATA_DIR}/html/config/${f}.repair.${ts}"
+      log "Config sauvegardée : config/${f}.repair.${ts}"
+    fi
+  done
+  rm -rf "${MATOMO_DATA_DIR}/html/tmp/cache/"* 2>/dev/null || true
+  log "Mode MATOMO_REPAIR_FRESH=1 — réinstallation web requise après repair"
+fi
+
 if [[ -d "${MATOMO_DATA_DIR}/html" ]]; then
   log "Permissions volume Matomo (www-data 33:33)"
+  mkdir -p "${MATOMO_DATA_DIR}/html/tmp/logs" "${MATOMO_DATA_DIR}/html/tmp/cache" \
+    "${MATOMO_DATA_DIR}/html/tmp/assets" "${MATOMO_DATA_DIR}/html/tmp/tcpdf" \
+    "${MATOMO_DATA_DIR}/html/tmp/sessions" "${MATOMO_DATA_DIR}/html/config"
   chown -R 33:33 "${MATOMO_DATA_DIR}/html" 2>/dev/null || true
-  find "${MATOMO_DATA_DIR}/html" -type d -exec chmod 755 {} + 2>/dev/null || true
-  find "${MATOMO_DATA_DIR}/html" -type f -exec chmod 644 {} + 2>/dev/null || true
+  find "${MATOMO_DATA_DIR}/html" -type d -exec chmod 775 {} + 2>/dev/null || true
+  find "${MATOMO_DATA_DIR}/html" -type f -exec chmod 664 {} + 2>/dev/null || true
+  mkdir -p "${MATOMO_DATA_DIR}/html/misc/wise-eat"
+  cp -f "${MATOMO_DIR}/bin/sync-config-from-env.php" "${MATOMO_DATA_DIR}/html/misc/wise-eat/"
+  chown 33:33 "${MATOMO_DATA_DIR}/html/misc/wise-eat/sync-config-from-env.php" 2>/dev/null || true
 fi
 
 log "Recréation conteneurs Matomo"
 docker compose --env-file .env.matomo up -d --force-recreate
 
-log "Attente MariaDB + Matomo (max 120s)…"
-ok=0
-for i in $(seq 1 60); do
-  db_ok=0
-  app_ok=0
+log "Attente MariaDB healthy (max 90s)…"
+for i in $(seq 1 45); do
   if docker inspect wise-eat-matomo-db --format '{{.State.Health.Status}}' 2>/dev/null | grep -qx healthy; then
-    db_ok=1
-  fi
-  if curl -sf --max-time 3 "http://127.0.0.1:${MATOMO_HTTP_PORT}/" >/dev/null 2>&1; then
-    app_ok=1
-  fi
-  if [[ "${db_ok}" -eq 1 && "${app_ok}" -eq 1 ]]; then
-    ok=1
     break
   fi
   sleep 2
 done
 
-if [[ "${ok}" -ne 1 ]]; then
-  warn "Matomo ou MariaDB injoignable — logs :"
-  docker logs --tail=40 wise-eat-matomo-db 2>&1 | sed 's/^/[wise-eat-db] /'
-  docker logs --tail=60 wise-eat-matomo 2>&1 | sed 's/^/[wise-eat-app] /'
-  die "Échec — voir logs ci-dessus"
+if docker exec wise-eat-matomo test -f /var/www/html/config/config.ini.php 2>/dev/null; then
+  log "Sync config.ini.php ← .env.matomo (host matomo-db, user matomo)"
+  sync_out="$(docker exec wise-eat-matomo php /var/www/html/misc/wise-eat/sync-config-from-env.php 2>&1)" || true
+  echo "${sync_out}" | sed 's/^/[wise-eat] /'
+  if echo "${sync_out}" | grep -q '^PDO_FAIL:'; then
+    warn "Base inaccessible avec .env.matomo — vérifier MATOMO_DB_PASSWORD"
+  fi
 fi
 
-log "Test connexion DB depuis conteneur Matomo"
-if ! docker exec wise-eat-matomo php -r "
-  \$h = getenv('MATOMO_DATABASE_HOST') ?: 'matomo-db';
-  \$u = getenv('MATOMO_DATABASE_USERNAME') ?: 'matomo';
-  \$p = getenv('MATOMO_DATABASE_PASSWORD') ?: '';
-  \$d = getenv('MATOMO_DATABASE_DBNAME') ?: 'matomo';
-  new PDO('mysql:host='.\$h.';dbname='.\$d, \$u, \$p);
-  echo 'OK';
-" 2>/dev/null | grep -qx OK; then
-  warn "Connexion PDO échouée — vérifier ${MATOMO_DIR}/.env.matomo (host matomo-db, user matomo, db matomo)"
+if docker exec wise-eat-matomo test -f /var/www/html/console 2>/dev/null; then
+  log "Finalisation update interrompue (CLI)"
+  docker exec wise-eat-matomo php /var/www/html/console core:update --yes 2>&1 | sed 's/^/[core:update] /' || \
+    warn "core:update échoué — voir diagnostics"
+  docker exec wise-eat-matomo php /var/www/html/console cache:clear 2>/dev/null || true
 fi
 
-CONFIG="${MATOMO_DATA_DIR}/html/config/config.ini.php"
 if docker exec wise-eat-matomo test -f /var/www/html/config/config.ini.php 2>/dev/null; then
   log "Configuration proxy HTTPS (nginx)"
   docker exec wise-eat-matomo php /var/www/html/console config:set --section=General assume_secure_protocol 1 2>/dev/null || true
@@ -75,11 +104,12 @@ if docker exec wise-eat-matomo test -f /var/www/html/config/config.ini.php 2>/de
   docker exec wise-eat-matomo php /var/www/html/console config:set --section=General trusted_hosts "${MATOMO_DOMAIN}" 2>/dev/null || true
 fi
 
-if docker exec wise-eat-matomo test -f /var/www/html/console 2>/dev/null; then
-  log "Finalisation update interrompue (CLI)"
-  docker exec wise-eat-matomo php /var/www/html/console core:update --yes 2>/dev/null || \
-    warn "core:update ignoré (installation peut-être incomplète)"
-  docker exec wise-eat-matomo php /var/www/html/console cache:clear 2>/dev/null || true
+log "Test HTTP :127.0.0.1:${MATOMO_HTTP_PORT}"
+if matomo_http_ok; then
+  log "OK  Matomo répond"
+else
+  matomo_dump_logs
+  die "Matomo renvoie HTTP 500 — voir diagnostics. Si config corrompue : MATOMO_REPAIR_FRESH=1 sudo ./install.sh repair-matomo"
 fi
 
 if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
@@ -88,4 +118,4 @@ if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1
 fi
 
 log "Terminé — https://${MATOMO_DOMAIN}"
-log "Mises à jour futures : sudo ./install.sh update-matomo (éviter l'updater web sur VPS 8 Go)"
+log "Mises à jour : sudo ./install.sh update-matomo (éviter l'updater web)"
