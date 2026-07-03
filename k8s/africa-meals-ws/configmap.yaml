@@ -12,6 +12,14 @@ data:
   WS_PORT: "8000"
   DISABLE_SWAGGER: "true"
 
+  # CORS navigateur (admin dashboard → ws.wise-eat.com). *.wise-eat.com aussi accepté en code.
+  CORS_ORIGIN: "https://admin.wise-eat.com,https://dashboard.wise-eat.com,https://www.wise-eat.com,https://wise-eat.com"
+
+  # App Check — même accounts.json que l’API (secret africa-meals-api-firebase-sa).
+  # Sans ce fichier, le guard n’exige pas de jeton (fail-open + log).
+  AM_FIREBASE_SERVICE_ACCOUNT_PATH: "/run/secrets/firebase/accounts.json"
+  FIREBASE_SERVICE_ACCOUNT_PATH: "/run/secrets/firebase/accounts.json"
+
   # Depuis un pod k3s, host.k3s.internal = boucle vers les services sur 127.0.0.1 du VPS
   # (Stunnel, nginx stream MQTT, API Nest sur le même hôte).
   VPS_LOCAL_HOST: "host.k3s.internal"

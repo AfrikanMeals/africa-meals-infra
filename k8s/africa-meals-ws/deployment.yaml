@@ -77,6 +77,11 @@ spec:
                 name: africa-meals-ws
             - secretRef:
                 name: africa-meals-ws-env
+          volumeMounts:
+            # Même secret que africa-meals-api (App Check verifyToken).
+            - name: firebase-sa
+              mountPath: /run/secrets/firebase
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -121,3 +126,8 @@ spec:
             runAsNonRoot: true
             runAsUser: 1001
             runAsGroup: 1001
+      volumes:
+        - name: firebase-sa
+          secret:
+            secretName: africa-meals-api-firebase-sa
+            optional: true

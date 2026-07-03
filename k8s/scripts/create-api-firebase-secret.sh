@@ -28,5 +28,13 @@ fi
 "${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
   -p '{"data":{"AM_FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json"}}'
 
+# africa-meals-ws partage le même secret (App Check REST /api/chat/*).
+if "${KUBECTL[@]}" get configmap africa-meals-ws -n "${NAMESPACE}" >/dev/null 2>&1; then
+  "${KUBECTL[@]}" patch configmap africa-meals-ws -n "${NAMESPACE}" --type merge \
+    -p '{"data":{"AM_FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json","FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json"}}'
+  echo "ConfigMap africa-meals-ws : chemins Firebase App Check activés"
+fi
+
 echo "Secret ${SECRET_NAME} appliqué (accounts.json → /run/secrets/firebase/)"
 echo "ConfigMap africa-meals-api : AM_FIREBASE_SERVICE_ACCOUNT_PATH activé"
+echo "Redémarrer : kubectl rollout restart deployment/africa-meals-api deployment/africa-meals-ws -n ${NAMESPACE}"
