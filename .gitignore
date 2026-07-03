@@ -42,6 +42,10 @@ mongodb/data-dbgate/
 # k8s — secrets locaux
 k8s/africa-meals-ws/secret.env
 
+# Load test — identifiants
+scripts/load-test/.env
+scripts/load-test/results*.json
+
 # OS / éditeur
 .DS_Store
 *.swp

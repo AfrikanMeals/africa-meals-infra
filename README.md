@@ -434,7 +434,19 @@ BULLMQ_REDIS_PORT=6390
 | **Cloudflare Tunnel** (Mac / dev) | Voir `docs/CLOUDFLARED.md` + `cloudflared/config.example.yml` |
 | **VPS nginx + TLS** | `sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh grafana-console` |
 
-Dans `monitoring/.env.monitoring` : `GRAFANA_ROOT_URL=https://console.wise-eat.com/` puis `docker compose up -d` (recréer Grafana).
+Dans `monitoring/.env.monitoring` : `GRAFANA_ROOT_URL=https://console.wise-eat.com/` puis recréer **Grafana seul** (Prometheus est souvent géré hors Compose sur VPS k3s) :
+
+```bash
+cd monitoring && docker compose --env-file .env.monitoring up -d --no-deps --force-recreate grafana
+```
+
+Ou, si `wise-eat-prometheus` a été créé via `k8s/scripts/recreate-prometheus-host.sh` :
+
+```bash
+sudo k8s/scripts/recreate-grafana-host.sh
+```
+
+**Alertes e-mail (SMTP Zoho)** — dans `monitoring/.env.monitoring` (`GRAFANA_SMTP_*`, voir `.env.example`), puis l’une des commandes ci-dessus. Tester dans Grafana : Alerting → Contact points.
 
 ### Prometheus public (`logs.wise-eat.com`)
 
@@ -447,6 +459,13 @@ Prometheus n’a pas d’auth native : protection via **nginx basic auth** + TLS
 Le mot de passe basic auth est dans `monitoring/.env.monitoring` (`PROMETHEUS_BASIC_AUTH_USER` / `PROMETHEUS_BASIC_AUTH_PASSWORD`), généré par `./install.sh monitoring` si absent.
 
 Dans `monitoring/.env.monitoring` : `PROMETHEUS_EXTERNAL_URL=https://logs.wise-eat.com/` puis :
+
+```bash
+# VPS k3s : Prometheus est en docker run (host network), pas via compose
+sudo k8s/scripts/recreate-prometheus-host.sh
+```
+
+Si Prometheus est géré entièrement par Compose (pas de conflit de nom) :
 
 ```bash
 cd monitoring && docker compose --env-file .env.monitoring up -d --force-recreate prometheus
