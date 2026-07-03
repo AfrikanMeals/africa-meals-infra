@@ -120,5 +120,5 @@ data:
   INFRA_RUNTIME_SETTINGS_CACHE_MS: "30000"
 
   # --- Dry run load test (mutations simulées sans écriture DB) ---
-  DRY_RUN_ENABLED: "true"
+  DRY_RUN_ENABLED: "false"
   DRY_RUN_SECRET: "Z1YO7UOGi9f6n2B4jb5mXgXAq89qe7MW"
