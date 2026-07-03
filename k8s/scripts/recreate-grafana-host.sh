@@ -40,6 +40,13 @@ docker run -d \
   -e GF_SERVER_HTTP_PORT=3000 \
   -e GF_SERVER_ROOT_URL="${GRAFANA_ROOT_URL:-http://127.0.0.1:3000/}" \
   -e GF_AUTH_ANONYMOUS_ENABLED=false \
+  -e GF_SMTP_ENABLED="${GRAFANA_SMTP_ENABLED:-true}" \
+  -e GF_SMTP_HOST="${GRAFANA_SMTP_HOST:-smtp.zoho.com:587}" \
+  -e GF_SMTP_USER="${GRAFANA_SMTP_USER:-admin@wise-eat.com}" \
+  -e GF_SMTP_PASSWORD="${GRAFANA_SMTP_PASSWORD:-}" \
+  -e GF_SMTP_FROM_ADDRESS="${GRAFANA_SMTP_FROM_ADDRESS:-admin@wise-eat.com}" \
+  -e GF_SMTP_FROM_NAME="${GRAFANA_SMTP_FROM_NAME:-Wise Eat Alerts}" \
+  -e GF_SMTP_SKIP_VERIFY="${GRAFANA_SMTP_SKIP_VERIFY:-false}" \
   -v "${MONITORING_DIR}/grafana/provisioning:/etc/grafana/provisioning:ro" \
   -v "${MONITORING_DIR}/grafana/dashboards:/var/lib/grafana/dashboards:ro" \
   -v "${GRAFANA_VOLUME}:/var/lib/grafana" \
