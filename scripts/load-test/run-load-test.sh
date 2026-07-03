@@ -38,9 +38,12 @@ echo "VUs  : ${VUS} | cible : ${TARGET} | durée : ${LOAD_TEST_DURATION:-1m}"
 echo ""
 echo "Attention : test sur PRODUCTION — rate-limit login (15 / 15 min / IP)."
 echo "Le script ne login qu'une fois (setup k6) ; augmenter VUs pour simuler la charge."
+if [[ "${VUS}" -gt 500 ]]; then
+  echo ""
+  echo "AVERTISSEMENT : ${VUS} VUs — charge extrême depuis une seule IP (rate-limit, timeouts)."
+  echo "  Recommandé : LOAD_TEST_VUS<=100 pour un test représentatif."
+fi
 echo ""
 
-exec k6 run \
-  --env-file "${ENV_FILE}" \
-  "${SCRIPT_DIR}/load-test.k6.js" \
-  "$@"
+# Variables déjà exportées via `source .env` — k6 les lit via __ENV.* (pas de --env-file, absent sur certaines versions).
+exec k6 run "${SCRIPT_DIR}/load-test.k6.js" "$@"

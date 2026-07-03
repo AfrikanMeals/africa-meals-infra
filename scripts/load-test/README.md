@@ -55,7 +55,35 @@ Options k6 supplémentaires après `--` :
 | Métrique | Description |
 |----------|-------------|
 | `http_req_duration` | Latence HTTP globale |
-| `api_health_duration` | `GET /api/health` |
-| `api_me_duration` | `GET /api/auth/me` |
+| `http_req_duration{name:…}` | Latence par endpoint (résumé trié p95) |
 | `ws_stomp_connect_duration` | Temps jusqu’au frame STOMP `CONNECTED` |
-| `ws_stomp_connect_failures` | Échecs upgrade ou STOMP `ERROR` |
+| `ws_stomp_connect_failures` | Échecs upgrade ou STOMP `ERROR` / timeout connect |
+
+## Endpoints couverts (lecture seule)
+
+**API publique** : `/`, `/health`, `/health/infra`, `/platform/*` (mobile, modules, theme, maintenance, business-types, shipping), `/supported-countries`, `/search`, `/marketing-offer-deals/feed`
+
+**API authentifiée** : `/auth/me`, `/auth/me/rewards`, `/cart`, `/orders`, `/addresses/me`, `/notifications/inbox`
+
+**WS REST** : `/api/health`, `/api/chat/conversations` + STOMP `wss://…/stomp`
+
+Timeout par requête HTTP : `LOAD_TEST_HTTP_TIMEOUT=60s` (1 min).
+
+## Dry run production (sans écriture)
+
+1. Déployer API + WS avec `DRY_RUN_ENABLED=true` et `DRY_RUN_SECRET` (Secret k8s).
+2. Dans `.env` load test :
+
+```bash
+LOAD_TEST_DRY_RUN=true
+LOAD_TEST_DRY_RUN_SECRET=<même secret>
+```
+
+Les **GET** passent (lecture réelle) ; **POST/PUT/PATCH/DELETE** renvoient `{ dryRun: true, simulated: true }` sans toucher MongoDB.
+
+Headers requis :
+
+- `X-Wise-Eat-Dry-Run: 1`
+- `X-Wise-Eat-Dry-Run-Token: <secret>`
+
+Exemptés (exécution réelle) : webhooks Stripe, `/internal/*`, `/auth/login`, GraphQL queries, health/metrics.

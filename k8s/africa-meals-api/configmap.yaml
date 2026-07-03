@@ -118,3 +118,6 @@ data:
   # --- Probes / perf ---
   HTTP_REQUEST_TIMEOUT_MS: "60000"
   INFRA_RUNTIME_SETTINGS_CACHE_MS: "30000"
+
+  # --- Dry run load test (désactivé par défaut — activer + secret dans Secret) ---
+  DRY_RUN_ENABLED: "false"

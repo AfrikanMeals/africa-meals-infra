@@ -111,3 +111,6 @@ data:
   MONGOOSE_MAX_IDLE_MS: "60000"
   MONGOOSE_WAIT_QUEUE_MS: "10000"
   REQUEST_STATS_ENABLED: "true"
+
+  # --- Dry run load test (désactivé par défaut — activer + secret dans Secret) ---
+  DRY_RUN_ENABLED: "false"
