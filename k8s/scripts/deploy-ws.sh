@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Applique les manifests k8s et vérifie le rollout (3 pods, PDB minAvailable=2).
+# Applique les manifests k8s et vérifie le rollout (HPA 3–5 pods, PDB minAvailable=2).
 #
 # Usage :
 #   ./deploy-ws.sh
@@ -109,6 +109,21 @@ echo "Pods (${READY}/${DESIRED} ready) :"
 echo ""
 echo "PDB :"
 "${KUBECTL[@]}" get pdb -n "${NAMESPACE}" 2>/dev/null || true
+
+echo ""
+echo "metrics-server (requis HPA)..."
+"${SCRIPT_DIR}/ensure-metrics-server.sh" || true
+
+echo ""
+echo "HPA :"
+"${KUBECTL[@]}" get hpa "${DEPLOYMENT}" -n "${NAMESPACE}" 2>/dev/null || true
+HPA_MIN=$("${KUBECTL[@]}" get hpa "${DEPLOYMENT}" -n "${NAMESPACE}" \
+  -o jsonpath='{.spec.minReplicas}' 2>/dev/null || echo "")
+HPA_MAX=$("${KUBECTL[@]}" get hpa "${DEPLOYMENT}" -n "${NAMESPACE}" \
+  -o jsonpath='{.spec.maxReplicas}' 2>/dev/null || echo "")
+if [[ -n "${HPA_MIN}" && -n "${HPA_MAX}" ]]; then
+  echo "Autoscaling actif : ${HPA_MIN}–${HPA_MAX} pods (CPU 70 %, mémoire 80 %)"
+fi
 
 if [[ "${DO_VERIFY}" == "true" ]]; then
   echo ""

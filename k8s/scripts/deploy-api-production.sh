@@ -97,7 +97,7 @@ else
   echo "recaptcha-accounts.json absent (${RECAPTCHA_SA}) — SA reCAPTCHA wise-eat-com optionnel ignoré"
 fi
 
-echo "== 5/8 Déploiement 5 pods (512 Mi × 5 ≈ 2,5 Gi + restart Always) =="
+echo "== 5/8 Déploiement API + HPA (5–10 pods, 512 Mi/pod, restart Always) =="
 "${SCRIPT_DIR}/deploy-api.sh" --verify
 
 echo "== 6/8 Mise à jour WS → API interne k8s =="
@@ -155,6 +155,7 @@ Public :
 Interne VPS :
   curl -s http://127.0.0.1:30900/api/health
   sudo k3s kubectl get pods -n wise-eat -l app.kubernetes.io/name=africa-meals-api -o wide
+  sudo k3s kubectl get hpa africa-meals-api -n wise-eat
 
 Headlamp (k8s.wise-eat.com) :
   namespace wise-eat → deployments africa-meals-api + africa-meals-ws

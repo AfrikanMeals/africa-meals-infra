@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Déploiement WS VPS : image + manifests k8s + HPA (3–5 pods) + nginx.
 
 cd /opt/wise-eat
 git pull

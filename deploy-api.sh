@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Déploiement API VPS : image + manifests k8s + HPA (5–10 pods) + nginx.
 
 cd /opt/wise-eat
 git pull

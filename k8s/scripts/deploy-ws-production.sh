@@ -83,7 +83,7 @@ echo "== 3/7 Build image WS =="
 echo "== 4/7 Secret Kubernetes =="
 "${SCRIPT_DIR}/create-ws-secret.sh" "${ENV_FILE}"
 
-echo "== 5/7 Déploiement 3 pods (512 Mi + restart Always) =="
+echo "== 5/7 Déploiement WS + HPA (3–5 pods, 512 Mi/pod, restart Always) =="
 "${SCRIPT_DIR}/deploy-ws.sh" --verify
 
 if [[ "${SKIP_MONITORING}" == "false" ]]; then
@@ -131,6 +131,7 @@ Public :
 Interne VPS :
   curl -s http://127.0.0.1:30800/api/health
   sudo k3s kubectl get pods -n wise-eat -o wide
+  sudo k3s kubectl get hpa africa-meals-ws -n wise-eat
 
 Grafana :
   Dossier « Servers » → dashboard « Africa Meals WS (k8s) »
