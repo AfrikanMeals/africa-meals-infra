@@ -37,7 +37,7 @@
       "id": 1,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -163,8 +163,56 @@
       "type": "table"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Réplicas Ready, desired deployment, cible HPA (min 3 / max 5) et pods visibles par Prometheus.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2, "showPoints": "never", "spanNulls": true },
+          "decimals": 0,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 6 },
+      "id": 13,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "kube_deployment_status_replicas_available{deployment=\"africa-meals-ws\",namespace=\"wise-eat\"}",
+          "legendFormat": "disponibles (Ready)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "kube_deployment_spec_replicas{deployment=\"africa-meals-ws\",namespace=\"wise-eat\"}",
+          "legendFormat": "desired (deployment)",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"africa-meals-ws\",namespace=\"wise-eat\"}",
+          "legendFormat": "HPA actuel",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(ws_up{job=\"africa-meals-ws-pods\"} == 1)",
+          "legendFormat": "scrape Prometheus",
+          "refId": "D"
+        }
+      ],
+      "title": "Évolution du nombre de pods",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
       "id": 101,
       "panels": [],
       "title": "Ressources process",
@@ -194,7 +242,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 },
       "id": 3,
       "options": {
         "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -221,7 +269,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 },
       "id": 4,
       "options": {
         "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -240,7 +288,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
       "id": 102,
       "panels": [],
       "title": "STOMP & WebSocket",
@@ -256,7 +304,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
       "id": 5,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -280,7 +328,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "id": 6,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -296,7 +344,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
       "id": 103,
       "panels": [],
       "title": "gRPC (si GRPC_WS_SERVER_ENABLED=true)",
@@ -313,7 +361,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 24 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 31 },
       "id": 7,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -337,7 +385,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 31 },
       "id": 8,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -351,7 +399,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "id": 104,
       "panels": [],
       "title": "Intégrations & Kubernetes",
@@ -368,7 +416,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 32 },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 39 },
       "id": 9,
       "options": {
         "colorMode": "background",
@@ -395,7 +443,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 32 },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 39 },
       "id": 10,
       "options": {
         "colorMode": "background",
@@ -428,7 +476,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 32 },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 39 },
       "id": 11,
       "options": {
         "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -455,5 +503,5 @@
   "timezone": "browser",
   "title": "Africa Meals WS (k8s)",
   "uid": "africa-meals-ws-k8s",
-  "version": 4
+  "version": 5
 }
