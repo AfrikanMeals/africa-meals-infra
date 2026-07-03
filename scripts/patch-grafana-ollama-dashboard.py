@@ -9,6 +9,7 @@ from pathlib import Path
 PROM_UID = "prometheus"
 DS = {"type": "prometheus", "uid": PROM_UID}
 JOB = 'job="ollama"'
+IDLE = f' or on() (0 * ollama_up{{{JOB}}})'
 
 # Fallbacks : sans modèle en VRAM ni requête proxy, l'exporter ne publie que ollama_up.
 EXPR_PATCHES = {
@@ -19,6 +20,30 @@ EXPR_PATCHES = {
     f"ollama_prompt_tokens_per_second{{{JOB}}}": f'sum(ollama_prompt_tokens_per_second{{{JOB}}}) or on() vector(0)',
     f'increase(ollama_requests_total{{{JOB}}}[24h])': (
         f'sum(increase(ollama_requests_total{{{JOB}}}[24h])) or on() vector(0)'
+    ),
+    f'histogram_quantile(0.50, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m]))': (
+        f'(histogram_quantile(0.50, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m])){IDLE})'
+    ),
+    f'histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m]))': (
+        f'(histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m])){IDLE})'
+    ),
+    f'histogram_quantile(0.99, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m]))': (
+        f'(histogram_quantile(0.99, rate(ollama_request_duration_seconds_bucket{{{JOB}}},endpoint=~"$endpoint"[5m])){IDLE})'
+    ),
+    f'histogram_quantile(0.95, rate(ollama_eval_duration_seconds_bucket{{{JOB}}}[5m]))': (
+        f'(histogram_quantile(0.95, rate(ollama_eval_duration_seconds_bucket{{{JOB}}}[5m])){IDLE})'
+    ),
+    f'histogram_quantile(0.95, rate(ollama_prompt_eval_duration_seconds_bucket{{{JOB}}}[5m]))': (
+        f'(histogram_quantile(0.95, rate(ollama_prompt_eval_duration_seconds_bucket{{{JOB}}}[5m])){IDLE})'
+    ),
+    f"ollama_kv_cache_pressure_ratio{{{JOB}}}": f'(ollama_kv_cache_pressure_ratio{{{JOB}}}{IDLE})',
+    f'increase(ollama_model_load_total{{{JOB}}}[5m])': f'(increase(ollama_model_load_total{{{JOB}}}[5m]){IDLE})',
+    f'increase(ollama_model_unload_total{{{JOB}}}[5m])': f'(increase(ollama_model_unload_total{{{JOB}}}[5m]){IDLE})',
+    f'ollama_requests_in_flight{{{JOB}}},endpoint=~"$endpoint"': (
+        f'(ollama_requests_in_flight{{{JOB}}},endpoint=~"$endpoint"{IDLE})'
+    ),
+    f'rate(ollama_requests_total{{{JOB}}},endpoint=~"$endpoint"[5m])': (
+        f'(sum(rate(ollama_requests_total{{{JOB}}},endpoint=~"$endpoint"[5m])){IDLE})'
     ),
 }
 
@@ -62,8 +87,8 @@ def reference_panel() -> dict:
                 "- **API directe** : `http://127.0.0.1:11434`\n"
                 "- **Proxy métriques** : `http://127.0.0.1:9401` → TPS, latences, requêtes\n"
                 "- **Exporter** : `http://127.0.0.1:9400/metrics` (`job=ollama`)\n\n"
-                "**No data** sur VRAM/TPS est normal si aucun modèle n'est en VRAM "
-                "(`ollama ps` vide) et si l'API n'utilise pas le proxy `:9401`.\n\n"
+                "**0 partout** (pas « No data ») = Ollama UP mais aucune requête via le proxy `:9401` "
+                "et aucun modèle en VRAM.\n\n"
                 "Charger un modèle : `curl -s http://127.0.0.1:11434/api/generate "
                 "-d '{\"model\":\"llama3.2:3b\",\"prompt\":\"ping\",\"stream\":false}'`\n\n"
                 "Métriques requêtes : `OLLAMA_BASE_URL=http://127.0.0.1:9401` (africa-meals-api sur le VPS)."

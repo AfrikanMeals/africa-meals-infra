@@ -11,7 +11,7 @@
   "timezone": "browser",
   "refresh": "15s",
   "schemaVersion": 38,
-  "version": null,
+  "version": 2,
   "templating": {
     "list": [
       {
@@ -520,7 +520,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m]))",
+          "expr": "(histogram_quantile(0.50, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -529,7 +529,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m]))",
+          "expr": "(histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -538,7 +538,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m]))",
+          "expr": "(histogram_quantile(0.99, rate(ollama_request_duration_seconds_bucket{job=\"ollama\",endpoint=~\"$endpoint\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -584,7 +584,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(ollama_eval_duration_seconds_bucket{job=\"ollama\"}[5m]))",
+          "expr": "(histogram_quantile(0.95, rate(ollama_eval_duration_seconds_bucket{job=\"ollama\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} p95",
           "refId": "A"
         }
@@ -630,7 +630,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(ollama_prompt_eval_duration_seconds_bucket{job=\"ollama\"}[5m]))",
+          "expr": "(histogram_quantile(0.95, rate(ollama_prompt_eval_duration_seconds_bucket{job=\"ollama\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} p95",
           "refId": "A"
         }
@@ -677,7 +677,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_kv_cache_pressure_ratio{job=\"ollama\"}",
+          "expr": "(ollama_kv_cache_pressure_ratio{job=\"ollama\"} or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} {{quant}}",
           "refId": "A"
         }
@@ -723,7 +723,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "increase(ollama_model_load_total{job=\"ollama\"}[5m])",
+          "expr": "(increase(ollama_model_load_total{job=\"ollama\"}[5m]) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} loads",
           "refId": "A"
         },
@@ -732,7 +732,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "increase(ollama_model_unload_total{job=\"ollama\"}[5m])",
+          "expr": "(increase(ollama_model_unload_total{job=\"ollama\"}[5m]) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} unloads",
           "refId": "B"
         }
@@ -778,7 +778,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "ollama_requests_in_flight{job=\"ollama\",endpoint=~\"$endpoint\"}",
+          "expr": "(ollama_requests_in_flight{job=\"ollama\",endpoint=~\"$endpoint\"} or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
@@ -824,7 +824,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(ollama_requests_total{job=\"ollama\",endpoint=~\"$endpoint\"}[5m])",
+          "expr": "(sum(rate(ollama_requests_total{job=\"ollama\",endpoint=~\"$endpoint\"}[5m])) or on() (0 * ollama_up{job=\"ollama\"}))",
           "legendFormat": "{{model}} {{endpoint}}",
           "refId": "A"
         }
@@ -842,7 +842,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "## Wise Eat \u2014 Ollama\n\n- **Mod\u00e8les** : `nomic-embed-text`, `llama3.2:3b`\n- **API directe** : `http://127.0.0.1:11434`\n- **Proxy m\u00e9triques** : `http://127.0.0.1:9401` \u2192 TPS, latences, requ\u00eates\n- **Exporter** : `http://127.0.0.1:9400/metrics` (`job=ollama`)\n\n**No data** sur VRAM/TPS est normal si aucun mod\u00e8le n'est en VRAM (`ollama ps` vide) et si l'API n'utilise pas le proxy `:9401`.\n\nCharger un mod\u00e8le : `curl -s http://127.0.0.1:11434/api/generate -d '{\"model\":\"llama3.2:3b\",\"prompt\":\"ping\",\"stream\":false}'`\n\nM\u00e9triques requ\u00eates : `OLLAMA_BASE_URL=http://127.0.0.1:9401` (africa-meals-api sur le VPS)."
+        "content": "## Wise Eat \u2014 Ollama\n\n- **Mod\u00e8les** : `nomic-embed-text`, `llama3.2:3b`\n- **API directe** : `http://127.0.0.1:11434`\n- **Proxy m\u00e9triques** : `http://127.0.0.1:9401` \u2192 TPS, latences, requ\u00eates\n- **Exporter** : `http://127.0.0.1:9400/metrics` (`job=ollama`)\n\n**0 partout** (pas \u00ab No data \u00bb) = Ollama UP mais aucune requ\u00eate via le proxy `:9401` et aucun mod\u00e8le en VRAM.\n\nCharger un mod\u00e8le : `curl -s http://127.0.0.1:11434/api/generate -d '{\"model\":\"llama3.2:3b\",\"prompt\":\"ping\",\"stream\":false}'`\n\nM\u00e9triques requ\u00eates : `OLLAMA_BASE_URL=http://127.0.0.1:9401` (africa-meals-api sur le VPS).\n\nWarmup : `sudo ./scripts/ollama-warmup-metrics.sh`"
       }
     }
   ],

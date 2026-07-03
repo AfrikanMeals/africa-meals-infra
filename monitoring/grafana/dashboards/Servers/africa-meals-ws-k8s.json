@@ -352,7 +352,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Vide si gRPC serveur désactivé ou aucun appel récent",
+      "description": "0 ms / 0 % sans trafic gRPC récent ; méthodes réelles excluent __idle__",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -368,13 +368,19 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\"} > 0", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\",method!=\"__idle__\"} or on(pod) ws_grpc_rpc_p95_ms{job=\"africa-meals-ws-pods\",method=\"__idle__\"}) or on(pod) (0 * ws_up{job=\"africa-meals-ws-pods\"})",
+          "legendFormat": "{{method}} — {{pod}}",
+          "refId": "A"
+        }
       ],
       "title": "gRPC — latence p95",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "0 % sans erreur ni trafic ; repli ws_up si métriques gRPC absentes (pod non redéployé)",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -392,7 +398,12 @@
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\"} > 0", "legendFormat": "{{method}} — {{pod}}", "refId": "A" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\",method!=\"__idle__\"} or on(pod) ws_grpc_rpc_error_rate{job=\"africa-meals-ws-pods\",method=\"__idle__\"}) or on(pod) (0 * ws_up{job=\"africa-meals-ws-pods\"})",
+          "legendFormat": "{{method}} — {{pod}}",
+          "refId": "A"
+        }
       ],
       "title": "gRPC — taux d'erreur",
       "type": "timeseries"
@@ -503,5 +514,5 @@
   "timezone": "browser",
   "title": "Africa Meals WS (k8s)",
   "uid": "africa-meals-ws-k8s",
-  "version": 5
+  "version": 6
 }
