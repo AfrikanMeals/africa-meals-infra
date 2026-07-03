@@ -71,12 +71,12 @@ Timeout par requête HTTP : `LOAD_TEST_HTTP_TIMEOUT=60s` (1 min).
 
 ## Dry run production (sans écriture)
 
-1. Déployer API + WS avec `DRY_RUN_ENABLED=true` et `DRY_RUN_SECRET` (Secret k8s).
+1. Déployer API + WS (`kubectl apply -k k8s/africa-meals-api` + `k8s/africa-meals-ws`) — `DRY_RUN_*` dans ConfigMap.
 2. Dans `.env` load test :
 
 ```bash
 LOAD_TEST_DRY_RUN=true
-LOAD_TEST_DRY_RUN_SECRET=<même secret>
+LOAD_TEST_DRY_RUN_SECRET=Z1YO7UOGi9f6n2B4jb5mXgXAq89qe7MW
 ```
 
 Les **GET** passent (lecture réelle) ; **POST/PUT/PATCH/DELETE** renvoient `{ dryRun: true, simulated: true }` sans toucher MongoDB.

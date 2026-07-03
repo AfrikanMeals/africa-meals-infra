@@ -119,5 +119,6 @@ data:
   HTTP_REQUEST_TIMEOUT_MS: "60000"
   INFRA_RUNTIME_SETTINGS_CACHE_MS: "30000"
 
-  # --- Dry run load test (désactivé par défaut — activer + secret dans Secret) ---
-  DRY_RUN_ENABLED: "false"
+  # --- Dry run load test (mutations simulées sans écriture DB) ---
+  DRY_RUN_ENABLED: "true"
+  DRY_RUN_SECRET: "Z1YO7UOGi9f6n2B4jb5mXgXAq89qe7MW"

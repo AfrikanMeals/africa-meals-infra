@@ -112,5 +112,6 @@ data:
   MONGOOSE_WAIT_QUEUE_MS: "10000"
   REQUEST_STATS_ENABLED: "true"
 
-  # --- Dry run load test (désactivé par défaut — activer + secret dans Secret) ---
-  DRY_RUN_ENABLED: "false"
+  # --- Dry run load test (mutations simulées sans écriture DB) ---
+  DRY_RUN_ENABLED: "true"
+  DRY_RUN_SECRET: "Z1YO7UOGi9f6n2B4jb5mXgXAq89qe7MW"
