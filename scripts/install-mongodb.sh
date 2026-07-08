@@ -234,6 +234,10 @@ if [[ "${MONGO_BACKUP_ENABLED:-1}" == "1" ]]; then
   bash "${SCRIPT_DIR}/install-mongodb-backup.sh"
 fi
 
+if [[ "${MONGO_CLOUD_BACKUP_ENABLED:-0}" == "1" ]]; then
+  bash "${SCRIPT_DIR}/install-mongodb-cloud-backup.sh"
+fi
+
 if command -v nginx >/dev/null 2>&1 && systemctl is-active nginx >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/install-mongodb-admin.sh" 2>/dev/null || \
     warn "nginx MongoDB admin non configuré — sudo STUNNEL_TLS_EMAIL=... ./install.sh mongodb-admin"

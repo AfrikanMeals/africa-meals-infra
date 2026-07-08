@@ -12,6 +12,7 @@ SKIP_K3S=false
 SKIP_NGINX=false
 SKIP_MONITORING=false
 SKIP_TLS=false
+SKIP_CLEANUP=false
 
 if [[ "${ENV_ARG}" == --* ]]; then
   ENV_ARG=""
@@ -25,6 +26,7 @@ for arg in "$@"; do
     --skip-nginx) SKIP_NGINX=true ;;
     --skip-monitoring) SKIP_MONITORING=true ;;
     --skip-tls) SKIP_TLS=true ;;
+    --skip-cleanup) SKIP_CLEANUP=true ;;
     -h|--help)
       cat <<'EOF'
 Usage: sudo deploy-ws-production.sh [<.env>] [options]
@@ -34,6 +36,7 @@ Options:
   --skip-nginx        nginx ws.wise-eat.com déjà configuré
   --skip-monitoring   kube-state-metrics + Prometheus targets
   --skip-tls          ne pas émettre le certificat LE ws.wise-eat.com
+  --skip-cleanup      ne pas lancer le nettoyage disque (via deploy-ws.sh)
 
 VPS (/opt) :
   sudo deploy-ws-production.sh /opt/wise-eat-ws/.env.prod
@@ -84,7 +87,9 @@ echo "== 4/7 Secret Kubernetes =="
 "${SCRIPT_DIR}/create-ws-secret.sh" "${ENV_FILE}"
 
 echo "== 5/7 Déploiement WS + HPA (3–5 pods, 512 Mi/pod, restart Always) =="
-"${SCRIPT_DIR}/deploy-ws.sh" --verify
+DEPLOY_WS_ARGS=(--verify)
+[[ "${SKIP_CLEANUP}" == "true" ]] && DEPLOY_WS_ARGS+=(--skip-cleanup)
+"${SCRIPT_DIR}/deploy-ws.sh" "${DEPLOY_WS_ARGS[@]}"
 
 if [[ "${SKIP_MONITORING}" == "false" ]]; then
   echo "== 6/7 Prometheus (node_exporter + cibles WS) =="

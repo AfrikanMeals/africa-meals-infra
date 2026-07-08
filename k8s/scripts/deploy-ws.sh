@@ -12,13 +12,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_WS_DIR="$(cd "${SCRIPT_DIR}/../africa-meals-ws" && pwd)"
 DO_BUILD=false
 DO_VERIFY=false
+SKIP_CLEANUP=false
 
 for arg in "$@"; do
   case "${arg}" in
     --build) DO_BUILD=true ;;
     --verify) DO_VERIFY=true ;;
+    --skip-cleanup) SKIP_CLEANUP=true ;;
     -h|--help)
-      echo "Usage: $0 [--build] [--verify]"
+      echo "Usage: $0 [--build] [--verify] [--skip-cleanup]"
       exit 0
       ;;
     --*)
@@ -27,6 +29,14 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+run_disk_cleanup() {
+  if [[ "${SKIP_CLEANUP}" == "false" ]]; then
+    echo ""
+    echo "Nettoyage disque post-déploiement..."
+    "${SCRIPT_DIR}/lib/post-deploy-disk-cleanup.sh" ws || true
+  fi
+}
 
 KUBECTL=(kubectl)
 if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
@@ -133,6 +143,7 @@ if [[ "${DO_VERIFY}" == "true" ]]; then
       echo "OK — http://127.0.0.1:30800/api/health"
       curl -s "http://127.0.0.1:30800/api/health" | head -c 400
       echo ""
+      run_disk_cleanup
       exit 0
     fi
     sleep 3
@@ -144,3 +155,4 @@ fi
 echo ""
 echo "NodePort : http://127.0.0.1:30800/api/health"
 echo "nginx    : sudo ${SCRIPT_DIR}/patch-nginx-ws-backend.sh"
+run_disk_cleanup

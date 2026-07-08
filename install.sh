@@ -44,6 +44,7 @@ Composants:
   mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
+  mongodb-cloud-backup Cron upload hebdo MongoDB → GCS / Firebase / AWS (Backup_DB_1…4)
   repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
@@ -158,6 +159,9 @@ run_component() {
       ;;
     mongodb-backup)
       bash "${SCRIPTS}/install-mongodb-backup.sh"
+      ;;
+    mongodb-cloud-backup)
+      bash "${SCRIPTS}/install-mongodb-cloud-backup.sh"
       ;;
     repair-mongodb-prometheus)
       bash "${SCRIPTS}/repair-mongodb-prometheus.sh"

@@ -664,12 +664,18 @@ sudo MONGO_RENAME_COPY_DATA=0 MONGO_APP_DATABASE_NEW=wise_eat_db ./install.sh re
 
 Secrets dans `mongodb/.env.mongodb` (générés à l’install).
 
-**Sauvegarde** : dump quotidien (override `latest/`) + snapshot hebdomadaire (hardlinks rsync) → `/var/backups/wise-eat-mongodb` (cron 03:30).
+**Sauvegarde locale** : dump quotidien (override `latest/`) + snapshot hebdomadaire (hardlinks rsync) → `/var/backups/wise-eat-mongodb` (cron 03:30).
+
+**Sauvegarde cloud (hebdo)** : archive `.tar.gz` vers GCS, Firebase Storage et AWS S3 — rotation `Backup_DB_1` … `Backup_DB_4` (écrasement mensuel). **Credentials** : `/opt/wise-eat-api/.env.prod` (buckets + AWS + `accounts.json`).
 
 ```bash
-sudo ./install.sh mongodb-backup
-sudo ./scripts/backup-mongodb.sh   # test manuel
+sudo ./scripts/mongodb-backup.sh install-all      # crons local + cloud
+sudo ./scripts/mongodb-backup.sh env-check        # URIs résolues depuis .env.prod
+sudo ./scripts/mongodb-backup.sh local            # test dump
+sudo MONGO_CLOUD_BACKUP_FORCE=1 ./scripts/mongodb-backup.sh cloud
 ```
+
+Documentation : [docs/MONGODB_BACKUP.md](docs/MONGODB_BACKUP.md) · [docs/MONGODB_BACKUP.html](docs/MONGODB_BACKUP.html)
 
 **Grafana** : dossier **MongoDB** → **Wise Eat — MongoDB** (#12079) et **Wise Eat — MongoDB Overview** (#18847, Percona ss/sys).
 

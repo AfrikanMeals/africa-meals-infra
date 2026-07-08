@@ -12,6 +12,7 @@ SKIP_K3S=false
 SKIP_NGINX=false
 SKIP_MONITORING=false
 SKIP_TLS=false
+SKIP_CLEANUP=false
 
 if [[ "${ENV_ARG}" == --* ]]; then
   ENV_ARG=""
@@ -25,6 +26,7 @@ for arg in "$@"; do
     --skip-nginx) SKIP_NGINX=true ;;
     --skip-monitoring) SKIP_MONITORING=true ;;
     --skip-tls) SKIP_TLS=true ;;
+    --skip-cleanup) SKIP_CLEANUP=true ;;
     -h|--help)
       cat <<'EOF'
 Usage: sudo deploy-api-production.sh [<.env.prod>] [options]
@@ -34,6 +36,7 @@ Options:
   --skip-nginx        nginx api.wise-eat.com déjà configuré
   --skip-monitoring   kube-state-metrics + Prometheus targets
   --skip-tls          ne pas émettre le certificat LE api.wise-eat.com
+  --skip-cleanup      ne pas lancer le nettoyage disque (via deploy-api.sh)
 
 VPS (/opt) :
   sudo deploy-api-production.sh /opt/wise-eat-api/.env.prod
@@ -98,7 +101,9 @@ else
 fi
 
 echo "== 5/8 Déploiement API + HPA (5–10 pods, 512 Mi/pod, restart Always) =="
-"${SCRIPT_DIR}/deploy-api.sh" --verify
+DEPLOY_API_ARGS=(--verify)
+[[ "${SKIP_CLEANUP}" == "true" ]] && DEPLOY_API_ARGS+=(--skip-cleanup)
+"${SCRIPT_DIR}/deploy-api.sh" "${DEPLOY_API_ARGS[@]}"
 
 echo "== 6/8 Mise à jour WS → API interne k8s =="
 KUBECTL=(kubectl)
