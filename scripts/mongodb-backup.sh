@@ -22,6 +22,7 @@ Commandes:
   status             État backups locaux, crons et config cloud (.env.prod)
   env-check          Affiche URIs / credentials résolus depuis .env.prod
   preflight          Test CLI + credentials + écriture 1 octet par destination
+  verify-aws         Diagnostic AWS S3 (.env.prod — signature, horloge, ls/cp)
   install-cloud-tools Installe gcloud + aws CLI sur le VPS
   self-test          Tests unitaires (slot semaine)
   restore-help       Aide restauration depuis archive cloud ou local
@@ -109,6 +110,9 @@ case "${cmd}" in
   install-cloud-tools)
     require_sudo
     exec bash "${SCRIPT_DIR}/install-mongodb-cloud-tools.sh"
+    ;;
+  verify-aws)
+    exec bash "${SCRIPT_DIR}/verify-aws-s3-env.sh" "${MONGO_CLOUD_API_ENV:-/opt/wise-eat-api/.env.prod}"
     ;;
   status)
     echo "=== Crons ==="

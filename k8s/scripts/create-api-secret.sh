@@ -10,6 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/rewrite-k8s-mongodb-uri.sh
 source "${SCRIPT_DIR}/lib/rewrite-k8s-mongodb-uri.sh"
+# shellcheck source=../../scripts/lib/env-file-sanitize.sh
+source "${SCRIPT_DIR}/../../scripts/lib/env-file-sanitize.sh"
 
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
 SECRET_NAME="${K8S_API_SECRET:-africa-meals-api-env}"
@@ -31,7 +33,10 @@ FILTERED="$(mktemp)"
 trap 'rm -f "${FILTERED}"' EXIT
 
 RAW="$(mktemp)"
+SANITIZED="$(mktemp)"
 grep -vE '^\s*(#|$)' "${ENV_FILE}" | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' > "${RAW}" || true
+env_file_sanitize_file "${RAW}" "${SANITIZED}"
+mv "${SANITIZED}" "${RAW}"
 
 if [[ ! -s "${RAW}" ]]; then
   echo "Aucune variable dans ${ENV_FILE}" >&2

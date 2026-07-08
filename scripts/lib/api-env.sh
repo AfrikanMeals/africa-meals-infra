@@ -2,16 +2,14 @@
 # Lecture sélective de /opt/wise-eat-api/.env.prod (sans source bash complet).
 set -euo pipefail
 
+# shellcheck source=env-file-sanitize.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env-file-sanitize.sh"
+
 API_ENV_FILE="${API_ENV_FILE:-${MONGO_CLOUD_API_ENV:-/opt/wise-eat-api/.env.prod}}"
 API_ENV_DIR="${API_ENV_DIR:-$(dirname "${API_ENV_FILE}")}"
 
 api_env_strip_quotes() {
-  local v="$1"
-  v="${v#\"}"
-  v="${v%\"}"
-  v="${v#\'}"
-  v="${v%\'}"
-  echo "${v}"
+  env_file_sanitize_value "$1"
 }
 
 api_env_var() {
