@@ -51,7 +51,7 @@ if aws s3 ls "s3://${BUCKET}/" --region "${REGION}" 2>&1; then
 else
   echo "FAIL ListBucket — si « signature does not match » : retirer les guillemets de AWS_SECRET_ACCESS_KEY dans .env.prod puis :"
   echo "  sudo k8s/scripts/create-api-secret.sh ${API_ENV_FILE}"
-  echo "  sudo kubectl rollout restart deployment -n wise-eat -l app=africa-meals-api"
+  echo "  sudo kubectl rollout restart deployment/africa-meals-api -n wise-eat"
   exit 1
 fi
 
