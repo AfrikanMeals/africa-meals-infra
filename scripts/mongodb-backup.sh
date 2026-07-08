@@ -21,6 +21,8 @@ Commandes:
   install-all        install-local + install-cloud
   status             État backups locaux, crons et config cloud (.env.prod)
   env-check          Affiche URIs / credentials résolus depuis .env.prod
+  preflight          Test CLI + credentials + écriture 1 octet par destination
+  install-cloud-tools Installe gcloud + aws CLI sur le VPS
   self-test          Tests unitaires (slot semaine)
   restore-help       Aide restauration depuis archive cloud ou local
 
@@ -90,6 +92,23 @@ case "${cmd}" in
     source "${SCRIPT_DIR}/lib/mongodb-cloud-backup-env.sh"
     mongodb_cloud_backup_apply_api_env
     mongodb_cloud_backup_print_env_summary
+    ;;
+  preflight)
+    require_sudo
+    [[ -f "${MONGODB_ENV}" ]] || die "Absent : ${MONGODB_ENV}"
+    set -a && source "${MONGODB_ENV}" && set +a
+    # shellcheck source=lib/mongodb-cloud-backup.sh
+    source "${SCRIPT_DIR}/lib/mongodb-cloud-backup.sh"
+    # shellcheck source=lib/mongodb-cloud-backup-env.sh
+    source "${SCRIPT_DIR}/lib/mongodb-cloud-backup-env.sh"
+    mongodb_cloud_backup_apply_api_env
+    mongodb_cloud_backup_print_env_summary
+    echo ""
+    mongodb_cloud_backup_preflight
+    ;;
+  install-cloud-tools)
+    require_sudo
+    exec bash "${SCRIPT_DIR}/install-mongodb-cloud-tools.sh"
     ;;
   status)
     echo "=== Crons ==="

@@ -52,6 +52,13 @@ if [[ "${GCS_ON}" -eq 0 && "${FIREBASE_ON}" -eq 0 && "${AWS_ON}" -eq 0 ]]; then
   die "Aucune destination cloud activée — activer MONGO_CLOUD_GCS_ENABLED / FIREBASE / AWS"
 fi
 
+if [[ "${MONGO_CLOUD_BACKUP_DRY_RUN}" != "1" ]] && [[ "${MONGO_CLOUD_BACKUP_SKIP_PREFLIGHT:-0}" != "1" ]]; then
+  log "Preflight cloud…"
+  if ! mongodb_cloud_backup_preflight; then
+    die "Preflight échoué — sudo ./scripts/mongodb-backup.sh preflight pour le détail"
+  fi
+fi
+
 SOURCE_DIR="$(mongodb_cloud_backup_resolve_source_dir "${MONGO_BACKUP_DIR}")" \
   || die "Aucune sauvegarde locale dans ${MONGO_BACKUP_DIR}/latest (lancer sudo ./scripts/backup-mongodb.sh)"
 
@@ -95,7 +102,7 @@ upload_to_gcs() {
 
   log "${label} → ${dest} (écrase l'archive du même slot)"
   if ! mongodb_cloud_backup_run_gs_upload "${dest}" "${ARCHIVE}" "${creds}"; then
-    warn "${label} upload échoué — vérifier URI, credentials et gcloud/gsutil"
+    warn "${label} upload échoué : ${MONGODB_CLOUD_LAST_ERROR}"
     return 1
   fi
   mongodb_cloud_backup_run_gs_upload "${meta_dest}" "${META}" "${creds}" \
@@ -129,7 +136,7 @@ upload_to_aws() {
 
   log "AWS S3 → ${dest} (écrase l'archive du même slot)"
   if ! mongodb_cloud_backup_run_aws_upload "${dest}" "${ARCHIVE}" "${region}"; then
-    warn "AWS S3 upload échoué — vérifier aws CLI, URI et credentials"
+    warn "AWS S3 upload échoué : ${MONGODB_CLOUD_LAST_ERROR}"
     return 1
   fi
   mongodb_cloud_backup_run_aws_upload "${meta_dest}" "${META}" "${region}" \

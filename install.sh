@@ -45,6 +45,7 @@ Composants:
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
   mongodb-cloud-backup Cron upload hebdo MongoDB → GCS / Firebase / AWS (Backup_DB_1…4)
+  mongodb-cloud-tools  Installe gcloud + aws CLI (upload cloud MongoDB)
   repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
@@ -162,6 +163,9 @@ run_component() {
       ;;
     mongodb-cloud-backup)
       bash "${SCRIPTS}/install-mongodb-cloud-backup.sh"
+      ;;
+    mongodb-cloud-tools)
+      bash "${SCRIPTS}/install-mongodb-cloud-tools.sh"
       ;;
     repair-mongodb-prometheus)
       bash "${SCRIPTS}/repair-mongodb-prometheus.sh"

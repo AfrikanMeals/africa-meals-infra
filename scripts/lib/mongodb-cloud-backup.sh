@@ -3,8 +3,8 @@
 # Rotation mensuelle : Backup_DB_1 … Backup_DB_4 (écrasement du même slot chaque mois).
 set -euo pipefail
 
-# Semaine du mois (1–4) à partir du jour calendaire :
-#   jours 1–7   → 1   jours 8–14  → 2   jours 15–21 → 3   jours 22+ → 4
+MONGODB_CLOUD_LAST_ERROR=""
+
 mongodb_cloud_backup_week_slot() {
   local day
   day="$(date +%d)"
@@ -81,23 +81,69 @@ mongodb_cloud_backup_uri_join() {
   echo "${base}/${object}"
 }
 
+mongodb_cloud_backup_has_gs_cli() {
+  command -v gcloud >/dev/null 2>&1 || command -v gsutil >/dev/null 2>&1
+}
+
+mongodb_cloud_backup_gs_cli_hint() {
+  echo "Installer : sudo ./install.sh mongodb-cloud-tools"
+  echo "  ou : sudo apt install -y google-cloud-cli  (ou snap install google-cloud-cli --classic)"
+}
+
+mongodb_cloud_backup_aws_cli_hint() {
+  echo "Installer : sudo ./install.sh mongodb-cloud-tools"
+  echo "  ou : sudo apt install -y awscli"
+}
+
 mongodb_cloud_backup_run_gs_upload() {
   local uri="$1"
   local archive="$2"
   local credentials="${3:-}"
+  local err_file rc
+
+  MONGODB_CLOUD_LAST_ERROR=""
+
+  if ! mongodb_cloud_backup_has_gs_cli; then
+    MONGODB_CLOUD_LAST_ERROR="gcloud/gsutil introuvable sur le PATH. $(mongodb_cloud_backup_gs_cli_hint)"
+    return 2
+  fi
 
   if [[ -n "${credentials}" ]]; then
-    [[ -f "${credentials}" ]] || return 1
+    if [[ ! -f "${credentials}" ]]; then
+      MONGODB_CLOUD_LAST_ERROR="Fichier credentials absent ou illisible : ${credentials}"
+      return 3
+    fi
+    if [[ ! -r "${credentials}" ]]; then
+      MONGODB_CLOUD_LAST_ERROR="Credentials non lisibles (chmod 600 recommandé) : ${credentials}"
+      return 3
+    fi
     export GOOGLE_APPLICATION_CREDENTIALS="${credentials}"
+  elif [[ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]]; then
+    MONGODB_CLOUD_LAST_ERROR="Aucun compte de service Google (GOOGLE_APPLICATION_CREDENTIALS / accounts.json)"
+    return 3
   fi
 
+  err_file="$(mktemp)"
   if command -v gcloud >/dev/null 2>&1; then
-    gcloud storage cp --quiet "${archive}" "${uri}"
-    return 0
+    if gcloud storage cp --quiet "${archive}" "${uri}" 2>"${err_file}"; then
+      rm -f "${err_file}"
+      return 0
+    fi
+    rc=$?
+  elif command -v gsutil >/dev/null 2>&1; then
+    if gsutil -q cp "${archive}" "${uri}" 2>"${err_file}"; then
+      rm -f "${err_file}"
+      return 0
+    fi
+    rc=$?
+  else
+    rc=2
   fi
-  if command -v gsutil >/dev/null 2>&1; then
-    gsutil -q cp "${archive}" "${uri}"
-    return 0
+
+  MONGODB_CLOUD_LAST_ERROR="$(tr '\n' ' ' < "${err_file}" | sed 's/  */ /g' | cut -c1-500)"
+  rm -f "${err_file}"
+  if [[ -z "${MONGODB_CLOUD_LAST_ERROR}" ]]; then
+    MONGODB_CLOUD_LAST_ERROR="gcloud/gsutil exit ${rc} (sans message — vérifier IAM Storage Object Admin sur le bucket)"
   fi
   return 1
 }
@@ -106,13 +152,35 @@ mongodb_cloud_backup_run_aws_upload() {
   local uri="$1"
   local archive="$2"
   local region="${3:-}"
+  local err_file rc aws_cmd
 
-  command -v aws >/dev/null 2>&1 || return 1
-  if [[ -n "${region}" ]]; then
-    aws s3 cp "${archive}" "${uri}" --region "${region}" --only-show-errors
-  else
-    aws s3 cp "${archive}" "${uri}" --only-show-errors
+  MONGODB_CLOUD_LAST_ERROR=""
+
+  if ! command -v aws >/dev/null 2>&1; then
+    MONGODB_CLOUD_LAST_ERROR="aws CLI introuvable. $(mongodb_cloud_backup_aws_cli_hint)"
+    return 2
   fi
+
+  if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]] && [[ -z "${AWS_PROFILE:-}" ]] && [[ ! -f "${HOME}/.aws/credentials" ]]; then
+    MONGODB_CLOUD_LAST_ERROR="AWS_ACCESS_KEY_ID absent (.env.prod) et ~/.aws/credentials introuvable"
+    return 3
+  fi
+
+  err_file="$(mktemp)"
+  aws_cmd=(aws s3 cp "${archive}" "${uri}" --only-show-errors)
+  [[ -n "${region}" ]] && aws_cmd+=(--region "${region}")
+
+  if "${aws_cmd[@]}" 2>"${err_file}"; then
+    rm -f "${err_file}"
+    return 0
+  fi
+  rc=$?
+  MONGODB_CLOUD_LAST_ERROR="$(tr '\n' ' ' < "${err_file}" | sed 's/  */ /g' | cut -c1-500)"
+  rm -f "${err_file}"
+  if [[ -z "${MONGODB_CLOUD_LAST_ERROR}" ]]; then
+    MONGODB_CLOUD_LAST_ERROR="aws s3 cp exit ${rc} (vérifier clés IAM et s3:PutObject sur ${uri})"
+  fi
+  return 1
 }
 
 mongodb_cloud_backup_self_test() {
