@@ -19,7 +19,7 @@ PM2 = **dev local uniquement**. Production API = **k3s** (comme WS).
 - k3s + **africa-meals-ws** déjà déployé (namespace `wise-eat`, Stunnel Redis/Mongo/MQTT actifs)
 - DNS `api.wise-eat.com` → IP VPS (Cloudflare Proxied OK)
 - Fichier `/opt/wise-eat-api/.env.prod` (modèle : `africa-meals-api/.env.prod` du monorepo)
-- `accounts.json` Firebase à côté du `.env.prod` (optionnel, projet **wise-eat-ca** / FCM)
+- `accounts.json` Firebase à côté du `.env.prod` (optionnel, projet **wise-eat-com** / FCM)
 - `recaptcha-accounts.json` à côté du `.env.prod` (optionnel, projet **wise-eat-com** / formulaire contact)
 
 ---

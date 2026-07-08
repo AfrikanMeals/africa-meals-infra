@@ -69,7 +69,7 @@ sudo ./scripts/mongodb-backup.sh env-check
 
 **Comptes de service** (`.env.prod`) :
 - **GCS** (`GCS_BUCKET`) → `accounts.json` ou `GOOGLE_APPLICATION_CREDENTIALS`
-- **Firebase** (`AM_FIREBASE_STORAGE_BUCKET` wise-eat-com) → `recaptcha-accounts.json` (pas le SA FCM wise-eat-ca)
+- **Firebase** (`AM_FIREBASE_STORAGE_BUCKET` wise-eat-com) → `recaptcha-accounts.json` (compte de service reCAPTCHA dédié)
 - **AWS S3** → `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` avec `s3:PutObject` sur `mongodb/*`
 
 ## Commandes

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Secret Kubernetes pour le compte de service reCAPTCHA Enterprise (projet wise-eat-com).
-# Distinct de accounts.json Firebase (wise-eat-ca / FCM).
+# Distinct de accounts.json Firebase (wise-eat-com / FCM).
 #
 # Usage :
 #   ./create-api-recaptcha-secret.sh /opt/wise-eat-api/recaptcha-accounts.json
