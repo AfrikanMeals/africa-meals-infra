@@ -1298,40 +1298,40 @@ stunnel_configure_rlimits() {
   log "stunnel4 RLIMITS=-n ${nofile} (≈${STUNNEL_MAX_CLIENTS} clients TLS max)"
 }
 
-# Stunnel : accept = :::PORT (pas [::]:PORT — résolu comme hostname par stunnel4).
-# Si net.ipv6.bindv6only=0, :::PORT accepte déjà v4+v6 → retirer les sections accept=PORT seules.
+# Stunnel dual-stack :
+#   accept = 0.0.0.0:PORT  → IPv4 only (pods k3s / cni0 — évite ::ffff: + ECONNRESET)
+#   accept = :::PORT       → IPv6 only (pas [::]:PORT — résolu comme hostname par stunnel4)
+# Exige net.ipv6.bindv6only=1. Si =0, :::PORT accepte aussi le v4 → conflit / path ::ffff cassé.
 stunnel_ipv6_bindv6only() {
   sysctl -n net.ipv6.bindv6only 2>/dev/null || echo 1
 }
 
-stunnel_strip_redundant_v4_listeners() {
-  local conf tmp
+# Force bindv6only=1 pour cohabiter 0.0.0.0:PORT + :::PORT sans Address already in use.
+stunnel_ensure_bindv6only() {
+  local cur
+  cur="$(stunnel_ipv6_bindv6only)"
+  if [[ "${cur}" == "1" ]]; then
+    log "net.ipv6.bindv6only=1 (OK — listeners IPv4/IPv6 séparés)"
+    return 0
+  fi
+  log "net.ipv6.bindv6only=${cur} → forcer 1 (requis pour accept=0.0.0.0:PORT + :::PORT)"
+  sysctl -w net.ipv6.bindv6only=1 >/dev/null
+  mkdir -p /etc/sysctl.d
+  echo 'net.ipv6.bindv6only=1' > /etc/sysctl.d/99-wise-eat-bindv6only.conf
+}
+
+# Si une conf legacy a encore « accept = PORT » (sans 0.0.0.0), le réécrire en IPv4 explicite.
+stunnel_normalize_v4_accept_listeners() {
+  local conf
   for conf in /etc/stunnel/conf.d/*.conf; do
     [[ -f "${conf}" ]] || continue
-    tmp="$(mktemp)"
-    awk '
-      function flush() {
-        if (block != "" && !drop_block) printf "%s", block
-        block = ""
-        drop_block = 0
-      }
-      /^\[/ {
-        flush()
-        block = $0 "\n"
-        next
-      }
-      {
-        block = block $0 "\n"
-        if ($0 ~ /^accept = [0-9][0-9]*$/) drop_block = 1
-        if ($0 ~ /^accept = :::[0-9]/) drop_block = 0
-      }
-      END { flush() }
-    ' "${conf}" > "${tmp}"
-    mv "${tmp}" "${conf}"
+    # accept = 6381  →  accept = 0.0.0.0:6381  (ne touche pas ::: ni 0.0.0.0 déjà présents)
+    sed -i -E 's/^accept = ([0-9]+)$/accept = 0.0.0.0:\1/' "${conf}"
   done
 }
 
 stunnel_sync_conf_d() {
+  stunnel_ensure_bindv6only
   for primary_conf in redis-cache.conf redis-bullmq.conf; do
     cp "${STUNNEL_CONF_SRC}/${primary_conf}" /etc/stunnel/conf.d/
   done
@@ -1356,13 +1356,8 @@ stunnel_sync_conf_d() {
   else
     rm -f /etc/stunnel/conf.d/mongodb-tls.conf
   fi
-  local bindv6only
-  bindv6only="$(stunnel_ipv6_bindv6only)"
-  log "net.ipv6.bindv6only=${bindv6only}"
-  if [[ "${bindv6only}" == "0" ]]; then
-    log "bindv6only=0 — listeners :::PORT couvrent v4+v6 ; retrait sections accept=PORT seules"
-    stunnel_strip_redundant_v4_listeners
-  fi
+  stunnel_normalize_v4_accept_listeners
+  log "net.ipv6.bindv6only=$(stunnel_ipv6_bindv6only) — listeners 0.0.0.0:PORT + :::PORT"
   stunnel_apply_service_defaults
   chmod 644 /etc/stunnel/conf.d/*.conf 2>/dev/null || true
 }
