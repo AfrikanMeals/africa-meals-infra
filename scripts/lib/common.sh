@@ -42,8 +42,9 @@ REDIS_TLS_DOMAIN="${REDIS_TLS_DOMAIN:-cache.wise-eat.com}"
 # Limite connexions TLS Stunnel 5.x (défaut ≈500 si ulimit=1024 — trop bas pour k8s + dev + réplicas).
 # Stunnel calcule max_clients = max_fds×125/256 ; on règle RLIMITS=-n dans /etc/default/stunnel4.
 STUNNEL_MAX_CLIENTS="${STUNNEL_MAX_CLIENTS:-5000}"
-# Fermer les tunnels idle (secondes) — option service-level, injectée dans conf.d.
-STUNNEL_TIMEOUT_IDLE="${STUNNEL_TIMEOUT_IDLE:-120}"
+# Idle tunnel timeout (secondes) — 0 = garder ouvert (recommandé Mongo/Redis drivers).
+# Injecté dans chaque service conf.d via stunnel_apply_service_defaults.
+STUNNEL_TIMEOUT_IDLE="${STUNNEL_TIMEOUT_IDLE:-0}"
 MEMCACHED_TLS_PORT="${MEMCACHED_TLS_PORT:-11212}"
 GRAFANA_CONSOLE_DOMAIN="${GRAFANA_CONSOLE_DOMAIN:-console.wise-eat.com}"
 GRAFANA_BACKEND_HOST="${GRAFANA_BACKEND_HOST:-127.0.0.1}"
@@ -1429,7 +1430,11 @@ setgid = stunnel4
 include = /etc/stunnel/conf.d
 EOF
   stunnel_configure_rlimits
-  log "stunnel.conf — TIMEOUTidle=${STUNNEL_TIMEOUT_IDLE}s par service (conf.d)"
+  if [[ "${STUNNEL_TIMEOUT_IDLE}" == "0" ]]; then
+    log "stunnel.conf — TIMEOUTidle=0 (idle timeout désactivé) par service (conf.d)"
+  else
+    log "stunnel.conf — TIMEOUTidle=${STUNNEL_TIMEOUT_IDLE}s par service (conf.d)"
+  fi
 
   local stray
   shopt -s nullglob

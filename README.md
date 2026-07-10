@@ -134,7 +134,7 @@ Détails techniques :
 | `WISE_EAT_DOMAIN` | `wise-eat.cloud` | vhost WS + certificat |
 | `REDIS_TLS_DOMAIN` | `cache.wise-eat.com` | certificat Stunnel Redis (:6381/:6382) |
 | `STUNNEL_MAX_CLIENTS` | `5000` | limite globale connexions TLS (défaut binaire = **500**) |
-| `STUNNEL_TIMEOUT_IDLE` | `120` | fermeture tunnels Stunnel idle (secondes) |
+| `STUNNEL_TIMEOUT_IDLE` | `0` | idle Stunnel (secondes) ; `0` = garder ouvert (drivers Mongo/Redis) |
 | `GRAFANA_CONSOLE_DOMAIN` | `console.wise-eat.com` | Grafana public (nginx ou tunnel) |
 | `PROMETHEUS_LOGS_DOMAIN` | `logs.wise-eat.com` | Prometheus public (nginx + basic auth) |
 | `MINIO_STORAGE_DOMAIN` | `storage.wise-eat.com` | MinIO S3 public (nginx + TLS) |
