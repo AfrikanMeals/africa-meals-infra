@@ -94,9 +94,9 @@ resolve_k3s_host_gateway_ip() {
   fi
 
   if [[ -n "${node_ip}" ]]; then
-    echo "ATTENTION: InternalIP ${node_ip} est publique — hairpin NAT probable (ECONNRESET Mongo/Redis)." >&2
-    echo "  Installez/vérifiez cni0, ou forcez : K3S_HOST_GATEWAY_IP=10.42.0.1 $0" >&2
-    printf '%s\n' "${node_ip}"
+    echo "ATTENTION: InternalIP ${node_ip} est publique — refusée (hairpin NAT → ECONNRESET)." >&2
+    echo "  Fallback 10.42.0.1 — override : K3S_HOST_GATEWAY_IP=<ip-cni0> $0" >&2
+    printf '%s\n' "10.42.0.1"
     return 0
   fi
 

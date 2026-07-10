@@ -159,13 +159,14 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 
 | Symptôme | Action |
 |----------|--------|
-| CrashLoop Mongo `ECONNREFUSED :27017` | recréer le Secret : `create-api-secret.sh` (réécrit `:27018` Stunnel) |
-| CrashLoop Redis `ERR_TLS_CERT_ALTNAME_INVALID` | rebuild API (fix `REDIS_TLS_SERVERNAME`) + rollout restart |
+| CrashLoop Mongo `ECONNREFUSED :27017` | republier Mongo sur cni0 + `create-api-secret.sh` (URI rs0 plaintext) |
+| CrashLoop Redis `ERR_TLS_CERT_ALTNAME_INVALID` | ConfigMap `REDIS_TLS=false` + secret réécrit `redis://` (pas `rediss://`) |
+| CrashLoop `ENOTFOUND host.k3s.internal` | `hostAliases` dans Deployment + `ensure-k3s-host-gateway.sh` |
 | Grafana node_exporter DOWN | `sudo k8s/scripts/repair-grafana-monitoring.sh` (prometheus.yml → 127.0.0.1) |
 | Grafana Servers sans API | `git pull` + `docker restart wise-eat-grafana` |
 | 502 api.wise-eat.com | `curl 127.0.0.1:30900/api/health` + `patch-nginx-api-backend.sh` |
 | Grafana vide | `repair-api-prometheus.sh` + restart Grafana |
-| Atlas au lieu de Stunnel | utiliser `.env.prod` avec `host.k3s.internal:27018` |
+| Atlas au lieu de Mongo local | utiliser `.env.prod` ; `create-api-secret.sh` réécrit vers `host.k3s.internal:27017|27027|27028` |
 | Upload médias `ECONNREFUSED` MinIO `:9000` | `MINIO_ENDPOINT=https://storage.wise-eat.com` dans `.env.prod` (pas `host.k3s.internal:9000`) puis `create-api-secret.sh` + rollout restart |
 | reCAPTCHA contact `KEY_MISMATCH` / permission denied | `RECAPTCHA_ENTERPRISE_PROJECT_ID=wise-eat-com`, clé site alignée, vider `RECAPTCHA_ENTERPRISE_API_KEY`, déposer `recaptcha-accounts.json` (SA `@wise-eat-com`) puis `create-api-recaptcha-secret.sh` + rollout restart |
 | Upload S3 `signature does not match` | **Retirer les guillemets** de `AWS_SECRET_ACCESS_KEY` dans `.env.prod` (dotenv local les retire, `kubectl --from-env-file` non). Puis `create-api-secret.sh` + rollout API. Diagnostic : `sudo ./scripts/verify-aws-s3-env.sh`. Vérifier aussi horloge VPS (`timedatectl`). **Rotation IAM** si clé exposée. |

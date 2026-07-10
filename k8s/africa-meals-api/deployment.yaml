@@ -25,6 +25,11 @@ spec:
         app.kubernetes.io/name: africa-meals-api
         app.kubernetes.io/component: api
     spec:
+      # host.k3s.internal → bridge CNI (services hôte). Patchable via ensure-k3s-host-gateway.sh.
+      hostAliases:
+        - ip: "10.42.0.1"
+          hostnames:
+            - host.k3s.internal
       restartPolicy: Always
       serviceAccountName: africa-meals-api
       terminationGracePeriodSeconds: 90

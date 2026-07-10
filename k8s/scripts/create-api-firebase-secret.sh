@@ -25,8 +25,13 @@ fi
   --from-file=accounts.json="${SA_FILE}" \
   --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
-"${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
-  -p '{"data":{"AM_FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json"}}'
+if "${KUBECTL[@]}" get configmap africa-meals-api -n "${NAMESPACE}" >/dev/null 2>&1; then
+  "${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
+    -p '{"data":{"AM_FIREBASE_SERVICE_ACCOUNT_PATH":"/run/secrets/firebase/accounts.json"}}'
+  echo "ConfigMap africa-meals-api : AM_FIREBASE_SERVICE_ACCOUNT_PATH activé"
+else
+  echo "ConfigMap africa-meals-api absent — patch Firebase reporté (après deploy-api)"
+fi
 
 # africa-meals-ws partage le même secret (App Check REST /api/chat/*).
 if "${KUBECTL[@]}" get configmap africa-meals-ws -n "${NAMESPACE}" >/dev/null 2>&1; then
@@ -36,5 +41,4 @@ if "${KUBECTL[@]}" get configmap africa-meals-ws -n "${NAMESPACE}" >/dev/null 2>
 fi
 
 echo "Secret ${SECRET_NAME} appliqué (accounts.json → /run/secrets/firebase/)"
-echo "ConfigMap africa-meals-api : AM_FIREBASE_SERVICE_ACCOUNT_PATH activé"
 echo "Redémarrer : kubectl rollout restart deployment/africa-meals-api deployment/africa-meals-ws -n ${NAMESPACE}"

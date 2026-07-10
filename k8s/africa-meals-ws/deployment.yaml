@@ -25,6 +25,12 @@ spec:
         app.kubernetes.io/name: africa-meals-ws
         app.kubernetes.io/component: websocket
     spec:
+      # host.k3s.internal → bridge CNI (Stunnel / Mongo / Redis sur l’hôte).
+      # ensure-k3s-host-gateway.sh peut re-patcher l’IP si ≠ 10.42.0.1.
+      hostAliases:
+        - ip: "10.42.0.1"
+          hostnames:
+            - host.k3s.internal
       restartPolicy: Always
       serviceAccountName: africa-meals-ws
       terminationGracePeriodSeconds: 60

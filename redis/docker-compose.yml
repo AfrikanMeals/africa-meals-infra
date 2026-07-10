@@ -38,6 +38,7 @@ services:
       - /etc/redis/users.acl
     ports:
       - "127.0.0.1:6379:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:6379:6379"
     volumes:
       - ./data-cache:/data
       - ./cache-users.acl:/etc/redis/users.acl:ro
@@ -79,6 +80,7 @@ services:
       - /etc/redis/users.acl
     ports:
       - "127.0.0.1:6380:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:6380:6379"
     volumes:
       - ./data-bullmq:/data
       - ./bull-users.acl:/etc/redis/users.acl:ro
@@ -113,6 +115,7 @@ services:
       - /etc/redis/replica.conf
     ports:
       - "127.0.0.1:${CACHE_REDIS_REPLICA_1_PORT:-6371}:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${CACHE_REDIS_REPLICA_1_PORT:-6371}:6379"
     volumes:
       - ./data-cache-replica-1:/data
       - ./cache-replica-1.generated.conf:/etc/redis/replica.conf:ro
@@ -134,6 +137,7 @@ services:
       - /etc/redis/replica.conf
     ports:
       - "127.0.0.1:${CACHE_REDIS_REPLICA_2_PORT:-6372}:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${CACHE_REDIS_REPLICA_2_PORT:-6372}:6379"
     volumes:
       - ./data-cache-replica-2:/data
       - ./cache-replica-2.generated.conf:/etc/redis/replica.conf:ro
@@ -155,6 +159,7 @@ services:
       - /etc/redis/replica.conf
     ports:
       - "127.0.0.1:${BULL_REDIS_REPLICA_1_PORT:-6390}:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${BULL_REDIS_REPLICA_1_PORT:-6390}:6379"
     volumes:
       - ./data-bullmq-replica-1:/data
       - ./bull-replica-1.generated.conf:/etc/redis/replica.conf:ro
@@ -176,6 +181,7 @@ services:
       - /etc/redis/replica.conf
     ports:
       - "127.0.0.1:${BULL_REDIS_REPLICA_2_PORT:-6391}:6379"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${BULL_REDIS_REPLICA_2_PORT:-6391}:6379"
     volumes:
       - ./data-bullmq-replica-2:/data
       - ./bull-replica-2.generated.conf:/etc/redis/replica.conf:ro

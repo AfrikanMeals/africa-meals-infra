@@ -26,6 +26,7 @@ services:
       - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
     ports:
       - "127.0.0.1:${MEMCACHED_PORT:-11211}:11211"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${MEMCACHED_PORT:-11211}:11211"
     restart: unless-stopped
 
   memcached-replica-1:
@@ -44,6 +45,7 @@ services:
       - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
     ports:
       - "127.0.0.1:${MEMCACHED_REPLICA_1_PORT:-11213}:11211"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${MEMCACHED_REPLICA_1_PORT:-11213}:11211"
     restart: unless-stopped
 
   memcached-replica-2:
@@ -62,4 +64,5 @@ services:
       - "${MEMCACHED_MAX_CONNECTIONS:-1024}"
     ports:
       - "127.0.0.1:${MEMCACHED_REPLICA_2_PORT:-11214}:11211"
+      - "${K3S_CNI_GATEWAY:-10.42.0.1}:${MEMCACHED_REPLICA_2_PORT:-11214}:11211"
     restart: unless-stopped

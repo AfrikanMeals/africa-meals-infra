@@ -2,7 +2,8 @@
 
 > **Déploiement depuis zéro (VPS `/opt/wise-eat` + `/opt/wise-eat-ws`) : [DEPLOY.md](./DEPLOY.md)**
 
-**3 pods** k3s, services locaux sur le VPS (équivalent `127.0.0.1` via `host.k3s.internal`), **TLS conservé** (SNI Let's Encrypt).  
+**3 pods** k3s, services locaux sur le VPS via `host.k3s.internal` → passerelle CNI (`10.42.0.1`).  
+Mongo/Redis/Memcached en **plaintext local** ; Stunnel TLS réservé à l’accès distant.  
 **PM2 = dev uniquement** — pas de `africa-meals-ws` en PM2 prod sur le VPS.
 
 ## Architecture
@@ -16,8 +17,8 @@ Internet → nginx :443 (wise-eat.cloud / ws.wise-eat.com)
          ↙    ↓    ↘
       Pod 1  Pod 2  Pod 3   restartPolicy: Always
          ↘    ↓    ↙
-    host.k3s.internal → Stunnel / EMQX / API sur le VPS
-      :6381 Redis   :6382 BullMQ   :27018 MongoDB   :8883 MQTT   :9000 API
+    host.k3s.internal → 10.42.0.1 (cni0) sur le VPS
+      :6379 Redis   :6380 BullMQ   :27017|:27027|:27028 Mongo   :8883 MQTT
 ```
 
 ## Résilience
@@ -117,16 +118,18 @@ sudo k3s kubectl get pods -n wise-eat -w
 
 ### ConfigMap (non sensible)
 
-Connexion **locale VPS** via `host.k3s.internal` (= services sur `127.0.0.1` de l'hôte) + ports **Stunnel / nginx stream** :
+Connexion **locale VPS** via `host.k3s.internal` (= passerelle CNI `10.42.0.1`, services Docker sur l’hôte) :
 
-| Service | Host pod | Port | TLS SNI |
-|---------|----------|------|---------|
-| Redis cache | `host.k3s.internal` | 6381 (+6383/6384) | `cache.wise-eat.com` |
-| Redis BullMQ | `host.k3s.internal` | 6382 (+6385/6386) | `cache.wise-eat.com` |
-| Memcached | `host.k3s.internal` | 11212 (+11213/11214) | `cache.wise-eat.com` |
-| MongoDB | `host.k3s.internal` | 27018 | cert LE `db.wise-eat.com` |
-| MQTT | `host.k3s.internal` | 8883 | `broker.wise-eat.com` |
-| API Nest | `host.k3s.internal` | 9000 | — |
+| Service | Host pod | Port pods (plaintext) | Accès distant (Stunnel) |
+|---------|----------|------------------------|-------------------------|
+| Redis cache | `host.k3s.internal` | 6379 (+6371/6372) | `:6381` (+6383/6384) |
+| Redis BullMQ | `host.k3s.internal` | 6380 (+6390/6391) | `:6382` (+6385/6386) |
+| Memcached | `host.k3s.internal` | 11211 (+11213/11214) | `:11212` |
+| MongoDB | `host.k3s.internal` | 27017, 27027, 27028 (rs0) | `:27018` + cert LE |
+| MQTT | `host.k3s.internal` | — | `:8883` (MQTTS) |
+| API Nest | service k8s | 9000 | — |
+
+Les pods **n’utilisent plus Stunnel** (ECONNRESET via cni0 → TLS). Stunnel reste pour admin / VPS distant.
 
 ### Secret (depuis `.env`)
 

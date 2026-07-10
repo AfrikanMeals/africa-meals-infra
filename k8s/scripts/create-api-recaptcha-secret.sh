@@ -29,7 +29,12 @@ fi
   --from-file=accounts.json="${SA_FILE}" \
   --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
-"${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
-  -p '{"data":{"RECAPTCHA_ENTERPRISE_SERVICE_ACCOUNT_PATH":"/run/secrets/recaptcha/accounts.json"}}'
+if "${KUBECTL[@]}" get configmap africa-meals-api -n "${NAMESPACE}" >/dev/null 2>&1; then
+  "${KUBECTL[@]}" patch configmap africa-meals-api -n "${NAMESPACE}" --type merge \
+    -p '{"data":{"RECAPTCHA_ENTERPRISE_SERVICE_ACCOUNT_PATH":"/run/secrets/recaptcha/accounts.json"}}'
+  echo "ConfigMap africa-meals-api : RECAPTCHA_ENTERPRISE_SERVICE_ACCOUNT_PATH activé"
+else
+  echo "ConfigMap africa-meals-api absent — patch reCAPTCHA reporté (après deploy-api)"
+fi
 
 echo "Secret ${SECRET_NAME} appliqué (wise-eat-com → /run/secrets/recaptcha/accounts.json)"

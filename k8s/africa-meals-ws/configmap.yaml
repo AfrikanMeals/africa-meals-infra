@@ -28,33 +28,27 @@ data:
   AFRICA_MEALS_API_INTERNAL_BASE_URL: "http://africa-meals-api.wise-eat.svc.cluster.local:9000/api"
   STATUS_PROBE_API_URL: "https://apis.wise-eat.com/health"
 
-  # --- MongoDB (Stunnel :27018 local) — URI dans le Secret, SNI dans ConfigMap ---
-  MONGODB_TLS_SERVERNAME: "db.wise-eat.com"
+  # --- MongoDB rs0 local (plaintext via host.k3s.internal:27017|27027|27028) ---
+  # Stunnel :27018 réservé à l’accès distant. Ne pas forcer MONGODB_TLS_SERVERNAME ici.
   REDIS_HOST: "host.k3s.internal"
-  REDIS_PORT: "6381"
-  REDIS_TLS: "true"
-  REDIS_TLS_REJECT_UNAUTHORIZED: "true"
-  REDIS_TLS_SERVERNAME: "cache.wise-eat.com"
-  REDIS_REPLICA_1_PORT: "6383"
-  REDIS_REPLICA_2_PORT: "6384"
+  REDIS_PORT: "6379"
+  REDIS_TLS: "false"
+  REDIS_REPLICA_1_PORT: "6371"
+  REDIS_REPLICA_2_PORT: "6372"
   REDIS_CONNECT_TIMEOUT_MS: "20000"
   DNS_RESULT_ORDER: "ipv4first"
 
-  # --- Redis BullMQ (Stunnel :6382 + réplicas :6385/:6386) ---
+  # --- Redis BullMQ (plaintext :6380 + réplicas :6390/:6391) ---
   BULLMQ_REDIS_HOST: "host.k3s.internal"
-  BULLMQ_REDIS_PORT: "6382"
-  BULLMQ_REDIS_TLS: "true"
-  BULLMQ_REDIS_TLS_REJECT_UNAUTHORIZED: "true"
-  BULLMQ_REDIS_TLS_SERVERNAME: "cache.wise-eat.com"
-  BULLMQ_REDIS_REPLICA_1_PORT: "6385"
-  BULLMQ_REDIS_REPLICA_2_PORT: "6386"
+  BULLMQ_REDIS_PORT: "6380"
+  BULLMQ_REDIS_TLS: "false"
+  BULLMQ_REDIS_REPLICA_1_PORT: "6390"
+  BULLMQ_REDIS_REPLICA_2_PORT: "6391"
 
-  # --- Memcached (Stunnel :11212 + réplicas :11213/:11214) ---
+  # --- Memcached (plaintext :11211 + réplicas :11213/:11214) ---
   CACHE_STORE: "memcached"
-  MEMCACHED_SERVERS: "host.k3s.internal:11212"
-  MEMCACHED_TLS: "true"
-  MEMCACHED_TLS_REJECT_UNAUTHORIZED: "true"
-  MEMCACHED_TLS_SERVERNAME: "cache.wise-eat.com"
+  MEMCACHED_SERVERS: "host.k3s.internal:11211"
+  MEMCACHED_TLS: "false"
   MEMCACHED_CONNECT_TIMEOUT_MS: "15000"
   MEMCACHED_REPLICA_1_SERVERS: "host.k3s.internal:11213"
   MEMCACHED_REPLICA_2_SERVERS: "host.k3s.internal:11214"
