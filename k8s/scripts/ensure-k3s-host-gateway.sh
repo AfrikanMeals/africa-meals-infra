@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 # host.k3s.internal n'existe pas nativement sur k3s bare-metal (réservé à k3d).
 #
-# Mécanisme principal (fiable) : hostAliases sur le Deployment WS → /etc/hosts du pod.
+# Mécanisme principal (fiable) : hostAliases sur les Deployments WS/API → /etc/hosts du pod.
 # CoreDNS custom (optionnel) : ENABLE_COREDNS_HOST_GATEWAY=1 — peut casser CoreDNS si mal configuré.
+#
+# Important : ne PAS mapper vers l'InternalIP publique du VPS (ex. 2.24.x.x) —
+# les pods qui joignent l'IP publique du même hôte subissent un hairpin NAT → ECONNRESET
+# (Mongo :27018, Redis Stunnel, etc.). Préférer l'IP du bridge CNI (cni0, souvent 10.42.0.1).
 #
 # Usage :
 #   sudo ./ensure-k3s-host-gateway.sh
-#   sudo ./ensure-k3s-host-gateway.sh --repair-coredns   # supprime coredns-custom + redémarre CoreDNS
+#   sudo K3S_HOST_GATEWAY_IP=10.42.0.1 ./ensure-k3s-host-gateway.sh
+#   sudo ./ensure-k3s-host-gateway.sh --repair-coredns
 set -euo pipefail
 
 REPAIR_COREDNS=false
@@ -18,6 +23,7 @@ for arg in "$@"; do
 Usage: sudo ensure-k3s-host-gateway.sh [--repair-coredns]
 
   hostAliases sur africa-meals-ws et africa-meals-api (défaut, recommandé)
+  IP : cni0 / flannel (évite hairpin) — override K3S_HOST_GATEWAY_IP=
 
   --repair-coredns  Supprime coredns-custom (host-gateway) et redémarre CoreDNS
 EOF
@@ -43,6 +49,60 @@ DEPLOYMENTS=(
   "${K8S_API_DEPLOYMENT:-africa-meals-api}"
 )
 
+is_rfc1918_ipv4() {
+  local ip="${1:-}"
+  case "${ip}" in
+    10.*|192.168.*) return 0 ;;
+    172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# IP joignable depuis les pods vers les services hôte (Stunnel 0.0.0.0).
+resolve_k3s_host_gateway_ip() {
+  local ip=""
+
+  if [[ -n "${K3S_HOST_GATEWAY_IP:-}" ]]; then
+    printf '%s\n' "${K3S_HOST_GATEWAY_IP}"
+    return 0
+  fi
+
+  # Bridge CNI k3s (flannel) — typiquement 10.42.0.1 ; pas de hairpin public.
+  local iface
+  for iface in cni0 flannel.1; do
+    ip="$(ip -4 addr show "${iface}" 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -1 || true)"
+    if [[ -n "${ip}" ]]; then
+      printf '%s\n' "${ip}"
+      return 0
+    fi
+  done
+
+  # Fallback : premier hôte du podCIDR nœud (…0/24 → …1).
+  local cidr base
+  cidr="$("${KUBECTL[@]}" get nodes -o jsonpath='{.items[0].spec.podCIDR}' 2>/dev/null || true)"
+  if [[ "${cidr}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.0/([0-9]+)$ ]]; then
+    base="${BASH_REMATCH[1]}"
+    printf '%s.1\n' "${base}"
+    return 0
+  fi
+
+  local node_ip
+  node_ip="$("${KUBECTL[@]}" get nodes -o jsonpath='{range .items[*]}{range .status.addresses[?(@.type=="InternalIP")]}{.address}{"\n"}{end}{end}' 2>/dev/null | head -1 || true)"
+  if [[ -n "${node_ip}" ]] && is_rfc1918_ipv4 "${node_ip}"; then
+    printf '%s\n' "${node_ip}"
+    return 0
+  fi
+
+  if [[ -n "${node_ip}" ]]; then
+    echo "ATTENTION: InternalIP ${node_ip} est publique — hairpin NAT probable (ECONNRESET Mongo/Redis)." >&2
+    echo "  Installez/vérifiez cni0, ou forcez : K3S_HOST_GATEWAY_IP=10.42.0.1 $0" >&2
+    printf '%s\n' "${node_ip}"
+    return 0
+  fi
+
+  return 1
+}
+
 ws_restart_coredns() {
   if "${KUBECTL[@]}" get deployment coredns -n kube-system >/dev/null 2>&1; then
     "${KUBECTL[@]}" rollout restart deployment/coredns -n kube-system
@@ -58,14 +118,16 @@ if [[ "${REPAIR_COREDNS}" == "true" ]]; then
   exit 0
 fi
 
-NODE_IP="$("${KUBECTL[@]}" get nodes -o jsonpath='{range .items[*]}{range .status.addresses[?(@.type=="InternalIP")]}{.address}{"\n"}{end}{end}' 2>/dev/null | head -1 || true)"
-
-if [[ -z "${NODE_IP}" ]]; then
-  echo "Impossible de lire InternalIP d'un nœud k3s (kubectl get nodes)." >&2
+GATEWAY_IP="$(resolve_k3s_host_gateway_ip || true)"
+if [[ -z "${GATEWAY_IP}" ]]; then
+  echo "Impossible de résoudre l'IP passerelle hôte k3s (cni0 / podCIDR / InternalIP)." >&2
   exit 1
 fi
 
-echo "Passerelle hôte k3s : ${HOSTNAME} → ${NODE_IP}"
+echo "Passerelle hôte k3s : ${HOSTNAME} → ${GATEWAY_IP}"
+if ! is_rfc1918_ipv4 "${GATEWAY_IP}"; then
+  echo "ATTENTION: ${GATEWAY_IP} n'est pas RFC1918 — risque ECONNRESET (hairpin) depuis les pods." >&2
+fi
 
 if [[ "${ENABLE_COREDNS}" == "1" ]]; then
   echo "CoreDNS custom activé (ENABLE_COREDNS_HOST_GATEWAY=1)..."
@@ -78,7 +140,7 @@ metadata:
 data:
   host-gateway.override: |
     hosts {
-      ${NODE_IP} ${HOSTNAME}
+      ${GATEWAY_IP} ${HOSTNAME}
       fallthrough
     }
 EOF
@@ -95,7 +157,7 @@ spec:
   template:
     spec:
       hostAliases:
-        - ip: "${NODE_IP}"
+        - ip: "${GATEWAY_IP}"
           hostnames:
             - "${HOSTNAME}"
 EOF
@@ -108,7 +170,11 @@ for DEPLOYMENT in "${DEPLOYMENTS[@]}"; do
   fi
 done
 
-echo "OK — ${HOSTNAME} → ${NODE_IP} via /etc/hosts des pods WS/API (Stunnel 0.0.0.0 sur le VPS)"
+echo "OK — ${HOSTNAME} → ${GATEWAY_IP} via /etc/hosts des pods WS/API (Stunnel 0.0.0.0 sur le VPS)"
+echo ""
+echo "Vérifier depuis un pod :"
+echo "  kubectl -n ${NAMESPACE} exec deploy/africa-meals-ws -- getent hosts ${HOSTNAME}"
+echo "  # attendu : ${GATEWAY_IP}  ${HOSTNAME}"
 echo ""
 echo "Note : un pod debug (kubectl run dns-test) n'a pas ces hostAliases —"
 echo "       tester : curl http://127.0.0.1:30800/api/health (WS) ou :30900/api/health (API)"

@@ -161,6 +161,17 @@ sudo k8s/scripts/ensure-k3s-host-gateway.sh
 
 Les pods WS résolvent `host.k3s.internal` via `/etc/hosts`, **sans CoreDNS**. Un `kubectl run dns-test` échouera encore — c'est normal.
 
+**Mongo/Redis `ECONNRESET` vers `2.x.x.x:27018`** — `host.k3s.internal` pointe vers l’**IP publique** du nœud (hairpin NAT). Le script mappe désormais vers **cni0** (souvent `10.42.0.1`) :
+
+```bash
+ip -4 addr show cni0   # noter l’IP (ex. 10.42.0.1)
+sudo k8s/scripts/ensure-k3s-host-gateway.sh
+kubectl -n wise-eat exec deploy/africa-meals-ws -- getent hosts host.k3s.internal
+# attendu : 10.42.0.1  host.k3s.internal  (pas l’IP publique)
+```
+
+Override manuel : `sudo K3S_HOST_GATEWAY_IP=10.42.0.1 k8s/scripts/ensure-k3s-host-gateway.sh`
+
 **CoreDNS `Connection refused`** (après une ancienne version du script) :
 
 ```bash
