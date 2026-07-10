@@ -166,7 +166,7 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 | Grafana Servers sans API | `git pull` + `docker restart wise-eat-grafana` |
 | 502 api.wise-eat.com | `curl 127.0.0.1:30900/api/health` + `patch-nginx-api-backend.sh` |
 | Grafana vide | `repair-api-prometheus.sh` + restart Grafana |
-| Atlas au lieu de Mongo local | utiliser `.env.prod` ; `create-api-secret.sh` réécrit vers `host.k3s.internal:27017|27027|27028` |
+| Atlas au lieu de Mongo local | utiliser `.env.prod` ; `create-api-secret.sh` réécrit vers `host.k3s.internal:27017` (directConnection) |
 | Upload médias `ECONNREFUSED` MinIO `:9000` | `MINIO_ENDPOINT=https://storage.wise-eat.com` dans `.env.prod` (pas `host.k3s.internal:9000`) puis `create-api-secret.sh` + rollout restart |
 | reCAPTCHA contact `KEY_MISMATCH` / permission denied | `RECAPTCHA_ENTERPRISE_PROJECT_ID=wise-eat-com`, clé site alignée, vider `RECAPTCHA_ENTERPRISE_API_KEY`, déposer `recaptcha-accounts.json` (SA `@wise-eat-com`) puis `create-api-recaptcha-secret.sh` + rollout restart |
 | Upload S3 `signature does not match` | **Retirer les guillemets** de `AWS_SECRET_ACCESS_KEY` dans `.env.prod` (dotenv local les retire, `kubectl --from-env-file` non). Puis `create-api-secret.sh` + rollout API. Diagnostic : `sudo ./scripts/verify-aws-s3-env.sh`. Vérifier aussi horloge VPS (`timedatectl`). **Rotation IAM** si clé exposée. |

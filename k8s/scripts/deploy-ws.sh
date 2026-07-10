@@ -91,7 +91,7 @@ if ! "${KUBECTL[@]}" rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}"
   ws_print_rollout_diagnostics
   echo "" >&2
   echo "Pistes fréquentes :" >&2
-  echo "  • Secret avec .env.prod (Mongo host.k3s.internal:27017|27027|27028), pas Atlas" >&2
+  echo "  • Secret avec .env.prod (Mongo host.k3s.internal:27017 directConnection), pas Atlas" >&2
   echo "  • Mongo/Redis/Memcached publiés sur cni0 (docker compose K3S_CNI_GATEWAY)" >&2
   echo "  • host.k3s.internal : sudo ${SCRIPT_DIR}/ensure-k3s-host-gateway.sh" >&2
   echo "  • UFW pods : sudo ${SCRIPT_DIR}/../../scripts/ufw-allow-k3s-pods.sh" >&2

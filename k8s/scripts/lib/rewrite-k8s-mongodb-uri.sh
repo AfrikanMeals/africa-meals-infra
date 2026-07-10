@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Réécrit MONGODB_URI pour les pods k3s : accès local via host.k3s.internal
-# sur les ports Mongo plaintext (27017/27027/27028) + replicaSet=rs0.
+# Réécrit MONGODB_URI pour les pods k3s : accès local via host.k3s.internal:27017
+# (primary rs0 publié sur cni0) en plaintext + directConnection=true.
+#
+# Pas de replicaSet=rs0 depuis les pods : les membres du rs0 s’annoncent comme
+# wise-eat-mongo-1|2|3:27017 (hostnames Docker), irrésolvables hors du réseau
+# Docker wise-eat-infra — la découverte du driver échouerait (ENOTFOUND).
 #
 # Stunnel :27018 reste réservé à l’accès distant / admin (pas utilisé depuis les pods —
 # ECONNRESET récurrent via cni0 → Stunnel TLS).
@@ -66,10 +70,12 @@ for line in lines:
     params = urllib.parse.parse_qs(qs or "", keep_blank_values=True)
     params.pop("tls", None)
     params.pop("ssl", None)
-    params.pop("directConnection", None)
+    params.pop("replicaSet", None)
     params.pop("tlsAllowInvalidCertificates", None)
     params.pop("tlsAllowInvalidHostnames", None)
-    params["replicaSet"] = ["rs0"]
+    # Les membres rs0 s'annoncent en hostnames Docker (wise-eat-mongo-N:27017),
+    # irrésolvables depuis les pods → connexion directe au primary publié sur cni0.
+    params["directConnection"] = ["true"]
     if "authSource" not in params:
         params["authSource"] = ["admin"]
     if "retryWrites" not in params:
@@ -77,7 +83,7 @@ for line in lines:
     if "w" not in params:
         params["w"] = ["majority"]
 
-    seed = ",".join(f"{local_host}:{p}" for p in local_ports)
+    seed = f"{local_host}:27017"
     new_qs = urllib.parse.urlencode({k: v[0] for k, v in params.items()})
     new_uri = f"mongodb://{creds}@{seed}/{db}?{new_qs}"
     out.append(f"MONGODB_URI={new_uri}")
@@ -88,7 +94,7 @@ with open(path, "w", encoding="utf-8") as fh:
 
 if rewrote:
     print(
-        f"MONGODB_URI réécrit pour k8s local ({local_host}:27017|27027|27028, replicaSet=rs0, sans TLS)",
+        f"MONGODB_URI réécrit pour k8s local ({local_host}:27017, directConnection, sans TLS)",
         file=sys.stderr,
     )
 PY

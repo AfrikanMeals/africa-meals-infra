@@ -19,7 +19,7 @@ data:
 
   VPS_LOCAL_HOST: "host.k3s.internal"
 
-  # --- MongoDB rs0 local (plaintext host.k3s.internal:27017|27027|27028) ---
+  # --- MongoDB local (plaintext host.k3s.internal:27017, directConnection) ---
   # Stunnel :27018 = accès distant uniquement. Pas de MONGODB_TLS_SERVERNAME pour les pods.
   MONGOOSE_MAX_POOL: "3"
   MONGOOSE_MIN_POOL: "0"

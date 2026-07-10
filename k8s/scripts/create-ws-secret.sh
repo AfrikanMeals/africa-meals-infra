@@ -41,7 +41,7 @@ fi
 
 if [[ "${VPS_K8S_LOCAL}" == "1" ]] && grep -qE '^MONGODB_URI=mongodb\+srv://' "${FILTERED}"; then
   echo "ATTENTION: MONGODB_URI Atlas (mongodb+srv) dans ${ENV_FILE}." >&2
-  echo "En prod k8s sur le VPS, utilisez .env.prod (Mongo local host.k3s.internal:27017|27027|27028)." >&2
+  echo "En prod k8s sur le VPS, utilisez .env.prod (Mongo local host.k3s.internal:27017, directConnection)." >&2
   echo "Le ConfigMap k8s n’utilise plus Atlas / Stunnel TLS pour Mongo depuis les pods." >&2
 fi
 

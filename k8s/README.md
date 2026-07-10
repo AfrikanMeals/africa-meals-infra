@@ -125,7 +125,7 @@ Connexion **locale VPS** via `host.k3s.internal` (= passerelle CNI `10.42.0.1`, 
 | Redis cache | `host.k3s.internal` | 6379 (+6371/6372) | `:6381` (+6383/6384) |
 | Redis BullMQ | `host.k3s.internal` | 6380 (+6390/6391) | `:6382` (+6385/6386) |
 | Memcached | `host.k3s.internal` | 11211 (+11213/11214) | `:11212` |
-| MongoDB | `host.k3s.internal` | 27017, 27027, 27028 (rs0) | `:27018` + cert LE |
+| MongoDB | `host.k3s.internal` | 27017 (directConnection) | `:27018` + cert LE |
 | MQTT | `host.k3s.internal` | — | `:8883` (MQTTS) |
 | API Nest | service k8s | 9000 | — |
 
