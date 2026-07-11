@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, nginx/apache, Certbot, Stunnel, monitoring.
+Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, Neo4j (optionnel), nginx/apache, Certbot, Stunnel, monitoring.
 
 ## Structure
 
@@ -22,6 +22,7 @@ emqx/
 monitoring/
 ollama/
 matomo/
+neo4j/
 ```
 
 ## Installation complète (VPS)
@@ -320,6 +321,22 @@ sudo ./install.sh verify-tls
 Première visite : créer le compte super utilisateur dans l'assistant Matomo, puis vérifier **Administration → Système → Général** : URL = `https://analytics.wise-eat.com/` et HTTPS activé.
 
 Secrets : `matomo/.env.matomo` (chmod 600, généré au premier `install.sh matomo`).
+
+## Neo4j (self-hosted, optionnel)
+
+Graphe de recommandation / similarité — **pas** la SoT (Mongo reste source de vérité). Budget VPS : **1 Go RAM** conteneur, volume données **5 Go** (loop ext4).
+
+```bash
+sudo ./install.sh neo4j
+```
+
+| Port | Rôle |
+|------|------|
+| `7687` | Bolt (`127.0.0.1` + gateway k3s) |
+| `7474` | Browser HTTP local |
+
+Secrets : `neo4j/.env.neo4j` · données : `/var/lib/wise-eat/neo4j`.  
+API : `NEO4J_URI=bolt://host.k3s.internal:7687` avec `NEO4J_ENABLED=false` jusqu’au go-live (voir `africa-meals-project/docs/NEO4J_INTEGRATION.md`).
 
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`

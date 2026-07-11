@@ -85,6 +85,7 @@ Composants:
   reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   matomo        Matomo Analytics Docker (MariaDB + Apache, :8089 local)
+  neo4j         Neo4j Community Docker (Bolt :7687, 1 Go RAM, volume 5 Go)
   matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
   update-matomo   Mise à jour Matomo via CLI (image Docker + core:update)
   repair-matomo   Recovery crash / 502 / update interrompue
@@ -284,6 +285,9 @@ run_component() {
       ;;
     matomo)
       bash "${SCRIPTS}/install-matomo.sh"
+      ;;
+    neo4j)
+      bash "${SCRIPTS}/install-neo4j.sh"
       ;;
     matomo-gateway)
       bash "${SCRIPTS}/install-matomo-gateway.sh"
