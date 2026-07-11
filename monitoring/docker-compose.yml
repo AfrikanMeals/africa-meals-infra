@@ -216,6 +216,24 @@ services:
     ports:
       - "127.0.0.1:9216:9216"
 
+  # Neo4j Community — Bolt exporter (pas d’endpoint Prometheus natif en Community)
+  # Port hôte 9217 (9121 = redis-cache). Dashboard Grafana Neo4j/.
+  neo4j-exporter:
+    image: ghcr.io/papadanielvi/neo4j-exporter:latest
+    container_name: wise-eat-neo4j-exporter
+    restart: unless-stopped
+    networks:
+      - wise-eat-infra
+    environment:
+      NEO4J_URI: bolt://wise-eat-neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+    ports:
+      - "127.0.0.1:9217:9121"
+    labels:
+      com.wise-eat.service: neo4j-exporter
+      com.wise-eat.component: monitoring
+
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: wise-eat-prometheus
@@ -241,6 +259,7 @@ services:
       - node-exporter
       - cadvisor
       - ollama-exporter
+      - neo4j-exporter
       - redis-exporter-cache
       - redis-exporter-bullmq
       - memcached-exporter

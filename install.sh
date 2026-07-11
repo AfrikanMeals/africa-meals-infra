@@ -47,6 +47,7 @@ Composants:
   mongodb-cloud-backup Cron upload hebdo MongoDB → GCS / Firebase / AWS (Backup_DB_1…4)
   mongodb-cloud-tools  Installe gcloud + aws CLI (upload cloud MongoDB)
   repair-mongodb-prometheus  Répare scrape Prometheus → MongoDB (Grafana No data)
+  repair-neo4j-prometheus  Répare scrape Prometheus → Neo4j (Grafana Neo4j No data)
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
   repair-mongodb-tls       Répare Stunnel MongoDB TLS (:27018) + resync conf.d
@@ -170,6 +171,9 @@ run_component() {
       ;;
     repair-mongodb-prometheus)
       bash "${SCRIPTS}/repair-mongodb-prometheus.sh"
+      ;;
+    repair-neo4j-prometheus)
+      bash "${SCRIPTS}/repair-neo4j-prometheus.sh"
       ;;
     repair-mongodb-replicaset)
       bash "${SCRIPTS}/repair-mongodb-replicaset.sh"

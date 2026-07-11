@@ -9,7 +9,8 @@ CORE_SYSTEM_DIR="${DASH_ROOT}/Core System"
 MINIO_DIR_DASH="${DASH_ROOT}/MinIO"
 EMQX_DIR_DASH="${DASH_ROOT}/EMQX"
 OLLAMA_DIR_DASH="${DASH_ROOT}/Ollama"
-mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}" "${EMQX_DIR_DASH}" "${OLLAMA_DIR_DASH}"
+NEO4J_DIR_DASH="${DASH_ROOT}/Neo4j"
+mkdir -p "${DASH_ROOT}/Redis" "${DASH_ROOT}/Memcached" "${CORE_SYSTEM_DIR}" "${MINIO_DIR_DASH}" "${EMQX_DIR_DASH}" "${OLLAMA_DIR_DASH}" "${NEO4J_DIR_DASH}"
 
 fetch_redis_dashboard() {
   local out="${DASH_ROOT}/Redis/redis-prometheus.json"
@@ -219,6 +220,18 @@ fetch_ollama_dashboard() {
   log "Dashboard Ollama → ${out} (Grafana.com #25086 — ollama-exporter)"
 }
 
+fetch_neo4j_dashboard() {
+  local out="${NEO4J_DIR_DASH}/neo4j-exporter.json"
+  local tmp="${out}.tmp"
+  mkdir -p "${NEO4J_DIR_DASH}"
+  curl -fsSL \
+    "https://raw.githubusercontent.com/PapaDanielVi/neo4j-exporter/main/examples/grafana-dashboard.json" \
+    -o "${tmp}"
+  python3 "${SCRIPT_DIR}/patch-grafana-neo4j-dashboard.py" "${tmp}" "${out}"
+  rm -f "${tmp}"
+  log "Dashboard Neo4j → ${out} (PapaDanielVi/neo4j-exporter + cAdvisor)"
+}
+
 fetch_redis_dashboard
 fetch_memcached_dashboard
 fetch_node_dashboard
@@ -228,6 +241,7 @@ fetch_emqx_dashboard
 fetch_mongodb_dashboard
 fetch_mongodb_overview_dashboard
 fetch_ollama_dashboard
+fetch_neo4j_dashboard
 patch_dashboards
 
 rm -rf "${DASH_ROOT}/System"

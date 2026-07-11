@@ -1,0 +1,42 @@
+groups:
+  - name: neo4j
+    rules:
+      - alert: Neo4jExporterDown
+        expr: up{job="neo4j"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Neo4j exporter unreachable"
+          description: "Prometheus ne scrape plus wise-eat-neo4j-exporter (:9217)."
+
+      - alert: Neo4jDown
+        expr: neo4j_exporter_up{job="neo4j"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Neo4j Bolt DOWN"
+          description: "neo4j_exporter_up=0 — conteneur wise-eat-neo4j arrêté ou auth incorrecte."
+
+      - alert: Neo4jHeapHigh
+        expr: |
+          (
+            neo4j_jvm_heap_used_bytes{job="neo4j"}
+            / clamp_min(neo4j_jvm_heap_max_bytes{job="neo4j"}, 1)
+          ) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Heap Neo4j > 90 %"
+          description: "Heap used/max élevé sur {{ $labels.instance }} — vérifier NEO4J_HEAP_MAX / charge reco."
+
+      - alert: Neo4jDatabaseOffline
+        expr: neo4j_database_online{job="neo4j"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Base Neo4j offline"
+          description: "Database {{ $labels.database }} offline (SHOW DATABASES)."

@@ -106,6 +106,30 @@ else
   fail=1
 fi
 
+log "=== Neo4j (neo4j-exporter) ==="
+if curl -sf "http://127.0.0.1:9217/metrics" 2>/dev/null | grep -q '^neo4j_exporter_up '; then
+  log "OK  neo4j-exporter (:9217) — métriques neo4j_* exposées"
+else
+  warn "FAIL neo4j-exporter (:9217) — conteneur wise-eat-neo4j-exporter arrêté ?"
+  warn "      sudo ./install.sh repair-neo4j-prometheus"
+  fail=1
+fi
+if curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=neo4j_exporter_up{job="neo4j"}' | grep -q '"value":\["' ; then
+  up=$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=neo4j_exporter_up{job="neo4j"}' \
+    | python3 -c "import json,sys; r=json.load(sys.stdin).get('data',{}).get('result',[]); print(r[0]['value'][1] if r else '?')")
+  if [[ "${up}" == "1" ]]; then
+    log "OK  Prometheus neo4j_exporter_up=1 (job=neo4j)"
+  else
+    warn "FAIL Prometheus neo4j_exporter_up=${up} — Neo4j down ou auth Bolt incorrecte ?"
+    fail=1
+  fi
+else
+  warn "FAIL job neo4j absent dans Prometheus — sudo ./install.sh repair-neo4j-prometheus"
+  fail=1
+fi
+
 log "=== Redis exporters (host) ==="
 for pair in "9121:cache" "9122:bullmq"; do
   port="${pair%%:*}"
@@ -193,7 +217,7 @@ import json,sys
 d=json.load(sys.stdin)
 for t in d.get('data',{}).get('activeTargets',[]):
   j=t.get('labels',{}).get('job','')
-  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'ollama', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
+  if 'redis' in j or j in ('prometheus', 'memcached', 'node', 'cadvisor', 'ollama', 'neo4j', 'mongodb', 'minio', 'minio-cluster', 'minio-node', 'emqx'):
     print(f\"  {j}: {t.get('health')} — {t.get('scrapeUrl')}\")
 "
 else

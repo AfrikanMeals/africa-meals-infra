@@ -52,6 +52,19 @@ if [[ -f "${MONGODB_ENV}" ]]; then
   done
 fi
 
+if [[ -f "${NEO4J_ENV}" ]]; then
+  set -a && source "${NEO4J_ENV}" && set +a
+  for key in NEO4J_USER NEO4J_PASSWORD; do
+    if [[ -n "${!key:-}" ]]; then
+      if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${!key}|" .env.monitoring
+      else
+        echo "${key}=${!key}" >> .env.monitoring
+      fi
+    fi
+  done
+fi
+
 set -a && source .env.monitoring && set +a
 
 if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
@@ -115,4 +128,4 @@ log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up 
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
 log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
 log "Prometheus: https://logs.wise-eat.com (basic auth — voir .env.monitoring)"
-log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB · Ollama (#25086)"
+log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB · Ollama (#25086) · Neo4j"

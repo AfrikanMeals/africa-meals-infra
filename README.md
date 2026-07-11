@@ -338,6 +338,18 @@ sudo ./install.sh neo4j
 Secrets : `neo4j/.env.neo4j` · données : `/var/lib/wise-eat/neo4j`.  
 API : `NEO4J_URI=bolt://host.k3s.internal:7687` avec `NEO4J_ENABLED=false` jusqu’au go-live (voir `africa-meals-project/docs/NEO4J_INTEGRATION.md`).
 
+**Monitoring Grafana** : dossier `Neo4j/` — **Wise Eat — Neo4j** ([PapaDanielVi/neo4j-exporter](https://github.com/PapaDanielVi/neo4j-exporter), Bolt → `:9217`, `job=neo4j`) + panneaux cAdvisor du conteneur `wise-eat-neo4j`. Les credentials Bolt sont synchronisés depuis `neo4j/.env.neo4j` vers `.env.monitoring` à l’install.
+
+```bash
+sudo ./install.sh neo4j          # si pas encore démarré
+sudo ./install.sh monitoring     # démarre neo4j-exporter + scrape Prometheus
+# ou si Grafana Neo4j « No data » :
+sudo ./install.sh repair-neo4j-prometheus
+curl -s http://127.0.0.1:9217/metrics | grep '^neo4j_exporter_up '
+```
+
+Alertes Prometheus : `monitoring/prometheus/alerts/neo4j.yml` (exporter down, Neo4j down, heap élevé, DB offline).
+
 **Core System (VPS)** : dossier Grafana `Core System/` avec :
 - **Wise Eat — System (Node Exporter)** (#1860) — `node_exporter` `:9100`, job `node`
 - **Wise Eat — Docker Monitoring** (#4271) — `cAdvisor` `:8088`, job `cadvisor` (+ métriques `node_*` alignées sur instance `wise-eat:9100`)
@@ -367,6 +379,8 @@ Cause : Docker 29 stocke les images via containerd-snapshotter (`Storage Driver:
 **MongoDB** : dossier Grafana `MongoDB/` avec **Wise Eat — MongoDB** (#12079, Percona legacy) et **Wise Eat — MongoDB Overview** (#18847, métriques ss/sys) — scrape `job=mongodb` via Percona exporter.
 
 **Ollama** : dossier Grafana `Ollama/` — **Wise Eat — Ollama LLM Inference** (#25086, `ollama-exporter`).
+
+**Neo4j** : dossier Grafana `Neo4j/` — **Wise Eat — Neo4j** (`neo4j-exporter` Bolt, `:9217`, `job=neo4j`).
 
 Les variables **Job / Nodename / Instance** (System) et **Node / Compose project** (Docker) restent vides tant que les exporters ne sont pas scrapés (`sudo ./install.sh repair-monitoring`).
 
