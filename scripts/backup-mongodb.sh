@@ -84,3 +84,4 @@ done < <(find "${MONGO_BACKUP_DIR}/snapshots" -mindepth 1 -maxdepth 1 -type d -m
 
 USED="$(du -sh "${MONGO_BACKUP_DIR}" 2>/dev/null | awk '{print $1}')"
 log "Backup OK — ${USED} dans ${MONGO_BACKUP_DIR} (rétention ${MONGO_BACKUP_RETENTION_DAYS}j)"
+log "Restore smoke (staging) : sudo ${SCRIPT_DIR}/restore-mongodb.sh ${LATEST_DIR}"
