@@ -17,7 +17,7 @@ if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-neo4j'; then
 fi
 
 if [[ -f "${NEO4J_ENV}" ]]; then
-  set -a && source "${NEO4J_ENV}" && set +a
+  source_dotenv "${NEO4J_ENV}"
 fi
 
 sync_component monitoring
@@ -28,9 +28,11 @@ if [[ ! -f .env.monitoring ]]; then
   chmod 600 .env.monitoring
 fi
 
+sanitize_monitoring_env_file .env.monitoring
+
 # Sync credentials Neo4j → monitoring (exporter Bolt)
 if [[ -f "${NEO4J_ENV}" ]]; then
-  set -a && source "${NEO4J_ENV}" && set +a
+  source_dotenv "${NEO4J_ENV}"
   for key in NEO4J_USER NEO4J_PASSWORD; do
     if [[ -n "${!key:-}" ]]; then
       if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
@@ -42,7 +44,7 @@ if [[ -f "${NEO4J_ENV}" ]]; then
   done
 fi
 
-set -a && source .env.monitoring && set +a
+source_dotenv .env.monitoring
 
 if [[ -z "${NEO4J_PASSWORD:-}" ]]; then
   die "NEO4J_PASSWORD manquant — renseigner neo4j/.env.neo4j puis relancer"
@@ -59,8 +61,13 @@ fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 
+reconcile_monitoring_compose_named_containers
+
 log "Recréation neo4j-exporter + Prometheus + Grafana"
-docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana
+if ! docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana; then
+  docker rm -f wise-eat-prometheus wise-eat-grafana 2>/dev/null || true
+  docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana
+fi
 
 if ! wait_for_prometheus_ready 60; then
   docker compose "${COMPOSE_ARGS[@]}" logs --tail=30 prometheus || true

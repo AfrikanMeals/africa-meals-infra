@@ -1075,10 +1075,53 @@ env_truthy() {
 read_env_var_from_file() {
   local file="$1" key="$2"
   [[ -f "${file}" ]] || return 1
-  local line
+  local line val
   line="$(grep -E "^${key}=" "${file}" | tail -n 1 || true)"
   [[ -n "${line}" ]] || return 1
-  echo "${line#*=}"
+  val="${line#*=}"
+  if [[ "${val}" =~ ^\"(.*)\"$ ]]; then
+    val="${BASH_REMATCH[1]}"
+  elif [[ "${val}" =~ ^\'(.*)\'$ ]]; then
+    val="${BASH_REMATCH[1]}"
+  fi
+  printf '%s' "${val}"
+}
+
+# Charge un fichier .env sans casser sur les valeurs non quotées avec espaces
+# (ex. GRAFANA_SMTP_FROM_NAME=Wise Eat Alerts → « Eat: command not found »).
+source_dotenv() {
+  local file="$1"
+  local line key val
+  [[ -f "${file}" ]] || return 1
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+    [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+    key="${BASH_REMATCH[1]}"
+    val="${BASH_REMATCH[2]}"
+    if [[ "${val}" =~ ^\"(.*)\"$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    elif [[ "${val}" =~ ^\'(.*)\'$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    fi
+    printf -v "${key}" '%s' "${val}"
+    export "${key}"
+  done < "${file}"
+}
+
+# Conteneurs créés hors Compose (recreate-*-host.sh) bloquent le même container_name.
+reconcile_monitoring_compose_named_containers() {
+  local name project
+  for name in wise-eat-prometheus wise-eat-grafana; do
+    if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "${name}"; then
+      continue
+    fi
+    project="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "${name}" 2>/dev/null || true)"
+    if [[ -z "${project}" ]]; then
+      warn "Conteneur ${name} hors Compose — suppression pour recréation compose"
+      docker rm -f "${name}" >/dev/null 2>&1 || true
+    fi
+  done
 }
 
 redis_cluster_b_enabled() {
@@ -1235,6 +1278,23 @@ nginx_test_and_reload() {
     fi
   fi
   systemctl reload nginx
+}
+
+# Corrige les lignes .env.monitoring connues pour casser un `source` bash.
+sanitize_monitoring_env_file() {
+  local file="${1:-${MON_DIR}/.env.monitoring}"
+  [[ -f "${file}" ]] || return 0
+  # GRAFANA_SMTP_FROM_NAME=Wise Eat Alerts → quotes
+  if grep -qE '^GRAFANA_SMTP_FROM_NAME=Wise Eat' "${file}" 2>/dev/null; then
+    local tmp
+    tmp="$(mktemp)"
+    sed 's/^GRAFANA_SMTP_FROM_NAME=Wise Eat Alerts$/GRAFANA_SMTP_FROM_NAME="Wise Eat Alerts"/' "${file}" \
+      | sed 's/^GRAFANA_SMTP_FROM_NAME=Wise Eat.*/GRAFANA_SMTP_FROM_NAME="Wise Eat Alerts"/' \
+      > "${tmp}"
+    cat "${tmp}" > "${file}"
+    rm -f "${tmp}"
+    log "Corrigé GRAFANA_SMTP_FROM_NAME quoté dans ${file}"
+  fi
 }
 
 # Anciens exporters réplicas (1 seul conteneur / suffixe -b) — bloquent :9123/:9124/:9151.

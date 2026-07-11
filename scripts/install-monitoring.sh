@@ -15,8 +15,10 @@ if [[ ! -f .env.monitoring ]]; then
   chmod 600 .env.monitoring
 fi
 
+sanitize_monitoring_env_file .env.monitoring
+
 if [[ -f "${REDIS_ENV}" ]]; then
-  set -a && source "${REDIS_ENV}" && set +a
+  source_dotenv "${REDIS_ENV}"
   for key in CACHE_REDIS_PASSWORD BULL_REDIS_PASSWORD; do
     if [[ -n "${!key:-}" ]]; then
       if grep -q "^${key}=" .env.monitoring; then
@@ -30,7 +32,7 @@ fi
 
 MEMCACHED_ENV="${MEMCACHED_DIR}/.env.memcached"
 if [[ -f "${MEMCACHED_ENV}" ]]; then
-  set -a && source "${MEMCACHED_ENV}" && set +a
+  source_dotenv "${MEMCACHED_ENV}"
   port="${MEMCACHED_PORT:-11211}"
   if grep -q '^MEMCACHED_PORT=' .env.monitoring; then
     sed -i "s|^MEMCACHED_PORT=.*|MEMCACHED_PORT=${port}|" .env.monitoring
@@ -40,7 +42,7 @@ if [[ -f "${MEMCACHED_ENV}" ]]; then
 fi
 
 if [[ -f "${MONGODB_ENV}" ]]; then
-  set -a && source "${MONGODB_ENV}" && set +a
+  source_dotenv "${MONGODB_ENV}"
   for key in MONGO_ROOT_USER MONGO_ROOT_PASSWORD MONGO_REPLICA_SET; do
     if [[ -n "${!key:-}" ]]; then
       if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
@@ -53,7 +55,7 @@ if [[ -f "${MONGODB_ENV}" ]]; then
 fi
 
 if [[ -f "${NEO4J_ENV}" ]]; then
-  set -a && source "${NEO4J_ENV}" && set +a
+  source_dotenv "${NEO4J_ENV}"
   for key in NEO4J_USER NEO4J_PASSWORD; do
     if [[ -n "${!key:-}" ]]; then
       if grep -q "^${key}=" .env.monitoring 2>/dev/null; then
@@ -65,7 +67,7 @@ if [[ -f "${NEO4J_ENV}" ]]; then
   done
 fi
 
-set -a && source .env.monitoring && set +a
+source_dotenv .env.monitoring
 
 if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
   GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)
@@ -86,6 +88,7 @@ fi
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh"
 
 remove_legacy_monitoring_exporter_containers
+reconcile_monitoring_compose_named_containers
 
 COMPOSE_ARGS=(--env-file .env.monitoring)
 if [[ -n "$(wise_eat_compose_profiles || true)" ]]; then
@@ -95,7 +98,12 @@ fi
 log "Core System : node_exporter :9100 + cAdvisor :8088 (dashboards #1860 / #4271)"
 
 docker compose "${COMPOSE_ARGS[@]}" pull
-docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
+if ! docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans; then
+  warn "Compose up échoué — tentative rm orphelins prometheus/grafana + retry"
+  reconcile_monitoring_compose_named_containers
+  docker rm -f wise-eat-prometheus wise-eat-grafana 2>/dev/null || true
+  docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
+fi
 sleep 5
 
 docker compose "${COMPOSE_ARGS[@]}" ps

@@ -16,7 +16,10 @@ if [[ ! -f "${MONITORING_DIR}/.env.monitoring" ]]; then
   exit 1
 fi
 
-set -a && source "${MONITORING_DIR}/.env.monitoring" && set +a
+# shellcheck source=../../scripts/lib/common.sh
+source "${INFRA_ROOT}/scripts/lib/common.sh"
+sanitize_monitoring_env_file "${MONITORING_DIR}/.env.monitoring"
+source_dotenv "${MONITORING_DIR}/.env.monitoring"
 
 GRAFANA_VOLUME="wise-eat-grafana-data"
 if docker inspect wise-eat-grafana >/dev/null 2>&1; then

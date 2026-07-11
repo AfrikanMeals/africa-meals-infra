@@ -13,7 +13,8 @@ PROMETHEUS_BACKEND_PORT="${PROMETHEUS_BACKEND_PORT:-9090}"
 STUNNEL_TLS_EMAIL="${STUNNEL_TLS_EMAIL:-}"
 
 if [[ -f "${MON_DIR}/.env.monitoring" ]]; then
-  set -a && source "${MON_DIR}/.env.monitoring" && set +a
+  sanitize_monitoring_env_file "${MON_DIR}/.env.monitoring"
+  source_dotenv "${MON_DIR}/.env.monitoring"
 fi
 
 command -v nginx >/dev/null 2>&1 || die "nginx requis — sudo ./install.sh nginx"
