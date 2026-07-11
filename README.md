@@ -667,6 +667,17 @@ MONGODB_URI=mongodb://wise-eat-app:PASSWORD@127.0.0.1:27017/wise_eat_db?authSour
 
 # Remote (TLS)
 MONGODB_URI=mongodb://wise-eat-app:PASSWORD@db.wise-eat.com:27018/wise_eat_db?authSource=admin&tls=true&directConnection=true
+
+# Lectures API sur replicas (défaut secondaryPreferred) — voir africa-meals-project/docs/DATABASE_SCALING.md
+# MONGO_READ_PREFERENCE=secondaryPreferred
+```
+
+**Backups** :
+
+```bash
+sudo ./scripts/install-mongodb-backup.sh   # cron dump quotidien + snapshot hebdo
+sudo ./scripts/backup-mongodb.sh          # run manuel
+sudo ./scripts/restore-mongodb.sh         # smoke restore staging (écrase la DB)
 ```
 
 **Renommer la base** (ex. migration depuis `african_meals_db`) :
