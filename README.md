@@ -75,7 +75,7 @@ sudo ./install.sh verify-tls
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
 | `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
 | `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
-| `db-graph.wise-eat.com` | 80 / 443 | DbGate admin Neo4j (basic auth nginx) | proxy OK |
+| `db-graph.wise-eat.com` | 80 / 443 + **7688** (Bolt TLS) | Neo4j Browser (basic auth) + Bolt | **443 proxy OK** ; **7688 DNS only** |
 | `ai.wise-eat.com` | 80 / 443 | Ollama API (basic auth nginx, dual-stack) | proxy OK (A + AAAA) |
 | `analytics.wise-eat.com` | 80 / 443 | Matomo Analytics (self-hosted) | proxy OK |
 
@@ -150,7 +150,7 @@ Détails techniques :
 | `MONGO_TLS_DOMAIN` | `db.wise-eat.com` | MongoDB TLS public (Stunnel :27018) |
 | `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
 | `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
-| `NEO4J_ADMIN_DOMAIN` | `db-graph.wise-eat.com` | DbGate admin Neo4j (nginx + basic auth) |
+| `NEO4J_ADMIN_DOMAIN` | `db-graph.wise-eat.com` | Neo4j Browser public (nginx + basic auth) + Bolt TLS :7688 |
 | `OLLAMA_GATEWAY_DOMAIN` | `ai.wise-eat.com` | Ollama API public (nginx + basic auth) |
 | `MATOMO_DOMAIN` | `analytics.wise-eat.com` | Matomo Analytics public (nginx + TLS) |
 | `MATOMO_HTTP_PORT` | `8089` | Matomo local (127.0.0.1 uniquement) |
@@ -340,22 +340,26 @@ sudo ./install.sh neo4j
 Secrets : `neo4j/.env.neo4j` · données : `/var/lib/wise-eat/neo4j`.  
 API : `NEO4J_URI=bolt://host.k3s.internal:7687` avec `NEO4J_ENABLED=false` jusqu’au go-live (voir `africa-meals-project/docs/NEO4J_INTEGRATION.md`).
 
-**Admin web (DbGate)** — `https://db-graph.wise-eat.com` (basic auth nginx, Bolt privé) :
+**Admin web (Neo4j Browser)** — `https://db-graph.wise-eat.com` (basic auth nginx).  
+DbGate ne supporte pas Neo4j ; on expose le Browser natif + Bolt TLS sur `:7688`.
 
 ```bash
-# DNS A (+ AAAA) db-graph.wise-eat.com → VPS (proxy Cloudflare OK)
+# DNS A (+ AAAA) db-graph.wise-eat.com → VPS
+# Cloudflare : proxy OK sur 443 ; port 7688 en DNS only
 sudo ./install.sh neo4j
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh neo4j-admin
-# Si 502 / DbGate KO :
+# Si 502 :
 sudo ./install.sh repair-neo4j-admin
 ```
 
-| URL | Rôle |
-|-----|------|
-| `https://db-graph.wise-eat.com` | DbGate Neo4j (Cypher, graphe) — auth nginx |
-| `http://127.0.0.1:7474` | Neo4j Browser local (optionnel) |
+| URL / port | Rôle |
+|------------|------|
+| `https://db-graph.wise-eat.com` | Neo4j Browser — auth nginx puis login Neo4j |
+| `bolt+s://db-graph.wise-eat.com:7688` | Bolt TLS (nginx stream → :7687 local) |
+| `http://127.0.0.1:7474` | Browser local (sans nginx) |
 
-Identifiants nginx : `NEO4J_ADMIN_BASIC_AUTH_USER` / `NEO4J_ADMIN_BASIC_AUTH_PASSWORD` dans `neo4j/.env.neo4j` (générés à l’install si vides).
+Dans le Browser : Connect URI = `bolt+s://db-graph.wise-eat.com:7688`, user/password = `NEO4J_USER` / `NEO4J_PASSWORD`.  
+Identifiants nginx : `NEO4J_ADMIN_BASIC_AUTH_*` dans `neo4j/.env.neo4j`.
 
 **Monitoring Grafana** : dossier `Neo4j/` — **Wise Eat — Neo4j** ([PapaDanielVi/neo4j-exporter](https://github.com/PapaDanielVi/neo4j-exporter), Bolt → `:9217`, `job=neo4j`) + panneaux cAdvisor du conteneur `wise-eat-neo4j`. Les credentials Bolt sont synchronisés depuis `neo4j/.env.neo4j` vers `.env.monitoring` à l’install.
 

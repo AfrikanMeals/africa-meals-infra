@@ -39,9 +39,8 @@ ensure_neo4j_data_volume
 persist_neo4j_env_paths
 set -a && source .env.neo4j && set +a
 
-mkdir -p "${NEO4J_DBGATE_DATA:-./data-dbgate}"
-
 log "Démarrage Neo4j Docker (RAM ${NEO4J_MEM_LIMIT}, données ${NEO4J_DATA_DIR}, ${NEO4J_STORAGE_GB}G)"
+docker rm -f wise-eat-neo4j-dbgate 2>/dev/null || true
 docker compose --env-file .env.neo4j down 2>/dev/null || true
 docker compose --env-file .env.neo4j pull
 docker compose --env-file .env.neo4j up -d
@@ -73,7 +72,8 @@ Neo4j Community installé dans ${NEO4J_DIR}
 
 Local Browser : http://127.0.0.1:${NEO4J_HTTP_PORT}
 Local Bolt    : bolt://127.0.0.1:${NEO4J_BOLT_PORT}
-Admin public  : sudo STUNNEL_TLS_EMAIL=… ./install.sh neo4j-admin  → https://db-graph.wise-eat.com
+Admin public  : sudo STUNNEL_TLS_EMAIL=… ./install.sh neo4j-admin
+              → https://db-graph.wise-eat.com  ·  bolt+s://db-graph.wise-eat.com:7688
 k3s Bolt      : bolt://host.k3s.internal:${NEO4J_BOLT_PORT}  (si CNI gateway exposé)
 Volume        : ${NEO4J_DATA_DIR} (${NEO4J_STORAGE_GB}G max)
 RAM conteneur : ${NEO4J_MEM_LIMIT} (heap max ${NEO4J_HEAP_MAX}, pagecache ${NEO4J_PAGECACHE})

@@ -1,6 +1,7 @@
 # Wise Eat — Neo4j Community (reco / graphe, pas SoT)
 # Install : sudo ./install.sh neo4j
 # Bolt : bolt://127.0.0.1:7687 · Browser : http://127.0.0.1:7474
+# Admin public : sudo ./install.sh neo4j-admin → https://db-graph.wise-eat.com
 # Budget : 1 Go RAM conteneur · volume données 5 Go (loop)
 
 networks:
@@ -23,9 +24,12 @@ services:
       NEO4J_server_default__listen__address: 0.0.0.0
       NEO4J_server_bolt_listen__address: 0.0.0.0:7687
       NEO4J_server_http_listen__address: 0.0.0.0:7474
-      # Bind public désactivé — exposition uniquement via ports Docker 127.0.0.1 / k3s CNI
-      NEO4J_server_bolt_advertised__address: localhost:${NEO4J_BOLT_PORT:-7687}
-      NEO4J_server_http_advertised__address: localhost:${NEO4J_HTTP_PORT:-7474}
+      # TLS Bolt terminé par nginx stream (:7688) — Bolt interne en clair
+      NEO4J_server_bolt_tls__level: DISABLED
+      # API/k3s : bolt://host.k3s.internal:7687 (direct). Browser public : bolt+s://db-graph:7688
+      NEO4J_server_bolt_advertised__address: ${NEO4J_BOLT_ADVERTISED:-localhost:7687}
+      NEO4J_server_http_advertised__address: ${NEO4J_HTTP_ADVERTISED:-localhost:7474}
+      NEO4J_browser_allow__outgoing__connections: "true"
       NEO4J_PLUGINS: ${NEO4J_PLUGINS:-[]}
     ports:
       - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
@@ -52,39 +56,3 @@ services:
       com.wise-eat.component: graph
     networks:
       - wise-eat-infra
-
-  # Admin web Neo4j (DbGate) — proxy nginx db-graph.wise-eat.com, Bolt privé
-  # Connexion via host-gateway pour matcher bolt advertised=localhost:7687
-  dbgate:
-    image: dbgate/dbgate:6.8.2
-    container_name: wise-eat-neo4j-dbgate
-    restart: unless-stopped
-    networks:
-      - wise-eat-infra
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    environment:
-      CONNECTIONS: wiseeat
-      LABEL_wiseeat: Wise Eat Neo4j
-      SERVER_wiseeat: host.docker.internal
-      PORT_wiseeat: "${NEO4J_BOLT_PORT:-7687}"
-      USER_wiseeat: ${NEO4J_USER:-neo4j}
-      PASSWORD_wiseeat: ${NEO4J_PASSWORD:?NEO4J_PASSWORD requis}
-      ENGINE_wiseeat: neo4j@dbgate-plugin-neo4j
-      # Auth web gérée par nginx (basic auth) sur db-graph.wise-eat.com
-      SKIP_ALL_AUTH: "1"
-      SHELL_CONNECTION: "0"
-      SHELL_SCRIPTING: "0"
-      LOG_LEVEL: warn
-    volumes:
-      - ${NEO4J_DBGATE_DATA:-./data-dbgate}:/root/.dbgate
-    mem_limit: ${NEO4J_DBGATE_MEM_LIMIT:-256m}
-    memswap_limit: ${NEO4J_DBGATE_MEMSWAP_LIMIT:-384m}
-    ports:
-      - "127.0.0.1:${NEO4J_DBGATE_PORT:-8082}:3000"
-    labels:
-      com.wise-eat.service: neo4j-dbgate
-      com.wise-eat.component: graph

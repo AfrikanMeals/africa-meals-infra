@@ -43,8 +43,8 @@ Composants:
   ollama-warmup-metrics  Charge un modèle + requête proxy (remplir dashboard Ollama)
   mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
-  neo4j-admin   nginx reverse-proxy → DbGate Neo4j (db-graph.wise-eat.com, basic auth)
-  repair-neo4j-admin  Répare DbGate Neo4j + nginx (db-graph.wise-eat.com 502)
+  neo4j-admin   nginx → Neo4j Browser (db-graph.wise-eat.com) + Bolt TLS :7688
+  repair-neo4j-admin  Répare Neo4j Browser + nginx (db-graph.wise-eat.com 502)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
   mongodb-cloud-backup Cron upload hebdo MongoDB → GCS / Firebase / AWS (Backup_DB_1…4)
   mongodb-cloud-tools  Installe gcloud + aws CLI (upload cloud MongoDB)

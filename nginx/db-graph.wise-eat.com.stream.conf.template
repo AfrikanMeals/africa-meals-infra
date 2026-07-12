@@ -1,0 +1,18 @@
+# Bolt TLS — termination nginx → Neo4j Bolt plain (127.0.0.1:7687)
+# Port public :7688 — Cloudflare DNS only (pas de proxy orange)
+upstream neo4j_bolt_local {
+    server ${NEO4J_ADMIN_BACKEND_HOST}:${NEO4J_BOLT_PORT};
+}
+
+server {
+    listen ${NEO4J_BOLT_TLS_PORT} ssl;
+    listen [::]:${NEO4J_BOLT_TLS_PORT} ssl;
+    ssl_certificate /etc/letsencrypt/live/${NEO4J_ADMIN_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${NEO4J_ADMIN_DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx-stream.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    proxy_pass neo4j_bolt_local;
+    proxy_connect_timeout 10s;
+    proxy_timeout 86400s;
+}

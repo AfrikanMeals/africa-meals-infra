@@ -1,4 +1,4 @@
-# HTTPS — DbGate Neo4j (db-graph.wise-eat.com) + basic auth nginx
+# HTTPS — Neo4j Browser (db-graph.wise-eat.com) + basic auth nginx
 map $http_upgrade $neo4j_admin_connection_upgrade {
     default upgrade;
     ''      close;
@@ -20,7 +20,7 @@ server {
     }
 
     location / {
-        auth_basic "Neo4j Admin";
+        auth_basic "Neo4j Browser";
         auth_basic_user_file ${NEO4J_ADMIN_HTASSWD_FILE};
 
         proxy_pass http://${NEO4J_ADMIN_BACKEND_HOST}:${NEO4J_ADMIN_BACKEND_PORT};
@@ -31,8 +31,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $neo4j_admin_connection_upgrade;
-        proxy_read_timeout 300;
-        proxy_send_timeout 300;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
     }
 }
 
