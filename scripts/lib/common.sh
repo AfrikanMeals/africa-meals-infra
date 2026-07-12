@@ -86,6 +86,11 @@ MONGO_ADMIN_BACKEND_HOST="${MONGO_ADMIN_BACKEND_HOST:-127.0.0.1}"
 MONGO_ADMIN_BACKEND_PORT="${MONGO_ADMIN_BACKEND_PORT:-8081}"
 MONGO_ADMIN_BASIC_AUTH_USER="${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin}"
 MONGO_ADMIN_HTASSWD_FILE="${MONGO_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/mongo-admin}"
+NEO4J_ADMIN_DOMAIN="${NEO4J_ADMIN_DOMAIN:-db-graph.wise-eat.com}"
+NEO4J_ADMIN_BACKEND_HOST="${NEO4J_ADMIN_BACKEND_HOST:-127.0.0.1}"
+NEO4J_ADMIN_BACKEND_PORT="${NEO4J_ADMIN_BACKEND_PORT:-8082}"
+NEO4J_ADMIN_BASIC_AUTH_USER="${NEO4J_ADMIN_BASIC_AUTH_USER:-neo4j-admin}"
+NEO4J_ADMIN_HTASSWD_FILE="${NEO4J_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/neo4j-admin}"
 MONGO_DATA_DIR="${MONGO_DATA_DIR:-/var/lib/wise-eat/mongodb}"
 MONGO_STORAGE_GB="${MONGO_STORAGE_GB:-5}"
 MONGO_BACKUP_DIR="${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"
@@ -272,6 +277,34 @@ ensure_mongodb_admin_basic_auth_file() {
     log "Basic auth MongoDB Admin : ${user} → ${file}"
   elif [[ -f "${file}" ]]; then
     log "Basic auth MongoDB Admin : ${file} (inchangé)"
+  fi
+}
+
+# Basic auth nginx pour Neo4j Admin public (db-graph.wise-eat.com).
+ensure_neo4j_admin_basic_auth_file() {
+  local user="${NEO4J_ADMIN_BASIC_AUTH_USER:-neo4j-admin}"
+  local pass="${NEO4J_ADMIN_BASIC_AUTH_PASSWORD:-}"
+  local file="${NEO4J_ADMIN_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${NEO4J_ENV}" ]]; then
+    pass="$(read_env_var_from_file "${NEO4J_ENV}" NEO4J_ADMIN_BASIC_AUTH_PASSWORD || true)"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "NEO4J_ADMIN_BASIC_AUTH_PASSWORD requis dans ${NEO4J_ENV} (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth Neo4j Admin : ${user} → ${file}"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth Neo4j Admin : ${file} (inchangé)"
   fi
 }
 

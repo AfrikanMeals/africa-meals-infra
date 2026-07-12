@@ -77,6 +77,7 @@ export EMQX_BROKER_DOMAIN=${EMQX_BROKER_DOMAIN}
 export EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 export MONGO_TLS_DOMAIN=${MONGO_TLS_DOMAIN}
 export MONGO_ADMIN_DOMAIN=${MONGO_ADMIN_DOMAIN}
+export NEO4J_ADMIN_DOMAIN=${NEO4J_ADMIN_DOMAIN}
 export OLLAMA_GATEWAY_DOMAIN=${OLLAMA_GATEWAY_DOMAIN}
 export MATOMO_DOMAIN=${MATOMO_DOMAIN}
 export API_WISE_EAT_DOMAIN=${API_WISE_EAT_DOMAIN}
@@ -125,6 +126,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ -f "/etc/letsencrypt/live/${MONGO_ADMIN_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-mongodb-admin-ssl.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${NEO4J_ADMIN_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/scripts/enable-neo4j-admin-ssl.sh 2>/dev/null || true
   fi
   if [[ -f "/etc/letsencrypt/live/${OLLAMA_GATEWAY_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-ollama-gateway-ssl.sh 2>/dev/null || true

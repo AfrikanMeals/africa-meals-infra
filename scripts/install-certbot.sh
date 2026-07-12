@@ -18,6 +18,7 @@ INSTALL_EMQX_BROKER_CERT="${INSTALL_EMQX_BROKER_CERT:-1}"
 INSTALL_EMQX_WORKER_CERT="${INSTALL_EMQX_WORKER_CERT:-1}"
 INSTALL_MONGODB_TLS_CERT="${INSTALL_MONGODB_TLS_CERT:-1}"
 INSTALL_MONGODB_ADMIN_CERT="${INSTALL_MONGODB_ADMIN_CERT:-1}"
+INSTALL_NEO4J_ADMIN_CERT="${INSTALL_NEO4J_ADMIN_CERT:-1}"
 INSTALL_OLLAMA_CERT="${INSTALL_OLLAMA_CERT:-1}"
 INSTALL_MATOMO_CERT="${INSTALL_MATOMO_CERT:-1}"
 INSTALL_API_CERT="${INSTALL_API_CERT:-1}"
@@ -67,6 +68,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if [[ "${INSTALL_MONGODB_ADMIN_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-mongodb-admin.sh" 2>/dev/null || true
+  fi
+  if [[ "${INSTALL_NEO4J_ADMIN_CERT}" == "1" ]]; then
+    bash "${SCRIPT_DIR}/install-neo4j-admin.sh" 2>/dev/null || true
   fi
   if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
     bash "${SCRIPT_DIR}/install-ollama-gateway.sh" 2>/dev/null || true
@@ -145,6 +149,11 @@ if [[ "${INSTALL_MONGODB_ADMIN_CERT}" == "1" ]]; then
   issue_le_cert "${MONGO_ADMIN_DOMAIN}"
 fi
 
+if [[ "${INSTALL_NEO4J_ADMIN_CERT}" == "1" ]]; then
+  log "=== Certificat Neo4j Admin (${NEO4J_ADMIN_DOMAIN}) ==="
+  issue_le_cert "${NEO4J_ADMIN_DOMAIN}"
+fi
+
 if [[ "${INSTALL_OLLAMA_CERT}" == "1" ]]; then
   log "=== Certificat Ollama gateway (${OLLAMA_GATEWAY_DOMAIN}) ==="
   issue_le_cert "${OLLAMA_GATEWAY_DOMAIN}"
@@ -205,6 +214,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   fi
   if cert_exists "${MONGO_ADMIN_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-mongodb-admin-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${NEO4J_ADMIN_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-neo4j-admin-ssl.sh" 2>/dev/null || true
   fi
   if cert_exists "${OLLAMA_GATEWAY_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-ollama-gateway-ssl.sh" 2>/dev/null || true
