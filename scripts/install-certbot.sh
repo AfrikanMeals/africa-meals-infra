@@ -22,6 +22,7 @@ INSTALL_NEO4J_ADMIN_CERT="${INSTALL_NEO4J_ADMIN_CERT:-1}"
 INSTALL_OLLAMA_CERT="${INSTALL_OLLAMA_CERT:-1}"
 INSTALL_MATOMO_CERT="${INSTALL_MATOMO_CERT:-1}"
 INSTALL_API_CERT="${INSTALL_API_CERT:-1}"
+INSTALL_HAPROXY_PROXY_CERT="${INSTALL_HAPROXY_PROXY_CERT:-1}"
 K8S_API_NGINX="${INFRA_ROOT}/k8s/scripts/install-api-nginx.sh"
 
 [[ -n "${STUNNEL_TLS_EMAIL}" ]] || \
@@ -103,6 +104,12 @@ if [[ "${INSTALL_PROMETHEUS_CERT}" == "1" ]]; then
   issue_le_cert "${PROMETHEUS_LOGS_DOMAIN}"
 fi
 
+if [[ "${INSTALL_HAPROXY_PROXY_CERT}" == "1" ]]; then
+  log "=== Certificat HAProxy UI (${HAPROXY_PROXY_DOMAIN}) ==="
+  bash "${SCRIPT_DIR}/install-haproxy-proxy.sh" 2>/dev/null || true
+  issue_le_cert "${HAPROXY_PROXY_DOMAIN}"
+fi
+
 if [[ "${INSTALL_MINIO_STORAGE_CERT}" == "1" ]]; then
   log "=== Certificat MinIO S3 (${MINIO_STORAGE_DOMAIN}) ==="
   issue_le_cert "${MINIO_STORAGE_DOMAIN}"
@@ -182,6 +189,9 @@ if systemctl is-active nginx >/dev/null 2>&1; then
   bash "${SCRIPT_DIR}/enable-nginx-ssl.sh"
   if cert_exists "${GRAFANA_CONSOLE_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-grafana-console-ssl.sh" 2>/dev/null || true
+  fi
+  if cert_exists "${HAPROXY_PROXY_DOMAIN}"; then
+    bash "${SCRIPT_DIR}/enable-haproxy-proxy-ssl.sh" 2>/dev/null || true
   fi
   if cert_exists "${PROMETHEUS_LOGS_DOMAIN}"; then
     bash "${SCRIPT_DIR}/enable-prometheus-logs-ssl.sh" 2>/dev/null || true

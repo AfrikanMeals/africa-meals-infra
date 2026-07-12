@@ -1,0 +1,79 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "HAProxy — sessions frontends",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (proxy) (haproxy_frontend_current_sessions{job=\"haproxy\"})",
+          "legendFormat": "{{proxy}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "HAProxy — bytes in/out (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (proxy) (rate(haproxy_frontend_bytes_in_total{job=\"haproxy\"}[5m]))",
+          "legendFormat": "in {{proxy}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (proxy) (rate(haproxy_frontend_bytes_out_total{job=\"haproxy\"}[5m]))",
+          "legendFormat": "out {{proxy}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Backend UP (1=up)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "haproxy_backend_active_servers{job=\"haproxy\"}",
+          "legendFormat": "{{proxy}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Connection errors (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (proxy) (rate(haproxy_frontend_request_errors_total{job=\"haproxy\"}[5m]))",
+          "legendFormat": "fe err {{proxy}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (proxy) (rate(haproxy_backend_connection_errors_total{job=\"haproxy\"}[5m]))",
+          "legendFormat": "be err {{proxy}}",
+          "refId": "B"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["haproxy", "wise-eat"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "HAProxy TLS fronts",
+  "uid": "wise-eat-haproxy",
+  "version": 1
+}

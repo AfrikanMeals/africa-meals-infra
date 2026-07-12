@@ -41,7 +41,10 @@ Composants:
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
   repair-ollama-monitoring Recréer Ollama + ollama-exporter (Grafana #25086)
   ollama-warmup-metrics  Charge un modèle + requête proxy (remplir dashboard Ollama)
-  mongodb-tls   Stunnel TLS MongoDB (db.wise-eat.com :27018)
+  mongodb-tls   HAProxy/Stunnel TLS MongoDB (db.wise-eat.com :27018) — préférer haproxy
+  haproxy       HAProxy TLS TCP (Mongo/Redis/Memcached) + UI https://proxy.wise-eat.com/stats
+  haproxy-proxy nginx → HAProxy stats (proxy.wise-eat.com, basic auth)
+  repair-haproxy  Répare HAProxy TLS + UI proxy.wise-eat.com
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
   neo4j-admin   nginx → Neo4j Browser (db-graph.wise-eat.com) + Bolt TLS :7688
   repair-neo4j-admin  Répare Neo4j Browser + nginx (db-graph.wise-eat.com 502)
@@ -52,7 +55,7 @@ Composants:
   repair-neo4j-prometheus  Répare scrape Prometheus → Neo4j (Grafana Neo4j No data)
   repair-mongodb-replicaset  Termine rs.initiate() si install bloqué
   repair-mongodb-admin     Répare DbGate + nginx (data.wise-eat.com 502)
-  repair-mongodb-tls       Répare Stunnel MongoDB TLS (:27018) + resync conf.d
+  repair-mongodb-tls       Legacy Stunnel Mongo — préférer repair-haproxy
   rename-mongodb-database  Renomme la base app (african_meals_db → wise_eat_db) + droits + copie
   emqx-broker   nginx MQTTS/WSS (broker.wise-eat.com :8883/:8884)
   emqx-worker   nginx reverse-proxy → EMQX Dashboard (worker.wise-eat.com, basic auth)
@@ -68,17 +71,17 @@ Composants:
   minio-replication  MinIO + 2 réplicas site replication (:9002, :9004)
   minio-replica-storage  nginx + TLS LE pour dr1/dr2-storage.wise-eat.com
   repair-minio-replication  Répare site replication (buckets réplicas + mc)
-  nginx         nginx + reverse-proxy WS + webroot Certbot
+  nginx         nginx + reverse-proxy WS + Certbot webroot
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
-  certbot       Let's Encrypt (WS + API + Redis Stunnel + Grafana + …)
+  certbot       Let's Encrypt (WS + API + Redis TLS + Grafana + proxy + …)
   api-tls       HTTPS api.wise-eat.com → k3s :30900 (Let's Encrypt nginx)
   ws-tls        HTTPS ws.wise-eat.com → k3s :30800 (Let's Encrypt nginx)
-  stunnel       Stunnel TLS A-lite (:6381 / :6382 / :11212 Memcached)
-  tls           certbot + stunnel (nginx requis pour webroot)
-  verify-tls    Vérifie certs LE + Stunnel
+  stunnel       Stunnel TLS (legacy) — préférer ./install.sh haproxy
+  tls           certbot + haproxy (TLS TCP Redis/Mongo/Memcached + UI proxy)
+  verify-tls    Vérifie certs LE + HAProxy/Stunnel
   verify-ipv6-endpoints  Test AAAA + TCP/TLS depuis Mac ou VPS (./scripts/… sans sudo)
-  repair-ipv6-ufw  UFW IPv6 + ports Stunnel/MQTT + hairpin broker (sur VPS)
+  repair-ipv6-ufw  UFW IPv6 + ports TLS/MQTT + hairpin broker (sur VPS)
   monitoring    Prometheus + Grafana + node/redis/memcached exporters
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   repair-prometheus-host-targets  Corrige node_exporter DOWN (prometheus.yml → 127.0.0.1:9100)
@@ -92,7 +95,7 @@ Composants:
   matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
   update-matomo   Mise à jour Matomo via CLI (image Docker + core:update)
   repair-matomo   Recovery crash / 502 / update interrompue
-  redis-stunnel-cert  Certbot cache.wise-eat.com + sync Stunnel (TLS Redis)
+  redis-stunnel-cert  Certbot cache.wise-eat.com + sync certs TLS Redis
   prometheus-logs nginx reverse-proxy → Prometheus (logs.wise-eat.com, basic auth)
   permissions   Corrige ACL/data (UID 999)
   all           redis + permissions + monitoring + memcached + minio + emqx + mongodb
@@ -100,19 +103,19 @@ Composants:
 Stack TLS prod (nginx recommandé) :
   sudo $0 nginx
   sudo STUNNEL_TLS_EMAIL=help@wise-eat.com $0 tls
-  # tls = certbot + stunnel (nginx doit être actif pour webroot)
+  # tls = certbot + haproxy (nginx doit être actif pour webroot)
 
 Apache à la place de nginx :
   sudo WEB_SERVER=apache $0 web
   sudo STUNNEL_TLS_EMAIL=help@wise-eat.com $0 certbot
-  sudo $0 stunnel
+  sudo $0 haproxy
 
 Exemples:
   sudo $0 redis
   sudo $0 memcached
   sudo $0 minio
-  sudo $0 stunnel
-  sudo GCP_EGRESS_IP=203.0.113.50 $0 stunnel
+  sudo $0 haproxy
+  sudo GCP_EGRESS_IP=203.0.113.50 $0 haproxy
   sudo $0 redis monitoring
   sudo $0 all
 
@@ -121,6 +124,7 @@ Env:
   WS_BACKEND_PORT=8000
   WEB_SERVER=nginx|apache
   GCP_EGRESS_IP=<ip>   A-strict optionnel
+  HAPROXY_PROXY_BASIC_AUTH_PASSWORD=<pass>  UI proxy.wise-eat.com
 
 Docs: README.md · docs/REDIS_VPS_PRODUCTION.md (monorepo AfrikaMeals)
 EOF
@@ -157,7 +161,21 @@ run_component() {
       bash "${SCRIPTS}/ollama-warmup-metrics.sh"
       ;;
     mongodb-tls)
-      bash "${SCRIPTS}/install-mongodb-tls.sh"
+      # Par défaut HAProxy (Stunnel Mongo était cassé / ECONNRESET).
+      if [[ "${FORCE_STUNNEL_MONGODB_TLS:-}" == "1" ]]; then
+        bash "${SCRIPTS}/install-mongodb-tls.sh"
+      else
+        bash "${SCRIPTS}/install-haproxy.sh"
+      fi
+      ;;
+    haproxy)
+      bash "${SCRIPTS}/install-haproxy.sh"
+      ;;
+    haproxy-proxy)
+      bash "${SCRIPTS}/install-haproxy-proxy.sh"
+      ;;
+    repair-haproxy)
+      bash "${SCRIPTS}/repair-haproxy.sh"
       ;;
     mongodb-admin)
       bash "${SCRIPTS}/install-mongodb-admin.sh"
@@ -260,7 +278,7 @@ run_component() {
       ;;
     tls)
       bash "${SCRIPTS}/install-certbot.sh"
-      bash "${SCRIPTS}/install-stunnel.sh"
+      bash "${SCRIPTS}/install-haproxy.sh"
       ;;
     verify-tls)
       bash "${SCRIPTS}/verify-tls.sh"

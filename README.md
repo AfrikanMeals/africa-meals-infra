@@ -1,6 +1,6 @@
 # africa-meals-infra
 
-Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, Neo4j (optionnel), nginx/apache, Certbot, Stunnel, monitoring.
+Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, Neo4j (optionnel), nginx/apache, Certbot, **HAProxy** (TLS TCP), monitoring.
 
 ## Structure
 
@@ -11,9 +11,11 @@ scripts/
   install-apache.sh     idem Apache
   install-web.sh        WEB_SERVER=nginx|apache
   install-certbot.sh
-  install-stunnel.sh
+  install-haproxy.sh    TLS TCP Mongo/Redis/Memcached + UI proxy.wise-eat.com
+  install-stunnel.sh    legacy (préférer haproxy)
   enable-nginx-ssl.sh / enable-apache-ssl.sh
-nginx/                  templates site wise-eat.cloud
+nginx/                  templates (console, proxy, storage, …)
+haproxy/                haproxy.cfg + README
 apache/
 redis/
 memcached/
@@ -45,7 +47,7 @@ sudo ./install.sh nginx
 # ou : sudo ./install.sh apache
 # ou : sudo WEB_SERVER=apache ./install.sh web
 
-# 3. TLS Let's Encrypt (WS + Redis Stunnel + Grafana)
+# 3. TLS Let's Encrypt (WS + HAProxy Redis/Mongo/Memcached + UI proxy)
 sudo ./install.sh nginx
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh tls
 sudo ./install.sh verify-tls
@@ -66,14 +68,15 @@ sudo ./install.sh verify-tls
 | Hostname | Port | Usage | Cloudflare |
 |----------|------|-------|------------|
 | `wise-eat.cloud` | 80 / 443 | WS nginx | proxy OK |
-| `cache.wise-eat.com` | **80** (ACME) + **6381–6386** (Redis TLS) + **11212** (Memcached TLS) | Stunnel | **6381–6386/11212 en DNS only** (pas de proxy orange) |
+| `cache.wise-eat.com` | **80** (ACME) + **6381–6386** (Redis TLS) + **11212** (Memcached TLS) | HAProxy | **6381–6386/11212 en DNS only** (pas de proxy orange) |
+| `proxy.wise-eat.com` | 80 / 443 | HAProxy Stats UI (basic auth) | proxy OK |
 | `console.wise-eat.com` | 80 / 443 | Grafana | proxy OK ou tunnel |
 | `logs.wise-eat.com` | 80 / 443 | Prometheus (basic auth nginx) | proxy OK |
 | `storage.wise-eat.com` | 80 / 443 | MinIO S3 API (médias) | proxy OK — uploads >100 Mo : DNS only |
 | `cdn.wise-eat.com` | 80 / 443 | MinIO Console (basic auth nginx) | proxy OK |
 | `broker.wise-eat.com` | **80** (ACME) + **8883** (MQTTS) + **8884** (WSS) | EMQX MQTT | **8883/8884 en DNS only** (pas de proxy orange) |
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
-| `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | Stunnel → primary | **27018 en DNS only** (pas de proxy orange) |
+| `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | HAProxy → primary | **27018 en DNS only** (pas de proxy orange) |
 | `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
 | `db-graph.wise-eat.com` | 80 / 443 + **7688** (Bolt TLS) | Neo4j Browser (basic auth) + Bolt | **443 proxy OK** ; **7688 DNS only** |
 | `ai.wise-eat.com` | 80 / 443 | Ollama API (basic auth nginx, dual-stack) | proxy OK (A + AAAA) |
@@ -82,6 +85,8 @@ sudo ./install.sh verify-tls
 Après `./install.sh tls`, les apps peuvent utiliser `rediss://…@cache.wise-eat.com:6381` **sans** `REDIS_TLS_REJECT_UNAUTHORIZED=false`.
 
 Sur le **VPS** (PM2 WS), Redis reste en local : `127.0.0.1:6379` / `:6380` sans TLS.
+
+Voir aussi : [haproxy/README.md](haproxy/README.md).
 
 ### IPv6 / dual-stack (accès VPS si IPv4 bloquée)
 

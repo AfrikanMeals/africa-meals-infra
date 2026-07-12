@@ -86,6 +86,14 @@ MONGO_ADMIN_BACKEND_HOST="${MONGO_ADMIN_BACKEND_HOST:-127.0.0.1}"
 MONGO_ADMIN_BACKEND_PORT="${MONGO_ADMIN_BACKEND_PORT:-8081}"
 MONGO_ADMIN_BASIC_AUTH_USER="${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin}"
 MONGO_ADMIN_HTASSWD_FILE="${MONGO_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/mongo-admin}"
+# HAProxy TLS TCP (remplace Stunnel) + UI stats
+HAPROXY_PROXY_DOMAIN="${HAPROXY_PROXY_DOMAIN:-proxy.wise-eat.com}"
+HAPROXY_STATS_HOST="${HAPROXY_STATS_HOST:-127.0.0.1}"
+HAPROXY_STATS_PORT="${HAPROXY_STATS_PORT:-8404}"
+HAPROXY_PROXY_BASIC_AUTH_USER="${HAPROXY_PROXY_BASIC_AUTH_USER:-haproxy}"
+HAPROXY_PROXY_HTASSWD_FILE="${HAPROXY_PROXY_HTASSWD_FILE:-/etc/nginx/htpasswd/haproxy-proxy}"
+HAPROXY_CERTS_DIR="${HAPROXY_CERTS_DIR:-/etc/haproxy/certs}"
+HAPROXY_ENV_FILE="${HAPROXY_ENV_FILE:-/etc/wise-eat/haproxy-proxy.env}"
 NEO4J_ADMIN_DOMAIN="${NEO4J_ADMIN_DOMAIN:-db-graph.wise-eat.com}"
 NEO4J_ADMIN_BACKEND_HOST="${NEO4J_ADMIN_BACKEND_HOST:-127.0.0.1}"
 NEO4J_ADMIN_BACKEND_PORT="${NEO4J_ADMIN_BACKEND_PORT:-7474}"
@@ -250,6 +258,55 @@ ensure_minio_console_basic_auth_file() {
     log "Basic auth MinIO Console : ${user} → ${file} (mot de passe resynchronisé depuis .env.minio)"
   elif [[ -f "${file}" ]]; then
     log "Basic auth MinIO Console : ${file} (inchangé — définir MINIO_CONSOLE_BASIC_AUTH_PASSWORD pour forcer)"
+  fi
+}
+
+# Basic auth nginx pour HAProxy Stats UI (proxy.wise-eat.com).
+ensure_haproxy_proxy_basic_auth_file() {
+  local user="${HAPROXY_PROXY_BASIC_AUTH_USER:-haproxy}"
+  local pass="${HAPROXY_PROXY_BASIC_AUTH_PASSWORD:-}"
+  local file="${HAPROXY_PROXY_HTASSWD_FILE}"
+  local env_file="${HAPROXY_ENV_FILE:-/etc/wise-eat/haproxy-proxy.env}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${env_file}" ]]; then
+    pass="$(read_env_var_from_file "${env_file}" HAPROXY_PROXY_BASIC_AUTH_PASSWORD || true)"
+    user="$(read_env_var_from_file "${env_file}" HAPROXY_PROXY_BASIC_AUTH_USER || echo "${user}")"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    pass="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
+    mkdir -p "$(dirname "${env_file}")"
+    cat > "${env_file}" <<EOF
+HAPROXY_PROXY_BASIC_AUTH_USER=${user}
+HAPROXY_PROXY_BASIC_AUTH_PASSWORD=${pass}
+EOF
+    chmod 600 "${env_file}"
+    log "Mot de passe HAProxy UI généré → ${env_file}"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "HAPROXY_PROXY_BASIC_AUTH_PASSWORD requis (ou fichier ${file})"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    mkdir -p "$(dirname "${env_file}")"
+    if [[ ! -f "${env_file}" ]]; then
+      cat > "${env_file}" <<EOF
+HAPROXY_PROXY_BASIC_AUTH_USER=${user}
+HAPROXY_PROXY_BASIC_AUTH_PASSWORD=${pass}
+EOF
+      chmod 600 "${env_file}"
+    fi
+    log "Basic auth HAProxy UI : ${user} → ${file}"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth HAProxy UI : ${file} (inchangé)"
   fi
 }
 

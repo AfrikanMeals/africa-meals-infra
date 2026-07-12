@@ -77,21 +77,32 @@ export EMQX_BROKER_DOMAIN=${EMQX_BROKER_DOMAIN}
 export EMQX_WORKER_DOMAIN=${EMQX_WORKER_DOMAIN}
 export MONGO_TLS_DOMAIN=${MONGO_TLS_DOMAIN}
 export MONGO_ADMIN_DOMAIN=${MONGO_ADMIN_DOMAIN}
+export HAPROXY_PROXY_DOMAIN=${HAPROXY_PROXY_DOMAIN}
 export NEO4J_ADMIN_DOMAIN=${NEO4J_ADMIN_DOMAIN}
 export OLLAMA_GATEWAY_DOMAIN=${OLLAMA_GATEWAY_DOMAIN}
 export MATOMO_DOMAIN=${MATOMO_DOMAIN}
 export API_WISE_EAT_DOMAIN=${API_WISE_EAT_DOMAIN}
 export WS_WISE_EAT_DOMAIN=${WS_WISE_EAT_DOMAIN}
 export INFRA_ROOT=${INFRA_ROOT}
-STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh
+STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-stunnel-certs.sh 2>/dev/null || true
 STUNNEL_SKIP_RESTART=1 bash ${INFRA_ROOT}/scripts/sync-mongodb-stunnel-certs.sh 2>/dev/null || true
+HAPROXY_SKIP_RELOAD=1 bash ${INFRA_ROOT}/scripts/sync-haproxy-certs.sh 2>/dev/null || true
 source ${INFRA_ROOT}/scripts/lib/common.sh
-stunnel_sync_conf_d
-stunnel_restart_or_die 2>/dev/null || true
+if systemctl is-active haproxy >/dev/null 2>&1; then
+  if haproxy -c -f /etc/haproxy/haproxy.cfg >/dev/null 2>&1; then
+    systemctl reload haproxy || systemctl restart haproxy || true
+  fi
+elif systemctl is-enabled stunnel4 >/dev/null 2>&1 || systemctl is-active stunnel4 >/dev/null 2>&1; then
+  stunnel_sync_conf_d 2>/dev/null || true
+  stunnel_restart_or_die 2>/dev/null || true
+fi
 if systemctl is-active nginx >/dev/null 2>&1; then
   WISE_EAT_DOMAIN=${WISE_EAT_DOMAIN} bash ${INFRA_ROOT}/scripts/enable-nginx-ssl.sh
   if [[ -f "/etc/letsencrypt/live/${GRAFANA_CONSOLE_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-grafana-console-ssl.sh 2>/dev/null || true
+  fi
+  if [[ -f "/etc/letsencrypt/live/${HAPROXY_PROXY_DOMAIN}/fullchain.pem" ]]; then
+    bash ${INFRA_ROOT}/scripts/enable-haproxy-proxy-ssl.sh 2>/dev/null || true
   fi
   if [[ -f "/etc/letsencrypt/live/${PROMETHEUS_LOGS_DOMAIN}/fullchain.pem" ]]; then
     bash ${INFRA_ROOT}/scripts/enable-prometheus-logs-ssl.sh 2>/dev/null || true
