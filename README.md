@@ -6,6 +6,7 @@ Infra VPS Wise Eat : Redis, Memcached, MinIO, EMQX, MongoDB, Neo4j (optionnel), 
 
 ```
 install.sh
+stop.sh                 # arrêt par composant (sudo ./stop.sh redis|neo4j|…)
 scripts/
   install-nginx.sh      reverse-proxy WS + Certbot webroot
   install-apache.sh     idem Apache
@@ -27,12 +28,26 @@ matomo/
 neo4j/
 ```
 
+## Arrêt par composant
+
+```bash
+cd /opt/wise-eat
+chmod +x stop.sh
+sudo ./stop.sh --list
+sudo ./stop.sh neo4j              # compose stop (données conservées)
+sudo ./stop.sh redis memcached
+STOP_MODE=down sudo ./stop.sh ollama   # compose down --remove-orphans (sans -v)
+sudo ./stop.sh k8s-api            # scale deployment → 0
+```
+
+Relancer ensuite avec `sudo ./install.sh <composant>` (ou le script k8s de déploiement pour l’API/WS).
+
 ## Installation complète (VPS)
 
 ```bash
 git clone https://github.com/AfrikanMeals/africa-meals-infra.git /opt/wise-eat
 cd /opt/wise-eat
-chmod +x install.sh scripts/*.sh
+chmod +x install.sh stop.sh scripts/*.sh
 
 # 1. Redis
 sudo ./install.sh redis
