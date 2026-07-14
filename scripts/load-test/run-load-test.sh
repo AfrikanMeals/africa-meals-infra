@@ -34,10 +34,18 @@ TARGET="${LOAD_TEST_TARGET:-both}"
 echo "=== Wise Eat load test ==="
 echo "API  : ${LOAD_TEST_API_BASE:-https://api.wise-eat.com/api}"
 echo "WS   : ${LOAD_TEST_WS_BASE:-https://ws.wise-eat.com}"
-echo "VUs  : ${VUS} | cible : ${TARGET} | durée : ${LOAD_TEST_DURATION:-1m}"
+ITERS="${LOAD_TEST_ITERATIONS:-0}"
+if [[ "${ITERS}" -gt 0 ]]; then
+  echo "VUs  : ${VUS} | cible : ${TARGET} | itérations : ${ITERS}"
+else
+  echo "VUs  : ${VUS} | cible : ${TARGET} | durée : ${LOAD_TEST_DURATION:-1m}"
+fi
 echo ""
 echo "Attention : test sur PRODUCTION — rate-limit login (15 / 15 min / IP)."
 echo "Le script ne login qu'une fois (setup k6) ; augmenter VUs pour simuler la charge."
+if [[ "${ITERS}" -gt 0 ]]; then
+  echo "Mode itérations : 1 itération ≈ 1 tour d’endpoints (plusieurs HTTP req par tour)."
+fi
 if [[ "${VUS}" -gt 500 ]]; then
   echo ""
   echo "AVERTISSEMENT : ${VUS} VUs — charge extrême depuis une seule IP (rate-limit, timeouts)."

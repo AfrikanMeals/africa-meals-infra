@@ -6,6 +6,7 @@
  * Variables (voir .env.example) :
  *   LOAD_TEST_API_BASE, LOAD_TEST_WS_BASE, LOAD_TEST_EMAIL, LOAD_TEST_PASSWORD
  *   LOAD_TEST_VUS, LOAD_TEST_DURATION, LOAD_TEST_RAMP_UP, LOAD_TEST_RAMP_DOWN
+ *   LOAD_TEST_ITERATIONS (optionnel) — nb total d’itérations VU (sinon ramp VUs × durée)
  *   LOAD_TEST_TARGET=api|ws|both
  *   LOAD_TEST_HTTP_TIMEOUT (défaut 60s), LOAD_TEST_WS_CONNECT_TIMEOUT_MS (défaut 60000)
  *   LOAD_TEST_WS_HOLD_SECONDS, LOAD_TEST_AUTH_TOKEN (optionnel, évite /auth/login)
@@ -30,6 +31,8 @@ const vus = Number(__ENV.LOAD_TEST_VUS || 10);
 const rampUp = __ENV.LOAD_TEST_RAMP_UP || '30s';
 const duration = __ENV.LOAD_TEST_DURATION || '1m';
 const rampDown = __ENV.LOAD_TEST_RAMP_DOWN || '15s';
+/** Nb total d’exécutions de `default` (chaque itération = 1 tour d’endpoints). */
+const iterations = Number(__ENV.LOAD_TEST_ITERATIONS || 0);
 const httpFailThreshold = Number(__ENV.LOAD_TEST_HTTP_FAIL_THRESHOLD || 0.1);
 const httpP95ThresholdMs = Number(__ENV.LOAD_TEST_HTTP_P95_MS || 60000);
 const dryRunEnabled =
@@ -200,18 +203,29 @@ const WS_MUTATION_ENDPOINTS = [
   },
 ];
 
+const loadScenario =
+  iterations > 0
+    ? {
+        // Nb fixe d’itérations réparties sur max LOAD_TEST_VUS concurrents.
+        executor: 'shared-iterations',
+        vus: Math.max(1, vus),
+        iterations,
+        maxDuration: __ENV.LOAD_TEST_MAX_DURATION || '30m',
+      }
+    : {
+        executor: 'ramping-vus',
+        startVUs: 0,
+        stages: [
+          { duration: rampUp, target: vus },
+          { duration: duration, target: vus },
+          { duration: rampDown, target: 0 },
+        ],
+        gracefulRampDown: '30s',
+      };
+
 export const options = {
   scenarios: {
-    load: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: rampUp, target: vus },
-        { duration: duration, target: vus },
-        { duration: rampDown, target: 0 },
-      ],
-      gracefulRampDown: '30s',
-    },
+    load: loadScenario,
   },
   thresholds: {
     http_req_failed: [`rate<${httpFailThreshold}`],

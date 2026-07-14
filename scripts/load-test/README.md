@@ -31,12 +31,19 @@ chmod 600 .env
 # 25 utilisateurs virtuels, 2 minutes de plateau, API seule
 LOAD_TEST_VUS=25 LOAD_TEST_DURATION=2m LOAD_TEST_TARGET=api ./run-load-test.sh
 
+# Nombre fixe d’itérations (100 tours, 10 VU max concurrents)
+LOAD_TEST_ITERATIONS=100 LOAD_TEST_VUS=10 LOAD_TEST_TARGET=api ./run-load-test.sh
+
 # 50 connexions STOMP maintenues 60 s
 LOAD_TEST_VUS=50 LOAD_TEST_TARGET=ws LOAD_TEST_WS_HOLD_SECONDS=60 ./run-load-test.sh
 
 # JWT existant (évite le login)
 LOAD_TEST_AUTH_TOKEN=eyJ... ./run-load-test.sh
 ```
+
+**Charge** :
+- **Durée** (défaut) : `LOAD_TEST_VUS` × `LOAD_TEST_DURATION` → volume ≈ tant que le plateau tourne.
+- **Itérations** : `LOAD_TEST_ITERATIONS=N` → exactement N tours de scénario (chaque tour = plusieurs requêtes HTTP/WS).
 
 Options k6 supplémentaires après `--` :
 
