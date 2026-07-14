@@ -1,0 +1,42 @@
+---
+description: Consulter et mettre à jour APP-TRACK.md — anti-régression chronologique + tests liés
+alwaysApply: true
+---
+
+# APP-TRACK — journal obligatoire
+
+Fichier canonique : `africa-meals-project/APP-TRACK.md`
+
+## Avant de coder (toute feature / fix / update non triviale)
+
+1. **Lire** `APP-TRACK.md` (journal + index) pour le domaine touché.
+2. **Respecter** les **Invariants** et **Ne pas casser** des entrées liées — ne pas réintroduire un bug déjà documenté.
+3. Si le chantier chevauche une entrée récente : re-lire les **Fichiers clés** avant d’éditer.
+
+## Pendant / après le livrable
+
+1. **Ajouter** une entrée datée (`YYYY-MM-DD`) en haut du journal (format du fichier).
+2. Lister surfaces, invariants, fichiers clés, commandes de test.
+3. Mettre à jour l’**index rapide** si nouveau domaine.
+4. Compléter aussi le buffer QA (`docs/QA_TESTING_CHECKLIST.md` + `.html`) — APP-TRACK ne le remplace pas.
+
+## Tests anti-régression (obligatoire)
+
+Quand du code déjà tracké est modifié :
+
+1. Exécuter les **Tests** des entrées APP-TRACK dont les fichiers se recoupent.
+2. Exécuter les tests du code **nouvellement** touché / ajouté (`new-feature-tests`, `api-post-update-testing`).
+3. Ne pas conclure « done » si un test lié échoue — corriger ou documenter le blocage.
+
+| Surface | Exemple |
+|---------|---------|
+| API | `yarn jest <spec> --forceExit` / `findRelatedTests` |
+| WS | `npx tsx --test src/**/*.spec.ts` |
+| Mobile | `flutter test <fichier>_test.dart` |
+| Admin | `npm run test:unit` |
+
+## Anti-patterns
+
+- Livrer sans entrée APP-TRACK
+- Ignorer un invariant « Ne pas casser »
+- Tester seulement le happy path du nouveau code alors que des specs liées existent
