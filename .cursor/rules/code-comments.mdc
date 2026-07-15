@@ -1,0 +1,62 @@
+---
+description: Commenter tout nouveau code et toute ligne modifiée (pourquoi + pièges) pour debug et anti-régression
+alwaysApply: true
+---
+
+# Commentaires — nouveau code & mises à jour (strict)
+
+Toute **nouvelle ligne de logique** ajoutée ou **modifiée** doit être compréhensible sans archéologie git. Objectif : le *pourquoi*, les invariants et les pièges — pas paraphraser.
+
+## Obligation (nouveau / modifié)
+
+1. **Chaque bloc de lignes nouvelles** (fonction, branche `if`/`switch`, correctif, garde-fou, side effect) porte un commentaire juste au-dessus.
+2. **Lignes métier isolées** (formule, mapping, normalisation, gating module/région) : commenter la ligne ou le groupe cohérent.
+3. **Nouvelle fonction / méthode / classe** — JSDoc/`///` : rôle, contrat, préconditions.
+4. **Correctif** — cause du bug + symptôme évité (`// Fix: …`).
+5. **Flux multi-étapes** — `// 1.` / `// 2.` sur les enchaînements critiques.
+6. **Mise à jour de comportement** — actualiser le commentaire existant (jamais laisser un commentaire obsolète).
+
+Un seul commentaire peut couvrir **plusieurs lignes consécutives** du même intent (éviter un commentaire par `}` ou import trivial).
+
+## Quand ne pas commenter
+
+- Imports / exports purs, signatures de types sans logique.
+- `return` / `break` évidents déjà couverts par le commentaire du bloc.
+- Commentaires décoratifs (`// =====`) sans information.
+
+## Format
+
+- Langue : **français** ; termes techniques OK (`payload`, `invalidate`, `STOMP`).
+- Style : phrases courtes ; `//` flux, JSDoc/`///` API publique.
+- Lien utile : entrée APP-TRACK / UPDATE-HISTORY si correctif documenté.
+
+## Exemples
+
+```typescript
+// ❌ BAD — paraphrase
+// Incrémente le compteur
+count += 1
+
+// ✅ GOOD — intention + edge case
+// Capacité livreur : exclure les preuves dépôt non rejetées (duty déjà libérée côté mobile).
+const active = orders.filter((o) => !isReleasedByPendingProof(o))
+```
+
+```typescript
+// ✅ GOOD — correctif documenté
+// Fix: regionCode pouvait être un number Mongo ; trim() plantait → normaliser en string.
+const code = String(regionCode ?? '').trim()
+```
+
+```dart
+/// Charge le suivi commande et applique le patch WS localement.
+/// Ne poll HTTP que si [OrderTrackingHub.isStale] (pas de polling rapide).
+Future<void> syncTracking(String orderId) async { ... }
+```
+
+## Checklist agent
+
+- [ ] Toute nouvelle logique commentée (pourquoi / piège)
+- [ ] Correctifs avec `Fix:` ou équivalent
+- [ ] Commentaires obsolètes mis à jour
+- [ ] Pas de bruit sur imports / accolades seules

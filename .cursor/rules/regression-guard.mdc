@@ -1,0 +1,50 @@
+---
+description: Garde anti-régression — permission si risque, historique réversible, tests + commentaires obligatoires
+alwaysApply: true
+---
+
+# Garde anti-régression (toutes apps)
+
+Objectif : **aucune feature déjà livrée ne doit casser** lors d’un fix / update / addon. Sources : `africa-meals-project/APP-TRACK.md` + `UPDATE-HISTORY.md`.
+
+## 1. Avant de coder — lecture + permission
+
+1. Lire **APP-TRACK** (invariants, Ne pas casser) et **UPDATE-HISTORY** (Avant/Après, Rollback) pour le domaine touché.
+2. Identifier les parcours / specs déjà couverts (règles `new-feature-tests`, `no-regression`, `api-post-update-testing`).
+3. **Gate permission** — **arrêter et demander l’accord explicite** de l’utilisateur si **au moins un** cas :
+   - update d’une feature déjà trackée et risque de casse **moyen / élevé** ou **incertain** ;
+   - modification d’un invariant « Ne pas casser » / parcours smoke (auth, checkout, paiement, commandes, WS) ;
+   - refactor large touchant plusieurs surfaces sans tests verts encore ;
+   - rollback partiel ou changement de contrat API / payload WS.
+
+   Message type : *risque*, *features/invariants menacés*, *approche proposée*, *tests prévus* → attendre **oui** avant d’éditer.
+
+4. Permission **non requise** si : nouveau code isolé à faible risque, ou correctif local avec tests liés déjà verts et invariants respectés.
+
+## 2. Pendant le code — commentaires + scope minimal
+
+1. **Commenter tout nouveau code** (fichier, fonction, branche, correctif) — *pourquoi* + piège ; voir `code-comments` (strict).
+2. Scope minimal : pas de refactor opportuniste hors demande.
+3. Ne pas supprimer / affaiblir un test anti-régression existant sans le remplacer.
+
+## 3. Après le livrable — historique + tests
+
+1. Entrée **APP-TRACK** (Surfaces, Invariants, Fichiers, Tests, Ne pas casser).
+2. Entrée **UPDATE-HISTORY** (Avant / Après / Rollback / Risque / Permission).
+3. Exécuter tests des entrées APP-TRACK dont les fichiers se recoupent **+** specs du diff.
+4. Buffer QA (`docs/QA_TESTING_CHECKLIST.md` + `.html`) si parcours manuel.
+5. Ne pas conclure « done » si un test lié échoue.
+
+## 4. En cas de régression détectée
+
+1. Suivre le bloc **Rollback** de l’entrée UPDATE-HISTORY concernée.
+2. Rejouer les tests listés ; documenter le revert (`[revert]`) dans les deux journaux.
+3. Ne pas « empiler » un nouveau fix opaque sans rollback clair.
+
+## Anti-patterns
+
+- Coder une update risquée sans demander la permission
+- Livrer sans UPDATE-HISTORY / sans procédure Rollback
+- Ignorer un invariant APP-TRACK « Ne pas casser »
+- Nouveau code sans commentaires d’intention
+- Happy path seul alors que des specs liées existent

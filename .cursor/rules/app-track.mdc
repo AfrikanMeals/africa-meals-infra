@@ -1,32 +1,34 @@
 ---
-description: Consulter et mettre à jour APP-TRACK.md — anti-régression chronologique + tests liés
+description: Consulter et mettre à jour APP-TRACK + UPDATE-HISTORY — anti-régression et rollback
 alwaysApply: true
 ---
 
-# APP-TRACK — journal obligatoire
+# APP-TRACK + UPDATE-HISTORY — journal obligatoire
 
-Fichier canonique : `africa-meals-project/APP-TRACK.md`
+Fichiers canoniques (dans `africa-meals-project/`) :
 
-## Avant de coder (toute feature / fix / update non triviale)
+- `APP-TRACK.md` — invariants + tests
+- `UPDATE-HISTORY.md` — Avant / Après / Rollback
 
-1. **Lire** `APP-TRACK.md` (journal + index) pour le domaine touché.
-2. **Respecter** les **Invariants** et **Ne pas casser** des entrées liées — ne pas réintroduire un bug déjà documenté.
-3. Si le chantier chevauche une entrée récente : re-lire les **Fichiers clés** avant d’éditer.
+## Avant de coder (feature / fix / update non triviale)
+
+1. Lire **APP-TRACK** + **UPDATE-HISTORY** pour le domaine.
+2. Respecter **Invariants** et **Ne pas casser** — ne pas réintroduire un bug documenté.
+3. Si update d’une feature trackée et risque incertain → **permission utilisateur** (`regression-guard`) avant d’éditer.
+4. Si chevauchement avec une entrée récente : re-lire les **Fichiers clés**.
 
 ## Pendant / après le livrable
 
-1. **Ajouter** une entrée datée (`YYYY-MM-DD`) en haut du journal (format du fichier).
-2. Lister surfaces, invariants, fichiers clés, commandes de test.
-3. Mettre à jour l’**index rapide** si nouveau domaine.
-4. Compléter aussi le buffer QA (`docs/QA_TESTING_CHECKLIST.md` + `.html`) — APP-TRACK ne le remplace pas.
+1. Entrée datée (`YYYY-MM-DD`) en haut de **APP-TRACK** (format du fichier).
+2. Entrée datée en haut de **UPDATE-HISTORY** (Avant / Après / **Rollback** / Risque / Permission).
+3. Mettre à jour l’**index rapide** des deux fichiers si nouveau domaine.
+4. Buffer QA (`docs/QA_TESTING_CHECKLIST.md` + `.html`).
 
 ## Tests anti-régression (obligatoire)
 
-Quand du code déjà tracké est modifié :
-
 1. Exécuter les **Tests** des entrées APP-TRACK dont les fichiers se recoupent.
-2. Exécuter les tests du code **nouvellement** touché / ajouté (`new-feature-tests`, `api-post-update-testing`).
-3. Ne pas conclure « done » si un test lié échoue — corriger ou documenter le blocage.
+2. Exécuter les tests du code nouvellement touché (`new-feature-tests`, `api-post-update-testing`).
+3. Ne pas conclure « done » si un test lié échoue.
 
 | Surface | Exemple |
 |---------|---------|
@@ -37,6 +39,7 @@ Quand du code déjà tracké est modifié :
 
 ## Anti-patterns
 
-- Livrer sans entrée APP-TRACK
+- Livrer sans APP-TRACK **ou** sans UPDATE-HISTORY (update/fix)
+- Rollback absent / vague (« remettre l’ancien code »)
 - Ignorer un invariant « Ne pas casser »
-- Tester seulement le happy path du nouveau code alors que des specs liées existent
+- Tester seulement le happy path du nouveau code

@@ -1,0 +1,53 @@
+---
+description: Toute feature/fix/update testable doit inclure et exécuter des tests anti-régression avant done
+alwaysApply: true
+---
+
+# Tests anti-régression — nouvelles fonctionnalités & updates
+
+Toute **nouvelle fonctionnalité**, **correctif** ou **update** testable n’est pas terminée tant qu’un test automatisé n’empêche pas la régression, **en plus** du buffer QA et de `UPDATE-HISTORY.md`.
+
+Si l’update touche une feature existante et que le risque de casse est **incertain** → **demander la permission** (`regression-guard`) avant de coder.
+
+## Obligation par surface
+
+| Surface | Où tester | Commande |
+|---------|-----------|----------|
+| **API** | `*.spec.ts` / `*.integration.spec.ts` | `yarn test --findRelatedTests <fichiers>` puis tier (`api-post-update-testing.mdc`) |
+| **Admin** | `lib/**/*.spec.ts` | `npm run test:unit` |
+| **Mobile** | `test/**/*_test.dart` ; widget si UI critique | `flutter test` (ciblé) |
+| **Web** | util JS pur → spec Node ; sinon cas QA | selon setup repo |
+| **WS** | specs dispatcher / mapping | `npx tsx --test` / `npm test` |
+| **Infra** | scripts / configs testables | commande documentée dans APP-TRACK |
+
+## Quoi couvrir (minimum)
+
+1. **Formule / règle métier** — entrées → sortie attendue.
+2. **Bug corrigé** — cas qui reproduisait l’échec.
+3. **Gating UI logique** — fonctions pures exportées.
+4. **Auth / rôles** — 401/403 + escalade si endpoint touché.
+5. **Régression liée** — rejouer les **Tests** des entrées APP-TRACK dont les fichiers se recoupent.
+
+## Workflow agent
+
+1. Lire APP-TRACK + UPDATE-HISTORY pour le domaine.
+2. Extraire / étendre la logique pure + `*.spec.ts` / `*_test.dart` **dans le même livrable**.
+3. **Exécuter** les tests du périmètre + tests liés ; corriger avant « done ».
+4. Mettre à jour buffer QA + entrées APP-TRACK / UPDATE-HISTORY (Rollback inclus).
+
+## Anti-patterns
+
+- Livrer avec seulement la checklist QA manuelle
+- Happy path HTTP 200 seul
+- Dupliquer la logique métier dans le test
+- Ignorer un repo touché par la feature
+- Affaiblir un test pour faire passer le diff
+
+## Règles par repo
+
+| Repo | Complément |
+|------|------------|
+| API | `api-post-update-testing.mdc` |
+| Admin | `new-feature-tests.mdc` (local) |
+| Mobile | `no-regression.mdc` |
+| Tous | `regression-guard.mdc` |
