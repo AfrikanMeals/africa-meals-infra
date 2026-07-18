@@ -1,0 +1,68 @@
+---
+description: Principes SOLID pour toute feature/fix/update — isoler le métier, protéger les contrats, éviter les régressions
+alwaysApply: true
+---
+
+# SOLID — style obligatoire (anti-régression)
+
+Toute **nouvelle feature**, **fix** ou **update** doit respecter SOLID. Objectif : isoler le changement pour qu’un ajout ne casse pas un parcours déjà livré (`APP-TRACK` / `regression-guard`).
+
+## S — Single Responsibility
+
+1. **Une raison de changer** par unité (fonction pure, hook, service, composant UI).
+2. **Extraire** la règle métier hors UI / controller / widget (testable sans framework).
+3. Ne pas mélanger HTTP + cache + rendu dans le même bloc.
+
+```typescript
+// ❌ BAD — formule + fetch + toast dans le composant
+async function onSave() {
+  const fee = distance * rate + tax
+  await fetch('/fees', { body: JSON.stringify({ fee }) })
+  toast('ok')
+}
+
+// ✅ GOOD — pure métier + couche HTTP + mutation dédiée
+export function computeDeliveryFee(distance: number, rate: number, tax: number) {
+  return distance * rate + tax
+}
+```
+
+## O — Open / Closed
+
+1. **Étendre** via nouveau module / hook / stratégie ; **ne pas** réécrire un flux core stable.
+2. Update d’un invariant « Ne pas casser » → **permission** (`regression-guard`) avant édition.
+3. Préférer composition (options, gates modules) plutôt que `if` empilés dans une fonction géante.
+
+## L — Liskov / contrats
+
+1. Ne pas affaiblir un contrat public : API DTO, payload WS, signature de hook, clé React Query.
+2. Sous-types / wrappers doivent honorer le comportement attendu par les callers existants.
+3. Changement de contrat → versionner / adapter + tests des callers + entrée UPDATE-HISTORY.
+
+## I — Interface Segregation
+
+1. DTOs, props et hooks **étroits** : seulement ce que le caller utilise.
+2. Ne pas forcer un écran à dépendre d’un « god object » / service fourre-tout.
+3. Admin : garder `lib/*-api.ts` HTTP pur ; mutations dans `hooks/mutations/` (`react-query-mutations`).
+
+## D — Dependency Inversion
+
+1. Le domaine dépend d’**abstractions** (ports, services injectés, query keys), pas de widgets ou de clients HTTP concrets collés au métier.
+2. UI / controllers appellent des façades stables ; la logique pure reste indépendante.
+3. Tests unitaires sur la logique pure ; mocks uniquement aux frontières.
+
+## Checklist agent (avant « done »)
+
+- [ ] Métier extrait (pure) + test anti-régression (`new-feature-tests`)
+- [ ] Pas de modification d’invariant sans permission / Rollback
+- [ ] Contrats API / WS / hooks préservés ou adaptés avec specs callers
+- [ ] Scope minimal — pas de refactor opportuniste hors demande
+- [ ] Commentaires d’intention (`code-comments`) sur le nouveau code
+
+## Anti-patterns
+
+- God service / god widget qui accumule chaque nouvelle feature
+- Copier-coller de logique métier dans UI **et** API (double source de vérité)
+- Modifier un helper partagé « pour mon cas » sans tests des autres callers
+- Casser un payload WS / DTO pour une feature locale
+- Feature livrée sans extraction testable ni entrée APP-TRACK
