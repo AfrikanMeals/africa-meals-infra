@@ -203,6 +203,18 @@ sudo tail -50 /var/log/wise-eat-mongodb-cloud-backup.log</pre>
     </section>
 
     <section>
+      <h2>Dépannage (meta cloud ancien)</h2>
+      <p>Si le dernier <code>Backup_DB_N.meta.json</code> date de plusieurs semaines :</p>
+      <ol>
+        <li><strong>PATH cron</strong> — <code>gcloud</code> est souvent dans <code>/snap/bin</code> (absent du PATH minimal cron). Relancer <code>sudo ./scripts/mongodb-backup.sh install-all</code>.</li>
+        <li><strong>Auth gcloud</strong> — le CLI n’utilise pas <code>GOOGLE_APPLICATION_CREDENTIALS</code> ; les scripts forcent <code>CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE</code>. Vérifier avec <code>preflight</code>.</li>
+        <li><strong>Dump local</strong> — écriture hors <code>/data/db</code> (volume 5&nbsp;Go). Tester <code>sudo ./scripts/mongodb-backup.sh local</code>.</li>
+        <li>Forcer l’upload : <code>sudo MONGO_CLOUD_BACKUP_FORCE=1 ./scripts/mongodb-backup.sh cloud</code>.</li>
+      </ol>
+      <p>Marqueurs locaux : <code>latest/.backup-ok.json</code> · <code>last-cloud-backup.meta.json</code>.</p>
+    </section>
+
+    <section>
       <h2>Restauration depuis le cloud</h2>
       <h3>AWS S3</h3>
       <pre>aws s3 cp s3://VOTRE-BUCKET/mongodb/Backup_DB_2.tar.gz /tmp/
@@ -238,7 +250,7 @@ gcloud storage cp gs://BUCKET/mongodb/Backup_DB_2.tar.gz /tmp/
   </main>
 
   <footer>
-    Wise Eat · africa-meals-infra · Dernière révision doc : 2026-07-08
+    Wise Eat · africa-meals-infra · Dernière révision doc : 2026-07-24
   </footer>
 </body>
 </html>

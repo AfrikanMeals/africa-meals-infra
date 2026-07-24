@@ -18,6 +18,8 @@ fi
 [[ -f "${MONGODB_ENV}" ]] || die "Fichier absent : ${MONGODB_ENV} — lancer sudo ./install.sh mongodb"
 
 set -a && source "${MONGODB_ENV}" && set +a
+# Fix: PATH cron + snap gcloud avant preflight / uploads.
+mongodb_cloud_backup_ensure_cli_path
 mongodb_cloud_backup_apply_api_env
 
 MONGO_BACKUP_DIR="${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"
@@ -25,6 +27,7 @@ MONGO_CLOUD_API_ENV="${MONGO_CLOUD_API_ENV:-/opt/wise-eat-api/.env.prod}"
 MONGO_CLOUD_BACKUP_WEEKDAY="${MONGO_CLOUD_BACKUP_WEEKDAY:-7}"
 MONGO_CLOUD_BACKUP_FORCE="${MONGO_CLOUD_BACKUP_FORCE:-0}"
 MONGO_CLOUD_BACKUP_DRY_RUN="${MONGO_CLOUD_BACKUP_DRY_RUN:-0}"
+LAST_CLOUD_META="${MONGO_BACKUP_DIR}/last-cloud-backup.meta.json"
 
 env_truthy() {
   local raw="${1:-}"
@@ -177,4 +180,12 @@ if [[ "${upload_fail}" -gt 0 ]]; then
   die "Upload cloud partiel — ${upload_ok} OK, ${upload_fail} échec(s)"
 fi
 
+# Conserve le meta local (status / alerte fraîcheur) — trap cleanup efface WORK_DIR.
+if [[ "${MONGO_CLOUD_BACKUP_DRY_RUN}" != "1" ]] && [[ -f "${META}" ]]; then
+  mkdir -p "${MONGO_BACKUP_DIR}"
+  cp -f "${META}" "${LAST_CLOUD_META}"
+  chmod 640 "${LAST_CLOUD_META}" 2>/dev/null || true
+fi
+
 log "Upload cloud OK — ${OBJECT_NAME} (${ARCHIVE_SIZE}) vers ${upload_ok} destination(s)"
+log "Meta local : ${LAST_CLOUD_META}"

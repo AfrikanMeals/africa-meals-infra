@@ -5,6 +5,25 @@ set -euo pipefail
 
 MONGODB_CLOUD_LAST_ERROR=""
 
+# Fix: cron.d PATH sans /snap/bin → gcloud (snap) introuvable le dimanche.
+mongodb_cloud_backup_ensure_cli_path() {
+  local extras=(
+    /snap/bin
+    /usr/lib/google-cloud-sdk/bin
+    /opt/google-cloud-sdk/bin
+    /usr/local/google-cloud-sdk/bin
+  )
+  local p
+  for p in "${extras[@]}"; do
+    [[ -d "${p}" ]] || continue
+    case ":${PATH}:" in
+      *":${p}:"*) ;;
+      *) PATH="${p}:${PATH}" ;;
+    esac
+  done
+  export PATH
+}
+
 mongodb_cloud_backup_week_slot() {
   local day
   day="$(date +%d)"
@@ -82,6 +101,7 @@ mongodb_cloud_backup_uri_join() {
 }
 
 mongodb_cloud_backup_has_gs_cli() {
+  mongodb_cloud_backup_ensure_cli_path
   command -v gcloud >/dev/null 2>&1 || command -v gsutil >/dev/null 2>&1
 }
 
@@ -99,9 +119,10 @@ mongodb_cloud_backup_run_gs_upload() {
   local uri="$1"
   local archive="$2"
   local credentials="${3:-}"
-  local err_file rc
+  local err_file rc gcloud_cfg
 
   MONGODB_CLOUD_LAST_ERROR=""
+  mongodb_cloud_backup_ensure_cli_path
 
   if ! mongodb_cloud_backup_has_gs_cli; then
     MONGODB_CLOUD_LAST_ERROR="gcloud/gsutil introuvable sur le PATH. $(mongodb_cloud_backup_gs_cli_hint)"
@@ -121,18 +142,29 @@ mongodb_cloud_backup_run_gs_upload() {
   elif [[ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]]; then
     MONGODB_CLOUD_LAST_ERROR="Aucun compte de service Google (GOOGLE_APPLICATION_CREDENTIALS / accounts.json)"
     return 3
+  else
+    credentials="${GOOGLE_APPLICATION_CREDENTIALS}"
   fi
+
+  # Fix: gcloud CLI ignore GOOGLE_APPLICATION_CREDENTIALS — override SDK obligatoire.
+  export CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE="${credentials}"
+  # Config isolée (cron root sans ~/.config/gcloud).
+  gcloud_cfg="$(mktemp -d /tmp/wise-eat-gcloud-XXXXXX)"
+  export CLOUDSDK_CONFIG="${gcloud_cfg}"
 
   err_file="$(mktemp)"
   if command -v gcloud >/dev/null 2>&1; then
     if gcloud storage cp --quiet "${archive}" "${uri}" 2>"${err_file}"; then
       rm -f "${err_file}"
+      rm -rf "${gcloud_cfg}"
       return 0
     fi
     rc=$?
   elif command -v gsutil >/dev/null 2>&1; then
+    # gsutil utilise souvent ADC via GOOGLE_APPLICATION_CREDENTIALS.
     if gsutil -q cp "${archive}" "${uri}" 2>"${err_file}"; then
       rm -f "${err_file}"
+      rm -rf "${gcloud_cfg}"
       return 0
     fi
     rc=$?
@@ -142,6 +174,7 @@ mongodb_cloud_backup_run_gs_upload() {
 
   MONGODB_CLOUD_LAST_ERROR="$(tr '\n' ' ' < "${err_file}" | sed 's/  */ /g' | cut -c1-500)"
   rm -f "${err_file}"
+  rm -rf "${gcloud_cfg}"
   if [[ -z "${MONGODB_CLOUD_LAST_ERROR}" ]]; then
     MONGODB_CLOUD_LAST_ERROR="gcloud/gsutil exit ${rc} (sans message — vérifier IAM Storage Object Admin sur le bucket)"
   fi
@@ -155,6 +188,7 @@ mongodb_cloud_backup_run_aws_upload() {
   local err_file rc aws_cmd
 
   MONGODB_CLOUD_LAST_ERROR=""
+  mongodb_cloud_backup_ensure_cli_path
 
   if ! command -v aws >/dev/null 2>&1; then
     MONGODB_CLOUD_LAST_ERROR="aws CLI introuvable. $(mongodb_cloud_backup_aws_cli_hint)"
@@ -185,7 +219,7 @@ mongodb_cloud_backup_run_aws_upload() {
 
 mongodb_cloud_backup_self_test() {
   local failures=0
-  local day slot expected
+  local day slot expected joined
 
   for day in 1 7 8 14 15 21 22 28 31; do
     slot="$(mongodb_cloud_backup_week_slot_for_day "${day}")"
@@ -212,6 +246,18 @@ mongodb_cloud_backup_self_test() {
     failures=$((failures + 1))
   fi
   unset MONGO_CLOUD_BACKUP_PREFIX MONGO_CLOUD_BACKUP_ARCHIVE_EXT
+
+  joined="$(mongodb_cloud_backup_uri_join "s3://bucket/mongodb/" "Backup_DB_2.tar.gz")"
+  if [[ "${joined}" != "s3://bucket/mongodb/Backup_DB_2.tar.gz" ]]; then
+    echo "FAIL uri_join got=${joined}" >&2
+    failures=$((failures + 1))
+  fi
+
+  mongodb_cloud_backup_ensure_cli_path
+  if [[ -d /snap/bin ]] && [[ ":${PATH}:" != *":/snap/bin:"* ]]; then
+    echo "FAIL ensure_cli_path n'ajoute pas /snap/bin" >&2
+    failures=$((failures + 1))
+  fi
 
   if [[ "${failures}" -gt 0 ]]; then
     return 1

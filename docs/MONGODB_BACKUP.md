@@ -103,6 +103,21 @@ sudo MONGO_CLOUD_BACKUP_FORCE=1 ./scripts/mongodb-backup.sh cloud
 |---------|---------|
 | `/var/log/wise-eat-mongodb-backup.log` | Dump local quotidien |
 | `/var/log/wise-eat-mongodb-cloud-backup.log` | Upload cloud hebdo |
+| `/var/backups/wise-eat-mongodb/latest/.backup-ok.json` | Marqueur dernier dump local |
+| `/var/backups/wise-eat-mongodb/last-cloud-backup.meta.json` | Marqueur dernier upload cloud |
+
+## Dépannage (backup bloqué / meta ancien)
+
+Si `last-cloud-backup.meta.json` (ou l’objet S3/GCS) date de plusieurs semaines :
+
+1. **PATH cron sans snap** — `gcloud` est souvent dans `/snap/bin`, absent du PATH minimal de `/etc/cron.d`.  
+   → `sudo ./scripts/mongodb-backup.sh install-all` (réécrit les crons avec `/snap/bin`).
+2. **Auth gcloud** — le CLI n’utilise **pas** `GOOGLE_APPLICATION_CREDENTIALS` ; les scripts forcent `CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE`.  
+   → `sudo ./scripts/mongodb-backup.sh preflight`
+3. **Dump local** — ne plus écrire dans `/data/db` (volume WiredTiger 5 Go). Dump vers `/tmp` dans le conteneur.  
+   → `sudo ./scripts/mongodb-backup.sh local`
+4. Relancer cloud :  
+   `sudo MONGO_CLOUD_BACKUP_FORCE=1 ./scripts/mongodb-backup.sh cloud`
 
 ## Restauration (résumé)
 

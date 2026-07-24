@@ -115,15 +115,27 @@ case "${cmd}" in
     exec bash "${SCRIPT_DIR}/verify-aws-s3-env.sh" "${MONGO_CLOUD_API_ENV:-/opt/wise-eat-api/.env.prod}"
     ;;
   status)
+    # shellcheck source=lib/mongodb-cloud-backup.sh
+    source "${SCRIPT_DIR}/lib/mongodb-cloud-backup.sh"
+    mongodb_cloud_backup_ensure_cli_path
     echo "=== Crons ==="
     for f in /etc/cron.d/wise-eat-mongodb-backup /etc/cron.d/wise-eat-mongodb-cloud-backup; do
       if [[ -f "${f}" ]]; then
         echo "--- ${f} ---"
         cat "${f}"
+        if ! grep -q '/snap/bin' "${f}" 2>/dev/null; then
+          echo "WARN: PATH sans /snap/bin — relancer : sudo ./scripts/mongodb-backup.sh install-all"
+        fi
       else
         echo "Absent : ${f}"
       fi
     done
+    echo ""
+    echo "=== CLI cloud (PATH effectif) ==="
+    echo "PATH=${PATH}"
+    command -v gcloud >/dev/null 2>&1 && echo "gcloud: $(command -v gcloud)" || echo "gcloud: ABSENT"
+    command -v gsutil >/dev/null 2>&1 && echo "gsutil: $(command -v gsutil)" || echo "gsutil: ABSENT"
+    command -v aws >/dev/null 2>&1 && echo "aws: $(command -v aws)" || echo "aws: ABSENT"
     echo ""
     echo "=== Backups locaux ==="
     local_dir="${MONGO_BACKUP_DIR:-/var/backups/wise-eat-mongodb}"
@@ -131,6 +143,16 @@ case "${cmd}" in
       du -sh "${local_dir}"/* 2>/dev/null || du -sh "${local_dir}"
       ls -la "${local_dir}/latest" 2>/dev/null | head -5 || true
       echo "Snapshots : $(find "${local_dir}/snapshots" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+      if [[ -f "${local_dir}/latest/.backup-ok.json" ]]; then
+        echo "Dernier dump local : $(cat "${local_dir}/latest/.backup-ok.json")"
+      else
+        echo "WARN: pas de marqueur .backup-ok.json (dump local jamais réussi avec le nouveau script ?)"
+      fi
+      if [[ -f "${local_dir}/last-cloud-backup.meta.json" ]]; then
+        echo "Dernier upload cloud : $(cat "${local_dir}/last-cloud-backup.meta.json")"
+      else
+        echo "WARN: pas de last-cloud-backup.meta.json (upload cloud jamais réussi depuis ce host ?)"
+      fi
     else
       echo "Répertoire absent : ${local_dir}"
     fi
@@ -138,8 +160,8 @@ case "${cmd}" in
     echo "=== Derniers logs ==="
     for log in /var/log/wise-eat-mongodb-backup.log /var/log/wise-eat-mongodb-cloud-backup.log; do
       if [[ -f "${log}" ]]; then
-        echo "--- ${log} (5 dernières lignes) ---"
-        tail -5 "${log}" 2>/dev/null || true
+        echo "--- ${log} (8 dernières lignes) ---"
+        tail -8 "${log}" 2>/dev/null || true
       fi
     done
     echo ""

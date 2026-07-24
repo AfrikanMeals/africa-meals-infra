@@ -24,7 +24,8 @@ chmod 640 "${LOG_FILE}"
 cat > "${CRON_FILE}" <<EOF
 # Wise Eat — upload hebdo MongoDB off-site (Backup_DB_1 … Backup_DB_4, écrase chaque mois)
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+# Fix: /snap/bin requis — google-cloud-cli installé via snap (sinon gcloud absent le dimanche).
+PATH=/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ${MONGO_CLOUD_BACKUP_CRON} root ${UPLOAD_SCRIPT} >> ${LOG_FILE} 2>&1
 EOF
 chmod 644 "${CRON_FILE}"

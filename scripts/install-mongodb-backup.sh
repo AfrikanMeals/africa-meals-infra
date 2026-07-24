@@ -23,7 +23,8 @@ chmod 640 "${LOG_FILE}"
 cat > "${CRON_FILE}" <<EOF
 # Wise Eat — sauvegarde MongoDB (dump quotidien override + snapshot hebdo hardlinks)
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+# Inclure /snap/bin (gcloud) + docker usuels pour cron.d (PATH minimal sinon).
+PATH=/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ${MONGO_BACKUP_CRON} root ${BACKUP_SCRIPT} >> ${LOG_FILE} 2>&1
 EOF
 chmod 644 "${CRON_FILE}"
