@@ -77,6 +77,8 @@ data:
   STATUS_PROBE_ADMIN_URL: "https://admin.wise-eat.com/api/health"
   AFRICA_MEALS_ADMIN_PUBLIC_URL: "https://admin.wise-eat.com"
   ADMIN_APP_URL: "https://admin.wise-eat.com"
+  # Portail vendeurs / partenaires / livreurs (return Stripe Connect & Checkout).
+  BUSINESS_APP_URL: "https://business.wise-eat.com"
 
   # --- gRPC (API server :50052 + client WS notify :50051) ---
   GRPC_VERSION: "2"
