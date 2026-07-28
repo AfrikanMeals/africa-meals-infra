@@ -178,6 +178,19 @@ kubectl -n wise-eat rollout restart deploy/africa-meals-api
 
 4. Health Docker + HTTPS public + smoke upload.
 
+## Ops MinIO = k8s uniquement
+
+Après cutover, **ne plus** cibler les noms Docker (`wise-eat-minio`, réseau `wise-eat-minio`).
+
+| Usage | Comment |
+|-------|---------|
+| Santé / mc depuis l’hôte | `127.0.0.1:9000` / `:9002` / `:9004` (hostPort) |
+| SR / mc in-cluster | Services `minio.wise-eat.svc.cluster.local:9000` (+ replica-1/2) |
+| Repair SR | `sudo ./install.sh repair-minio-site-replication-k8s` |
+| Apply manifests | `sudo ./install.sh minio-k8s` |
+
+`install.sh minio-replication` / `repair-minio-replication` = **legacy Docker** — ne pas les lancer.
+
 ## Apply sans cutover (pods déjà seuls)
 
 ```bash

@@ -86,6 +86,7 @@ log "Purge SR (endpoints Docker) + re-add via Services k8s (${NAMESPACE})"
         mc rb --force "${site}/${b}" 2>/dev/null || true
       done
       # Filet si le parse mc ls rate (noms connus post-cutover).
+      # Pas d'awk : image mc minimale (sh pur, comme minio-replication.sh).
       for b in "${MINIO_BUCKET}" wise-eat-writelock-test wise-eat-tmp wise-eat-repair; do
         mc rb --force "${site}/${b}" 2>/dev/null || true
       done
@@ -94,6 +95,14 @@ log "Purge SR (endpoints Docker) + re-add via Services k8s (${NAMESPACE})"
     strip_all_buckets replica2
 
     mc admin replicate add primary replica1 replica2
+
+    # Nettoyer bucket de test sur le primary (SR peut refuser rb simple → versions puis rb).
+    if mc ls primary/wise-eat-writelock-test >/dev/null 2>&1; then
+      mc rm -r --force --versions "primary/wise-eat-writelock-test" 2>/dev/null || true
+      mc rb --force --dangerous "primary/wise-eat-writelock-test" 2>/dev/null \
+        || mc rb --force "primary/wise-eat-writelock-test" 2>/dev/null \
+        || true
+    fi
 
     # Syntaxe mc : resync start SOURCE CIBLE (un peer à la fois).
     mc admin replicate resync start primary replica1 || true
