@@ -31,15 +31,17 @@ if ! curl -sf "http://127.0.0.1:${MINIO_API_PORT}/minio/health/live" >/dev/null 
 fi
 
 log "Mirror incrémental ${MINIO_BUCKET} → ${MINIO_BACKUP_DIR}/latest/ (via 127.0.0.1:${MINIO_API_PORT})"
-# network host : mc joint le hostPort / bind Docker sans DNS Docker.
+# Image mc : ENTRYPOINT=mc — forcer /bin/sh (sinon « /bin/sh is not a recognized command »).
+# network host : joint hostPort K8s ou bind Docker sans DNS Docker.
 docker run --rm --network host \
+  --entrypoint /bin/sh \
   -v "${MINIO_BACKUP_DIR}:/backup:rw" \
   -e MINIO_ROOT_USER \
   -e MINIO_ROOT_PASSWORD \
   -e MINIO_BUCKET \
   -e MINIO_API_PORT \
   "${MC_IMAGE}" \
-  /bin/sh -c '
+  -c '
     set -e
     mc alias set local "http://127.0.0.1:${MINIO_API_PORT}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
     mc mirror --overwrite --remove "local/${MINIO_BUCKET}" "/backup/latest/${MINIO_BUCKET}"
