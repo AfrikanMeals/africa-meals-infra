@@ -91,8 +91,33 @@ if curl -sf http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
   if echo "${bucket_up}" | grep -q '"value":\[.*,"1"\]'; then
     ok "Prometheus scrape minio-bucket (primary)=1"
   else
-    bad "Prometheus job minio-bucket DOWN — buckets/objets Grafana peuvent rester N/A"
+    warn "Prometheus job minio-bucket DOWN — fallback cluster_* pour buckets/objets"
   fi
+
+  # Compteurs Grafana « Number of Buckets / Objects »
+  buckets_q="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=max(minio_cluster_bucket_total{job=~"minio-cluster|minio-bucket"}) or count(count by (bucket) (minio_bucket_usage_total_bytes{job=~"minio-bucket|minio-cluster"}))' \
+    2>/dev/null || true)"
+  objects_q="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=max(minio_cluster_usage_object_total{job=~"minio-cluster|minio-bucket"}) or sum(minio_bucket_usage_object_total{job=~"minio-bucket|minio-cluster"})' \
+    2>/dev/null || true)"
+  if echo "${buckets_q}" | grep -qE '"value":\[[0-9.]+,"[0-9]+'; then
+    ok "Compteur buckets Prometheus disponible"
+  else
+    # Endpoint direct — diagnostiquer auth / scanner MinIO
+    if curl -sf "http://127.0.0.1:${API_PORT}/minio/v2/metrics/bucket" 2>/dev/null \
+      | grep -qE 'minio_bucket_usage_'; then
+      warn "Métriques bucket exposées mais pas encore scrapées — reload Prometheus"
+    else
+      warn "Compteur buckets encore vide (scanner MinIO) — Data Usage peut déjà afficher des MiB"
+    fi
+  fi
+  if echo "${objects_q}" | grep -qE '"value":\[[0-9.]+,"[0-9]+'; then
+    ok "Compteur objets Prometheus disponible"
+  else
+    warn "Compteur objets encore vide — attendre scan MinIO ou mc admin info"
+  fi
+
   [[ "${sites_ok}" -ge 1 ]] || bad "Aucun site MinIO scrapé"
 else
   bad "Prometheus injoignable :9090 — sudo ./install.sh monitoring"

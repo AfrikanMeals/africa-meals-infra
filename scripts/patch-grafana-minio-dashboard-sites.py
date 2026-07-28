@@ -43,19 +43,22 @@ def patch_expr(expr: str) -> str:
     while f"{SITE_FILTER}, {SITE_FILTER}" in expr:
         expr = expr.replace(f"{SITE_FILTER}, {SITE_FILTER}", SITE_FILTER)
 
-    # Buckets : cluster_* peut être vide juste après restart → fallback bucket metrics.
-    if "minio_cluster_bucket_total" in expr and "minio_bucket_usage" not in expr:
+    # Buckets / objets : PAS de filtre minio_site (variable All / label manquant → N/A).
+    if "minio_cluster_bucket_total" in expr:
         expr = (
-            f"max(minio_cluster_bucket_total{{{JOB_FILTER}, {SITE_FILTER}}}) "
-            f"or count(count by (bucket) "
-            f"(minio_bucket_usage_total_bytes{{{JOB_FILTER}, {SITE_FILTER}}}))"
+            'max(minio_cluster_bucket_total{job=~"minio-cluster|minio-bucket|minio"}) '
+            'or count(count by (bucket) '
+            '(minio_bucket_usage_total_bytes{job=~"minio-bucket|minio-cluster|minio"})) '
+            'or count(count by (bucket) '
+            '(minio_bucket_usage_object_total{job=~"minio-bucket|minio-cluster|minio"}))'
         )
 
-    # Objets : idem fallback sum bucket.
-    if "minio_cluster_usage_object_total" in expr and "minio_bucket_usage_object" not in expr:
+    if "minio_cluster_usage_object_total" in expr:
+        # size_distribution = comptes par tranche de taille (souvent dispo avant usage_object_total).
         expr = (
-            f"max(minio_cluster_usage_object_total{{{JOB_FILTER}, {SITE_FILTER}}}) "
-            f"or sum(minio_bucket_usage_object_total{{{JOB_FILTER}, {SITE_FILTER}}})"
+            'max(minio_cluster_usage_object_total{job=~"minio-cluster|minio-bucket|minio"}) '
+            'or sum(minio_bucket_usage_object_total{job=~"minio-bucket|minio-cluster|minio"}) '
+            'or sum(minio_cluster_objects_size_distribution{job=~"minio-cluster|minio"})'
         )
 
     # Servers online : compter les sites scrapés UP (site replication = 3 standalone).
@@ -68,6 +71,36 @@ def patch_expr(expr: str) -> str:
 def patch_target(t: dict) -> None:
     if "expr" in t and isinstance(t["expr"], str):
         t["expr"] = patch_expr(t["expr"])
+
+
+def fix_bucket_object_panels(panels: list) -> None:
+    """Retirer mapping null→N/A et forcer requêtes robustes sur les stats buckets/objets."""
+    for p in panels:
+        title = (p.get("title") or "").strip()
+        if title not in ("Number of Buckets", "Number of Objects"):
+            continue
+        # Plus de « N/A » vert trompeur quand la série est vide.
+        defaults = p.setdefault("fieldConfig", {}).setdefault("defaults", {})
+        defaults["mappings"] = []
+        defaults["noValue"] = "—"
+        opts = p.setdefault("options", {})
+        opts.setdefault("reduceOptions", {})["calcs"] = ["lastNotNull"]
+        for t in p.get("targets", []):
+            if title == "Number of Buckets":
+                t["expr"] = (
+                    'max(minio_cluster_bucket_total{job=~"minio-cluster|minio-bucket|minio"}) '
+                    'or count(count by (bucket) '
+                    '(minio_bucket_usage_total_bytes{job=~"minio-bucket|minio-cluster|minio"})) '
+                    'or count(count by (bucket) '
+                    '(minio_bucket_usage_object_total{job=~"minio-bucket|minio-cluster|minio"}))'
+                )
+            else:
+                t["expr"] = (
+                    'max(minio_cluster_usage_object_total{job=~"minio-cluster|minio-bucket|minio"}) '
+                    'or sum(minio_bucket_usage_object_total{job=~"minio-bucket|minio-cluster|minio"}) '
+                    'or sum(minio_cluster_objects_size_distribution{job=~"minio-cluster|minio"})'
+                )
+            t["instant"] = True
 
 
 def health_panel() -> dict:
@@ -196,6 +229,7 @@ def main() -> None:
     walk(dash, lambda o: patch_target(o) if "expr" in o else None)
 
     panels = dash.get("panels", [])
+    fix_bucket_object_panels(panels)
     # Remplacer panneau santé custom s'il existe, sinon insérer.
     panels = [p for p in panels if p.get("id") != 9200]
     for p in panels:
