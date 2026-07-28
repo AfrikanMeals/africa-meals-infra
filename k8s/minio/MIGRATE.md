@@ -13,6 +13,8 @@ Remplacer les conteneurs Docker `wise-eat-minio` (+ 2 réplicas) par des pods k3
 - **Interne (pods API)** : `http://host.k3s.internal:9000`
 - **Public** : `https://storage.wise-eat.com` (nginx → `127.0.0.1:9000`, inchangé)
 - **Creds** : mêmes valeurs que `minio/.env.minio`
+- **Ressources primary** : request 256Mi/100m · limit **512Mi / 2 CPU** (`replicas: 1` — pas d’HPA MinIO)
+- **Charge app** : HPA `africa-meals-api` (5–10), pas de scale horizontal MinIO hostPath
 
 ## Prérequis
 

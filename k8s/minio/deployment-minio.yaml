@@ -76,14 +76,14 @@ spec:
               hostPort: 9001
               protocol: TCP
           resources:
-            # LimitRange wise-eat : memory.min=256Mi / max=512Mi (pas 128Mi → pod rejeté).
+            # Un seul pod writer (pas d’HPA replicas). Headroom uploads sous LimitRange max.
+            # memory.max=512Mi · cpu.max=2 (namespace wise-eat).
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 256Mi
             limits:
-              # Aligné MINIO_MEM_LIMIT=256m du compose.
-              cpu: "1"
-              memory: 256Mi
+              cpu: "2"
+              memory: 512Mi
           volumeMounts:
             - name: data
               mountPath: /data

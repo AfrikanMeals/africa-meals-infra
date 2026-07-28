@@ -145,13 +145,15 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 | Paramètre | Valeur |
 |-----------|--------|
 | RAM request/limit | **512 Mi** / pod |
-| Total cluster API | **≈ 2,5 Gi** (5 × 512 Mi) |
+| Total cluster API | **≈ 2,5–5 Gi** (5–10 × 512 Mi selon HPA) |
 | CPU request | 100m |
 | CPU limit | 1 core |
-| Replicas | **5** |
+| Replicas | **5–10** (HPA) |
+| HPA | CPU **60 %** · mémoire **75 %** · scale-up rapide · scale-down 5 min |
 | NodePort | **30900** |
 | PDB | min **3** pods sur 5 |
 | Probes | `/api/health` (startup + readiness + liveness) |
+| MinIO (storage) | **1** pod primary · RAM **512 Mi** · CPU limit **2** (pas d’HPA replicas) |
 
 ---
 
