@@ -74,29 +74,34 @@ spec:
               hostPort: 9012
               protocol: TCP
           resources:
+            # LimitRange wise-eat : memory.min=256Mi (128Mi → pod rejeté).
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: "1"
               memory: 256Mi
           volumeMounts:
             - name: data
               mountPath: /data
+          startupProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            periodSeconds: 5
+            failureThreshold: 36
           livenessProbe:
             httpGet:
               path: /minio/health/live
               port: api
-            initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /minio/health/ready
+              path: /minio/health/live
               port: api
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 3
       volumes:

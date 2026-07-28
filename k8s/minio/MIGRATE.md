@@ -78,6 +78,32 @@ kubectl -n wise-eat exec deploy/africa-meals-api -- \
 # Upload smoke depuis l’API (média) + URL publique storage.wise-eat.com
 ```
 
+## Reprise après échec mid-cutover (Docker stop, pods pas Ready)
+
+MinIO est down tant que les pods ne sont pas Ready. Diagnostiquer :
+
+```bash
+kubectl -n wise-eat get pods -l app.kubernetes.io/name=minio
+kubectl -n wise-eat describe deploy/minio | tail -40
+# Cause fréquente : LimitRange memory.min=256Mi — request 128Mi → Forbidden
+```
+
+Corriger (git pull) puis **reprendre** sans re-backup si MinIO est down :
+
+```bash
+cd /opt/wise-eat && git pull
+sudo ./install.sh migrate-minio-k8s
+# le script skip le backup si :9000 down et /var/backups/wise-eat-minio/latest existe
+```
+
+Ou apply seul puis attendre Ready :
+
+```bash
+sudo ./install.sh minio-k8s
+kubectl -n wise-eat rollout status deploy/minio --timeout=300s
+sudo ./install.sh verify-minio-ops
+```
+
 ## Rollback
 
 1. Scale pods à 0 (libère hostPort) :

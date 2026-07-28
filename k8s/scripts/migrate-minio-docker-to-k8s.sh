@@ -133,13 +133,32 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   exit 0
 fi
 
-# --- Backup obligatoire ---
+# Reprise après échec partiel : Docker déjà stop, MinIO down → backup impossible.
 if [[ "${SKIP_BACKUP}" != "1" ]]; then
-  log "Backup mc mirror (obligatoire avant stop)"
-  bash "${INFRA_ROOT}/scripts/backup-minio.sh" || die "Backup échoué — cutover annulé (données intactes)"
+  if curl -sf "http://127.0.0.1:${API_PORT}/minio/health/live" >/dev/null 2>&1; then
+    log "Backup mc mirror (obligatoire avant stop)"
+    bash "${INFRA_ROOT}/scripts/backup-minio.sh" || die "Backup échoué — cutover annulé (données intactes)"
+  elif [[ -d "${MINIO_BACKUP_DIR:-/var/backups/wise-eat-minio}/latest" ]]; then
+    warn "MinIO déjà down — skip backup (mirror précédent présent sous /var/backups/wise-eat-minio)"
+  else
+    die "MinIO down et aucun backup latest — restaurer Docker d'abord ou SKIP_BACKUP=1"
+  fi
 else
   warn "SKIP_BACKUP=1 — cutover sans mirror (risque)"
 fi
+
+dump_minio_k8s_diag() {
+  warn "=== Diagnostic pods MinIO (rollout échoué) ==="
+  "${KUBECTL[@]}" -n "${NAMESPACE}" get deploy,pods,events -l app.kubernetes.io/name=minio 2>/dev/null || true
+  "${KUBECTL[@]}" -n "${NAMESPACE}" describe deploy/minio 2>/dev/null | tail -n 40 || true
+  local p
+  p="$("${KUBECTL[@]}" -n "${NAMESPACE}" get pods -l app.kubernetes.io/name=minio,app.kubernetes.io/instance=primary -o name 2>/dev/null | head -1 || true)"
+  if [[ -n "${p}" ]]; then
+    "${KUBECTL[@]}" -n "${NAMESPACE}" describe "${p}" 2>/dev/null | tail -n 50 || true
+    "${KUBECTL[@]}" -n "${NAMESPACE}" logs "${p}" --tail=80 2>/dev/null || true
+  fi
+  warn "LimitRange wise-eat exige memory.request ≥ 256Mi — si Forbidden, git pull + re-apply manifests"
+}
 
 # --- UFW pods → ports MinIO (hostPort sur cni0) ---
 if command -v ufw >/dev/null 2>&1; then
@@ -175,12 +194,24 @@ bash "${SCRIPT_DIR}/create-minio-secret.sh"
 log "kubectl apply -k ${MINIO_KUSTOMIZE}"
 "${KUBECTL[@]}" apply -k "${MINIO_KUSTOMIZE}"
 
-log "Attente Ready Deployments MinIO"
-"${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio --timeout=180s
-"${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio-replica-1 --timeout=180s
-"${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio-replica-2 --timeout=180s
+log "Attente Ready Deployments MinIO (timeout 300s — pull image possible)"
+if ! "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio --timeout=300s; then
+  dump_minio_k8s_diag
+  die "Rollout minio échoué — corriger (souvent LimitRange memory) puis relancer migrate, OU rollback Docker (MIGRATE.md)"
+fi
+if ! "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio-replica-1 --timeout=300s; then
+  dump_minio_k8s_diag
+  die "Rollout minio-replica-1 échoué — voir diagnostic ci-dessus"
+fi
+if ! "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status deploy/minio-replica-2 --timeout=300s; then
+  dump_minio_k8s_diag
+  die "Rollout minio-replica-2 échoué — voir diagnostic ci-dessus"
+fi
 
-wait_minio_health "${API_PORT}" "primaire" || die "Primaire K8s ne répond pas — rollback : scale deploy=0 puis docker compose up -d"
+wait_minio_health "${API_PORT}" "primaire" || {
+  dump_minio_k8s_diag
+  die "Primaire K8s ne répond pas — rollback : scale deploy=0 puis docker compose up -d"
+}
 wait_minio_health "${R1_PORT}" "réplica-1" || die "Réplica 1 K8s down — voir MIGRATE.md rollback"
 wait_minio_health "${R2_PORT}" "réplica-2" || die "Réplica 2 K8s down — voir MIGRATE.md rollback"
 
