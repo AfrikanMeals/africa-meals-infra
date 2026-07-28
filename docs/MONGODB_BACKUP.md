@@ -72,6 +72,16 @@ sudo ./scripts/mongodb-backup.sh env-check
 - **Firebase** (`AM_FIREBASE_STORAGE_BUCKET` wise-eat-com) → `recaptcha-accounts.json` (compte de service reCAPTCHA dédié)
 - **AWS S3** → `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` avec `s3:PutObject` sur `mongodb/*`
 
+### Bucket GCS privé (PAP)
+
+Les backups Mongo utilisent la SA authentifiée — **compatibles** avec Public Access Prevention et sans `allUsers`.
+
+Avant de retirer la lecture anonyme sur le bucket médias + backups :
+
+1. Activer le **proxy médias** API (`/medias/public/…`) si le même bucket sert le catalogue.
+2. Appliquer le runbook : `africa-meals-api/docs/FIREBASE_STORAGE.md` § Production private bucket
+3. Script : `GCS_BUCKET=… ./scripts/harden-gcs-bucket.sh` puis `APPLY=1` (versioning recommandé pour `mongodb/`)
+
 ## Commandes
 
 ```bash
