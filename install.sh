@@ -104,7 +104,10 @@ Composants:
   reset-grafana-dashboards-git  Réinitialise dashboards Grafana avant git pull (VPS)
   grafana-console nginx reverse-proxy → Grafana (console.wise-eat.com)
   matomo        Matomo Analytics Docker (MariaDB + Apache, :8089 local)
-  neo4j         Neo4j Community Docker (Bolt :7687, 1 Go RAM, volume 5 Go)
+  neo4j         Neo4j Community Docker (Bolt :7687, 1 Go RAM, volume 5 Go) — legacy
+  neo4j-k8s     Applique pod Neo4j k8s (hostPath + hostPort 7474/7687)
+  migrate-neo4j-k8s  Cutover Neo4j Docker → K8s (zéro perte volume)
+  repair-neo4j-exporters  Exporter Grafana → host.docker.internal:7687 (post-cutover)
   matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
   update-matomo   Mise à jour Matomo via CLI (image Docker + core:update)
   repair-matomo   Recovery crash / 502 / update interrompue
@@ -398,6 +401,21 @@ run_component() {
       ;;
     neo4j)
       bash "${SCRIPTS}/install-neo4j.sh"
+      ;;
+    neo4j-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/create-neo4j-secret.sh"
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/neo4j"
+      else
+        kubectl apply -k "${INFRA_ROOT}/k8s/neo4j"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      ;;
+    migrate-neo4j-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-neo4j-docker-to-k8s.sh"
+      ;;
+    repair-neo4j-exporters)
+      bash "${INFRA_ROOT}/k8s/scripts/repair-neo4j-exporter-host.sh"
       ;;
     matomo-gateway)
       bash "${SCRIPTS}/install-matomo-gateway.sh"

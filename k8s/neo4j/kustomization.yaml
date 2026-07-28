@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - deployment-neo4j.yaml
+  - service-neo4j.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: wise-eat
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: neo4j
+    newName: neo4j
+    newTag: 5.26-community

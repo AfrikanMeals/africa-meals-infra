@@ -1,0 +1,149 @@
+# Neo4j Community — mêmes ports / volume que Docker (wise-eat-neo4j).
+# hostPort 7474/7687 : nginx db-graph + API bolt://host.k3s.internal:7687.
+# UID image officielle = 7474.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neo4j
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/component: graph
+    app.kubernetes.io/instance: primary
+spec:
+  replicas: 1
+  # Un seul writer sur hostPath — jamais RollingUpdate.
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: neo4j
+      app.kubernetes.io/instance: primary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/component: graph
+        app.kubernetes.io/instance: primary
+    spec:
+      securityContext:
+        runAsUser: 7474
+        runAsGroup: 7474
+        fsGroup: 7474
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: neo4j
+          image: neo4j:5.26-community
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NEO4J_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_AUTH
+            - name: NEO4J_server_memory_heap_initial__size
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_HEAP_INITIAL
+            - name: NEO4J_server_memory_heap_max__size
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_HEAP_MAX
+            - name: NEO4J_server_memory_pagecache_size
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_PAGECACHE
+            - name: NEO4J_server_default__listen__address
+              value: "0.0.0.0"
+            - name: NEO4J_server_bolt_listen__address
+              value: "0.0.0.0:7687"
+            - name: NEO4J_server_http_listen__address
+              value: "0.0.0.0:7474"
+            # TLS Bolt = nginx stream :7688 — Bolt interne en clair.
+            - name: NEO4J_server_bolt_tls__level
+              value: DISABLED
+            - name: NEO4J_server_bolt_advertised__address
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_BOLT_ADVERTISED
+            - name: NEO4J_server_http_advertised__address
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_HTTP_ADVERTISED
+            - name: NEO4J_PLUGINS
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-config
+                  key: NEO4J_PLUGINS
+          ports:
+            - name: http
+              containerPort: 7474
+              hostPort: 7474
+              protocol: TCP
+            - name: bolt
+              containerPort: 7687
+              hostPort: 7687
+              protocol: TCP
+          resources:
+            # Aligné mem_limit Docker 1g ; request bas pour scheduler VPS 8 Go.
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /logs
+            - name: import
+              mountPath: /var/lib/neo4j/import
+            - name: plugins
+              mountPath: /plugins
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        # Même arborescence que install-neo4j / neo4j-storage.sh.
+        - name: data
+          hostPath:
+            path: /var/lib/wise-eat/neo4j/data
+            type: Directory
+        - name: logs
+          hostPath:
+            path: /var/lib/wise-eat/neo4j/logs
+            type: Directory
+        - name: import
+          hostPath:
+            path: /var/lib/wise-eat/neo4j/import
+            type: Directory
+        - name: plugins
+          hostPath:
+            path: /var/lib/wise-eat/neo4j/plugins
+            type: Directory

@@ -29,6 +29,7 @@ Cutover Docker → pods (mêmes volumes, zéro perte) :
 - Redis : [redis/MIGRATE.md](./redis/MIGRATE.md) · `sudo ./install.sh migrate-redis-k8s`
 - Memcached : [memcached/MIGRATE.md](./memcached/MIGRATE.md) · `sudo ./install.sh migrate-memcached-k8s`
 - EMQX : [emqx/MIGRATE.md](./emqx/MIGRATE.md) · `sudo ./install.sh migrate-emqx-k8s`
+- Neo4j : [neo4j/MIGRATE.md](./neo4j/MIGRATE.md) · `sudo ./install.sh migrate-neo4j-k8s`
 
 ```bash
 sudo ./install.sh migrate-minio-k8s
@@ -268,6 +269,7 @@ infra/k8s/
   redis/                    # Redis cache+bull hostPath AOF (voir redis/MIGRATE.md)
   memcached/                # Memcached hostPort (voir memcached/MIGRATE.md)
   emqx/                     # MQTT EMQX hostPath Mnesia (voir emqx/MIGRATE.md)
+  neo4j/                    # Neo4j Community hostPath (voir neo4j/MIGRATE.md)
   headlamp/                 # UI Kubernetes (NodePort 30850)
   scripts/
     deploy-ws-production.sh # WS — commande principale

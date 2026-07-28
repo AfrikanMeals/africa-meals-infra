@@ -39,6 +39,11 @@ for port in 1883 8083 18083; do
   ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods EMQX :${port}" || true
 done
 
+# Neo4j hostPort (HTTP Browser + Bolt) — API bolt://host.k3s.internal:7687.
+for port in 7474 7687; do
+  ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods Neo4j :${port}" || true
+done
+
 ufw reload
-log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached/MinIO/EMQX plaintext OK"
+log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached/MinIO/EMQX/Neo4j plaintext OK"
 log "Les ports restent aussi bindés sur 127.0.0.1 et ${K3S_CNI_GATEWAY:-10.42.0.1} (pods)."

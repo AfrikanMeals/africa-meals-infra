@@ -1,0 +1,22 @@
+# ClusterIP — debug in-cluster (prod API = host.k3s.internal:7687 via hostPort).
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/component: graph
+    app.kubernetes.io/instance: primary
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/instance: primary
+  ports:
+    - name: http
+      port: 7474
+      targetPort: http
+    - name: bolt
+      port: 7687
+      targetPort: bolt

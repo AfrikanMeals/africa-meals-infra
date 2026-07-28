@@ -11,9 +11,23 @@ log "=== Réparation scrape Neo4j → Prometheus ==="
 ensure_docker
 ensure_wise_eat_infra_network
 
-if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-neo4j'; then
-  warn "Neo4j absent — installation"
+# Post-cutover k8s : pod hostPort suffit ; sinon installer Docker legacy.
+neo4j_k8s_ready=false
+if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
+  kc=(kubectl)
+  command -v kubectl >/dev/null 2>&1 || kc=(sudo k3s kubectl)
+  if "${kc[@]}" -n wise-eat get deploy/neo4j >/dev/null 2>&1; then
+    neo4j_k8s_ready=true
+  fi
+fi
+if [[ "${neo4j_k8s_ready}" != "true" ]] && ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-neo4j'; then
+  warn "Neo4j absent — installation Docker"
   bash "${SCRIPT_DIR}/install-neo4j.sh"
+fi
+# Exporter vers hostPort (k8s) ou Docker DNS selon présence pod.
+if [[ "${neo4j_k8s_ready}" == "true" ]] && [[ -x "${WISE_EAT_ROOT}/k8s/scripts/repair-neo4j-exporter-host.sh" ]]; then
+  bash "${WISE_EAT_ROOT}/k8s/scripts/repair-neo4j-exporter-host.sh"
+  # Suite = reload Prometheus / vérifs metrics (exporter déjà recréé).
 fi
 
 if [[ -f "${NEO4J_ENV}" ]]; then
@@ -63,10 +77,24 @@ bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 
 reconcile_monitoring_compose_named_containers
 
-log "Recréation neo4j-exporter + Prometheus + Grafana"
-if ! docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana; then
-  docker rm -f wise-eat-prometheus wise-eat-grafana 2>/dev/null || true
-  docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana
+# k8s : exporter déjà via repair-neo4j-exporter-host ; ne pas écraser avec DNS Docker.
+if [[ "${neo4j_k8s_ready}" == "true" ]]; then
+  if ! grep -q '^NEO4J_URI=' .env.monitoring 2>/dev/null; then
+    echo 'NEO4J_URI=bolt://host.docker.internal:7687' >> .env.monitoring
+  else
+    sed -i 's|^NEO4J_URI=.*|NEO4J_URI=bolt://host.docker.internal:7687|' .env.monitoring
+  fi
+  log "Recréation Prometheus + Grafana (exporter k8s déjà OK)"
+  if ! docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate prometheus grafana; then
+    docker rm -f wise-eat-prometheus wise-eat-grafana 2>/dev/null || true
+    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate prometheus grafana
+  fi
+else
+  log "Recréation neo4j-exporter + Prometheus + Grafana"
+  if ! docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana; then
+    docker rm -f wise-eat-prometheus wise-eat-grafana 2>/dev/null || true
+    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate neo4j-exporter prometheus grafana
+  fi
 fi
 
 if ! wait_for_prometheus_ready 60; then
