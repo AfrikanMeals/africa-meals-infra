@@ -9,8 +9,12 @@ fail=0
 
 log "=== Loki + Promtail ==="
 
-if curl -sf --max-time 5 http://127.0.0.1:3100/ready 2>/dev/null | grep -qi ready; then
+# /ready peut renvoyer "Ingester not ready" sous flood ; /labels prouve que l’API vit.
+loki_body="$(curl -sf --max-time 5 http://127.0.0.1:3100/ready 2>/dev/null || true)"
+if echo "${loki_body}" | grep -qiE '^ready$|ready'; then
   log "OK  Loki :3100 ready"
+elif curl -sf --max-time 5 http://127.0.0.1:3100/loki/api/v1/labels >/dev/null 2>&1; then
+  warn "Loki /ready « ${loki_body:-empty} » mais API labels OK (souvent flood timestamps trop vieux)"
 else
   warn "FAIL Loki :3100 — docker logs wise-eat-loki"
   docker logs wise-eat-loki --tail=20 2>&1 | sed 's/^/      /' || true

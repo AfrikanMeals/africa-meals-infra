@@ -1,7 +1,5 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -10,16 +8,19 @@
   "liveNow": true,
   "panels": [
     {
-      "title": "Log volume by job (lines / 1m)",
-      "description": "Volume Loki — streams Docker, k3s et journal.",
+      "title": "Log volume by job",
+      "description": "Lignes / minute (LogQL métrique).",
       "type": "timeseries",
       "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (job) (count_over_time({job=~\"$job\"} |= \"$search\" [1m]))",
-          "legendFormat": "{{job}}"
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "sum by (job) (count_over_time({job=~\"$job\"} |~ `(?i)$search` [1m]))",
+          "legendFormat": "{{job}}",
+          "queryType": "range"
         }
       ],
       "fieldConfig": {
@@ -41,14 +42,16 @@
       }
     },
     {
-      "title": "All logs (job filter)",
+      "title": "All logs",
       "type": "logs",
       "gridPos": { "h": 14, "w": 24, "x": 0, "y": 7 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=~\"$job\"} |= \"$search\"",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=~\"$job\"} |~ `(?i)$search`",
           "queryType": "range",
           "maxLines": 1000
         }
@@ -65,14 +68,16 @@
       }
     },
     {
-      "title": "API / WS (namespace wise-eat)",
+      "title": "API / WS (k8s)",
       "type": "logs",
       "gridPos": { "h": 12, "w": 12, "x": 0, "y": 21 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"africa-meals-api|africa-meals-ws\"} |= \"$search\"",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"africa-meals-api|africa-meals-ws\"} |~ `(?i)$search`",
           "queryType": "range",
           "maxLines": 500
         }
@@ -86,14 +91,16 @@
       }
     },
     {
-      "title": "Docker (wise-eat-* containers)",
+      "title": "Docker (wise-eat-*)",
       "type": "logs",
       "gridPos": { "h": 12, "w": 12, "x": 12, "y": 21 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"docker\", container=~\"wise-eat-.*\"} |= \"$search\"",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=\"docker\", container=~\"wise-eat-.*\"} |~ `(?i)$search`",
           "queryType": "range",
           "maxLines": 500
         }
@@ -107,14 +114,16 @@
       }
     },
     {
-      "title": "Data stores k8s (mongo · redis · emqx · minio · neo4j · memcached)",
+      "title": "Data stores k8s",
       "type": "logs",
       "gridPos": { "h": 12, "w": 12, "x": 0, "y": 33 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"mongodb|mongo|redis.*|emqx|minio|neo4j|memcached.*\"} |= \"$search\"",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"mongodb|mongo|redis.*|emqx|minio|neo4j|memcached.*\"} |~ `(?i)$search`",
           "queryType": "range",
           "maxLines": 500
         }
@@ -128,14 +137,16 @@
       }
     },
     {
-      "title": "Systemd journal (nginx · k3s · docker)",
+      "title": "Systemd journal",
       "type": "logs",
       "gridPos": { "h": 12, "w": 12, "x": 12, "y": 33 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"journal\", unit=~\"$unit\"} |= \"$search\"",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=\"journal\"} |~ `(?i)$search`",
           "queryType": "range",
           "maxLines": 500
         }
@@ -159,32 +170,20 @@
         "label": "Job",
         "type": "query",
         "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values(job)",
         "query": "label_values(job)",
         "includeAll": true,
         "multi": true,
         "allValue": ".+",
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "refresh": 2,
-        "sort": 1
-      },
-      {
-        "name": "unit",
-        "label": "Systemd unit",
-        "type": "query",
-        "datasource": { "type": "loki", "uid": "loki" },
-        "query": "label_values({job=\"journal\"}, unit)",
-        "includeAll": true,
-        "multi": true,
-        "allValue": ".+",
-        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
         "refresh": 2,
         "sort": 1
       },
       {
         "name": "search",
-        "label": "Search",
+        "label": "Search (regex)",
         "type": "textbox",
-        "current": { "selected": true, "text": "", "value": "" }
+        "current": { "selected": true, "text": ".*", "value": ".*" }
       }
     ]
   },
@@ -193,5 +192,5 @@
   "timezone": "browser",
   "title": "Wise Eat — Logs (Loki)",
   "uid": "wise-eat-loki-logs",
-  "version": 1
+  "version": 2
 }

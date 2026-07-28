@@ -12,8 +12,13 @@ positions:
 clients:
   - url: http://127.0.0.1:3100/loki/api/v1/push
     batchwait: 1s
-    batchsize: 1048576
+    # Batches plus petits — évite broken pipe quand Loki rejette le flood d’anciens logs.
+    batchsize: 262144
     timeout: 10s
+
+# Ne pas rejouer tout l’historique Docker au premier démarrage (positions vides).
+target_config:
+  sync_period: 10s
 
 scrape_configs:
   # 1. Conteneurs Docker (monitoring, DbGate, exporters, legacy compose).
@@ -37,15 +42,21 @@ scrape_configs:
         target_label: source
     pipeline_stages:
       - docker: {}
+      # Fix: Loki reject_old_samples 7j — Ollama/json logs historiques saturent le push.
+      - drop:
+          older_than: 168h
+          drop_counter_reason: older_than_retention
 
   # 2. Pods k3s (API, WS, Mongo, Redis, EMQX, MinIO, Neo4j, …).
   - job_name: kubernetes-pods
-    # kubeconfig k3s hôte (monté RO dans le conteneur).
     kubernetes_sd_configs:
       - role: pod
         kubeconfig_file: /etc/rancher/k3s/k3s.yaml
     pipeline_stages:
       - cri: {}
+      - drop:
+          older_than: 168h
+          drop_counter_reason: older_than_retention
     relabel_configs:
       - source_labels: [__meta_kubernetes_pod_node_name]
         target_label: __host__
@@ -61,6 +72,9 @@ scrape_configs:
           [__meta_kubernetes_pod_annotation_kubernetes_io_config_mirror]
         action: drop
         regex: .+
+      - source_labels: [__meta_kubernetes_pod_container_id]
+        regex: ^$
+        action: drop
       # Chemin CRI k3s / containerd.
       - source_labels:
           [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
@@ -75,7 +89,6 @@ scrape_configs:
         target_label: job
       - replacement: k8s
         target_label: source
-      # App label (Deployments wise-eat).
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
         target_label: app
       - source_labels: [__meta_kubernetes_pod_label_app]

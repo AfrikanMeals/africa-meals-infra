@@ -40,21 +40,35 @@ fi
 log "Pull + up Loki / Promtail (+ Grafana datasource)"
 COMPOSE_ARGS=(--env-file .env.monitoring)
 docker compose "${COMPOSE_ARGS[@]}" pull loki promtail
-docker compose "${COMPOSE_ARGS[@]}" up -d --no-deps loki promtail
-# Recreate Grafana pour recharger provisioning datasources/dashboards Logs.
-docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps grafana 2>/dev/null \
-  || docker compose "${COMPOSE_ARGS[@]}" up -d grafana
+# --no-deps : ne pas recréer redis-exporter / dépendances (conflits de noms).
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps loki promtail
 
-# Reload Prometheus (jobs loki/promtail).
-if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
-  log "Prometheus config rechargée (jobs loki/promtail)"
+# Grafana : restart seul (recharge provisioning loki.yml + dashboards Logs).
+if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-grafana'; then
+  docker restart wise-eat-grafana
+  log "Grafana redémarré (datasource Loki + folder Logs)"
 else
-  docker compose "${COMPOSE_ARGS[@]}" restart prometheus 2>/dev/null || true
+  docker compose "${COMPOSE_ARGS[@]}" up -d --no-deps grafana || warn "Grafana absent — sudo ./install.sh monitoring"
 fi
 
-sleep 5
+# Reload Prometheus (jobs loki/promtail) — non bloquant.
+curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 || true
+
+sleep 8
 bash "${SCRIPT_DIR}/verify-loki-stack.sh" || warn "verify-loki-stack partiel"
 
-log "Grafana → dossier Dashboards « Logs » · Explore → datasource Loki"
-log "Ready : curl -sf http://127.0.0.1:3100/ready"
-log "Promtail : curl -sf http://127.0.0.1:9080/ready"
+# Smoke query (doit renvoyer des lignes si streams OK).
+if curl -sfG --data-urlencode 'query={job=~".+"}' \
+  --data-urlencode 'limit=5' \
+  "http://127.0.0.1:3100/loki/api/v1/query_range" \
+  --data-urlencode "start=$(date -u -d '1 hour ago' +%s)000000000" \
+  --data-urlencode "end=$(date -u +%s)000000000" 2>/dev/null \
+  | grep -q '"values"'; then
+  log "OK  Loki query_range a des valeurs (1h)"
+else
+  warn "query_range vide — attendre 30s ou voir Explore Grafana"
+fi
+
+log "Grafana → Connections → Data sources → Loki doit être http://127.0.0.1:3100"
+log "Explore → Loki → {job=\"kubernetes\"} ou {job=\"docker\"}"
+log "Dashboard → folder Logs (Search défaut = .*)"

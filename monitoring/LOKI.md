@@ -34,7 +34,14 @@ sudo ./scripts/verify-loki-stack.sh
 ```
 
 Grafana : `https://console.wise-eat.com` → Dashboards → dossier **Logs** → *Wise Eat — Logs (Loki)*.  
-Explore → datasource **Loki** (ex. `{namespace="wise-eat", app="africa-meals-api"}`).
+Variable **Search** : défaut `.*` (ne pas laisser vide — évite erreur plugin).  
+Explore → datasource **Loki** (ex. `{job="kubernetes"}` ou `{job="docker"}`).
+
+### Grafana « Aucune donnée » / plugin error
+
+1. Connections → Data sources → **Loki** = `http://127.0.0.1:3100` → Save & test  
+2. Explore → `{job=~".+"}` sur 1h — si OK, le dashboard doit suivre (Search=`.*`)  
+3. Si Promtail flood « timestamp too old » : `git pull && sudo ./install.sh loki` (drop `older_than: 168h`)
 
 ## RAM / disque
 
