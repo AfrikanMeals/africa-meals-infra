@@ -33,9 +33,20 @@ curl -sf http://127.0.0.1:3100/loki/api/v1/label/job/values
 sudo ./scripts/verify-loki-stack.sh
 ```
 
-Grafana : `https://console.wise-eat.com` → Dashboards → dossier **Logs** → *Wise Eat — Logs (Loki)*.  
-Variable **Search** : défaut `.*` (ne pas laisser vide — évite erreur plugin).  
-Explore → datasource **Loki** (ex. `{job="kubernetes"}` ou `{job="docker"}`).
+Grafana : `https://console.wise-eat.com` → Dashboards → dossier **Logs** → *Wise Eat — Logs*.
+
+| Zone | Usage |
+|------|--------|
+| Stats (haut) | Erreurs / warnings 5m, débit, sources actives |
+| Volume + pie | Tendance par job + répartition apps k8s |
+| Erreurs récentes | Filtre auto error\|exception\|fatal |
+| API / WS | Panneaux dédiés (labels masqués, clic = détail) |
+| Infra / Docker / Journal | Sections **repliées** par défaut |
+| Flux complet | Debug brut (replié) |
+
+Filtres : **Source** (`docker` / `kubernetes` / `journal`) · **App (pie k8s)** · **Unité systemd** · **Recherche (regex)** — défaut `.*`.  
+L’overview (stats / volume / erreurs) filtre seulement par **Source** + recherche — ainsi Docker et journal restent visibles (pas de matcher `namespace`/`app` qui les exclurait).  
+Explore → datasource **uid `loki`** (pas un doublon UI sans URL).
 
 ### Grafana « Unable to connect with Loki »
 

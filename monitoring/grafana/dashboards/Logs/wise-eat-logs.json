@@ -1,17 +1,182 @@
 {
   "annotations": { "list": [] },
+  "description": "Logs Wise Eat (Loki) — vue synthétique : stats, erreurs, apps, infra. Filtres en haut.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
-  "liveNow": true,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "compass",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Ouvrir dans Explore",
+      "type": "link",
+      "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bjob%3D~%5C%22$job%5C%22%7D%20%7C~%20%60(?i)$search%60%22%7D%5D%7D"
+    }
+  ],
+  "liveNow": false,
   "panels": [
     {
-      "title": "Log volume by job",
-      "description": "Lignes / minute (LogQL métrique).",
+      "type": "row",
+      "title": "Vue d’ensemble",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Erreurs (5m)",
+      "description": "Lignes contenant error / exception / fatal / panic (insensible à la casse).",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=~\"$job\"} |~ `(?i)$search` |~ `(?i)error|exception|fatal|panic` [5m]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "title": "Warnings (5m)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=~\"$job\"} |~ `(?i)$search` |~ `(?i)\\bwarn(ing)?\\b` [5m]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "orange", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "title": "Débit (lignes / min)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=~\"$job\"} |~ `(?i)$search` [1m]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "purple", "value": 500 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "title": "Sources actives",
+      "description": "Jobs qui émettent dans la fenêtre (docker / kubernetes / journal).",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "count(sum by (job) (count_over_time({job=~\"$job\"} [5m])))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "title": "Volume par source",
       "type": "timeseries",
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 7, "w": 16, "x": 0, "y": 5 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
@@ -27,38 +192,107 @@
         "defaults": {
           "unit": "short",
           "custom": {
-            "drawStyle": "bars",
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 25,
             "stacking": { "mode": "normal", "group": "A" },
-            "fillOpacity": 40,
-            "lineWidth": 1,
-            "showPoints": "never"
+            "showPoints": "never",
+            "lineWidth": 2
           }
         },
         "overrides": []
       },
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
         "tooltip": { "mode": "multi", "sort": "desc" }
       }
     },
     {
-      "title": "All logs",
-      "type": "logs",
-      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 7 },
+      "title": "Top apps (k8s, 15m)",
+      "description": "Volume relatif par label app (pods k8s uniquement).",
+      "type": "piechart",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 5 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "{job=~\"$job\"} |~ `(?i)$search`",
+          "expr": "sum by (app) (count_over_time({job=\"kubernetes\", namespace=\"wise-eat\", app=~\"$app\"} |~ `(?i)$search` [15m]))",
+          "legendFormat": "{{app}}",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value", "percent"] },
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Erreurs récentes",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Erreurs & exceptions",
+      "description": "Filtre automatique error|exception|fatal|panic. Clic sur une ligne pour le détail.",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=~\"$job\"} |~ `(?i)$search` |~ `(?i)error|exception|fatal|panic|failed`",
           "queryType": "range",
-          "maxLines": 1000
+          "maxLines": 200
         }
       ],
       "options": {
         "showTime": true,
-        "showLabels": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "signature",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Applications (API · WS)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "africa-meals-api",
+      "type": "logs",
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 26 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=\"africa-meals-api\"} |~ `(?i)$search`",
+          "queryType": "range",
+          "maxLines": 150
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
         "showCommonLabels": false,
         "wrapLogMessage": true,
         "prettifyLogMessage": false,
@@ -68,96 +302,153 @@
       }
     },
     {
-      "title": "API / WS (k8s)",
+      "title": "africa-meals-ws",
       "type": "logs",
-      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 21 },
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 26 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"africa-meals-api|africa-meals-ws\"} |~ `(?i)$search`",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=\"africa-meals-ws\"} |~ `(?i)$search`",
           "queryType": "range",
-          "maxLines": 500
+          "maxLines": 150
         }
       ],
       "options": {
         "showTime": true,
-        "showLabels": true,
+        "showLabels": false,
+        "showCommonLabels": false,
         "wrapLogMessage": true,
+        "prettifyLogMessage": false,
         "enableLogDetails": true,
+        "dedupStrategy": "none",
         "sortOrder": "Descending"
       }
     },
     {
-      "title": "Docker (wise-eat-*)",
-      "type": "logs",
-      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 21 },
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
+      "type": "row",
+      "title": "Infrastructure (données · messagerie)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+      "collapsed": true,
+      "panels": [
         {
-          "refId": "A",
+          "title": "Mongo · Redis · EMQX · MinIO · Neo4j · Memcached",
+          "type": "logs",
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 38 },
           "datasource": { "type": "loki", "uid": "loki" },
-          "editorMode": "code",
-          "expr": "{job=\"docker\", container=~\"wise-eat-.*\"} |~ `(?i)$search`",
-          "queryType": "range",
-          "maxLines": 500
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"mongodb|mongo|redis.*|emqx|minio|neo4j|memcached.*\"} |~ `(?i)$search`",
+              "queryType": "range",
+              "maxLines": 150
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "enableLogDetails": true,
+            "dedupStrategy": "signature",
+            "sortOrder": "Descending"
+          }
         }
-      ],
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
-      }
+      ]
     },
     {
-      "title": "Data stores k8s",
-      "type": "logs",
-      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 33 },
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
+      "type": "row",
+      "title": "Docker & systemd (hôte)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+      "collapsed": true,
+      "panels": [
         {
-          "refId": "A",
+          "title": "Conteneurs Docker wise-eat-*",
+          "type": "logs",
+          "gridPos": { "h": 10, "w": 12, "x": 0, "y": 39 },
           "datasource": { "type": "loki", "uid": "loki" },
-          "editorMode": "code",
-          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"mongodb|mongo|redis.*|emqx|minio|neo4j|memcached.*\"} |~ `(?i)$search`",
-          "queryType": "range",
-          "maxLines": 500
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{job=\"docker\", container=~\"wise-eat-.*\"} |~ `(?i)$search`",
+              "queryType": "range",
+              "maxLines": 100
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "wrapLogMessage": true,
+            "enableLogDetails": true,
+            "dedupStrategy": "signature",
+            "sortOrder": "Descending"
+          }
+        },
+        {
+          "title": "Journal systemd (nginx · k3s · docker)",
+          "type": "logs",
+          "gridPos": { "h": 10, "w": 12, "x": 12, "y": 39 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{job=\"journal\", unit=~\"$unit\"} |~ `(?i)$search`",
+              "queryType": "range",
+              "maxLines": 100
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "wrapLogMessage": true,
+            "enableLogDetails": true,
+            "dedupStrategy": "signature",
+            "sortOrder": "Descending"
+          }
         }
-      ],
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
-      }
+      ]
     },
     {
-      "title": "Systemd journal",
-      "type": "logs",
-      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 33 },
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
+      "type": "row",
+      "title": "Flux complet (debug)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
+      "collapsed": true,
+      "panels": [
         {
-          "refId": "A",
+          "title": "Tous les logs (filtres)",
+          "description": "Vue brute — préférer les sections ci-dessus au quotidien.",
+          "type": "logs",
+          "gridPos": { "h": 14, "w": 24, "x": 0, "y": 40 },
           "datasource": { "type": "loki", "uid": "loki" },
-          "editorMode": "code",
-          "expr": "{job=\"journal\"} |~ `(?i)$search`",
-          "queryType": "range",
-          "maxLines": 500
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{job=~\"$job\"} |~ `(?i)$search`",
+              "queryType": "range",
+              "maxLines": 300
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          }
         }
-      ],
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
-      }
+      ]
     }
   ],
   "refresh": "30s",
@@ -167,7 +458,7 @@
     "list": [
       {
         "name": "job",
-        "label": "Job",
+        "label": "Source",
         "type": "query",
         "datasource": { "type": "loki", "uid": "loki" },
         "definition": "label_values(job)",
@@ -180,17 +471,48 @@
         "sort": 1
       },
       {
+        "name": "app",
+        "label": "App (pie k8s)",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values({job=\"kubernetes\", namespace=\"wise-eat\"}, app)",
+        "query": "label_values({job=\"kubernetes\", namespace=\"wise-eat\"}, app)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "unit",
+        "label": "Unité systemd",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values({job=\"journal\"}, unit)",
+        "query": "label_values({job=\"journal\"}, unit)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
         "name": "search",
-        "label": "Search (regex)",
+        "label": "Recherche (regex)",
         "type": "textbox",
-        "current": { "selected": true, "text": ".*", "value": ".*" }
+        "current": { "selected": true, "text": ".*", "value": ".*" },
+        "description": "Ex. health|order|stripe — laisser .* pour tout."
       }
     ]
   },
   "time": { "from": "now-1h", "to": "now" },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": ["10s", "30s", "1m", "5m"]
+  },
   "timezone": "browser",
-  "title": "Wise Eat — Logs (Loki)",
+  "title": "Wise Eat — Logs",
   "uid": "wise-eat-loki-logs",
-  "version": 2
+  "version": 4
 }
