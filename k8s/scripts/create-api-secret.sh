@@ -102,19 +102,14 @@ EOF
   } > "${FILTERED}.local"
   mv "${FILTERED}.local" "${FILTERED}"
 
-  # MinIO écoute 127.0.0.1:9000 seulement — pas sur host.k3s.internal (ECONNREFUSED).
-  # Les pods doivent passer par nginx TLS (storage.wise-eat.com → 127.0.0.1:9000).
-  MINIO_BAD=0
-  if grep -qE '^MINIO_ENDPOINT=(https?://(host\.k3s\.internal|127\.0\.0\.1|localhost):9000/?|\s*$)' "${FILTERED}" \
-    || ! grep -qE '^MINIO_ENDPOINT=https://' "${FILTERED}"; then
-    MINIO_BAD=1
-  fi
-  if [[ "${MINIO_BAD}" == "1" ]] && grep -qE '^MINIO_' "${FILTERED}"; then
-    echo "Correction MinIO k8s : MINIO_ENDPOINT → https://storage.wise-eat.com (pas ${LOCAL_HOST}:9000)." >&2
+  # MinIO k8s : hostPort 9000 sur la passerelle CNI → http://host.k3s.internal:9000.
+  # URLs médias publiques restent https://storage.wise-eat.com (nginx TLS).
+  if grep -qE '^MINIO_' "${FILTERED}"; then
+    echo "Correction MinIO k8s : MINIO_ENDPOINT → http://${LOCAL_HOST}:9000 (public = storage.wise-eat.com)." >&2
     {
       grep -vE '^(MINIO_ENDPOINT|MINIO_PUBLIC_BASE_URL)=' "${FILTERED}" || true
       cat <<EOF
-MINIO_ENDPOINT=https://storage.wise-eat.com
+MINIO_ENDPOINT=http://${LOCAL_HOST}:9000
 MINIO_PUBLIC_BASE_URL=https://storage.wise-eat.com/wise-eat
 EOF
     } > "${FILTERED}.minio"

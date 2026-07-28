@@ -176,7 +176,8 @@ def health_panel() -> dict:
         "targets": [
             {
                 "datasource": DS,
-                "expr": f'min(up{{{MINIO_JOB_FILTER}, instance="wise-eat-minio:9000"}})',
+                # instance label Prometheus (Docker ou K8s hostPort) — regex rétrocompat.
+                "expr": f'min(up{{{MINIO_JOB_FILTER}, instance=~"wise-eat-minio:9000|minio:9000|127.0.0.1:9000"}})',
                 "instant": True,
                 "format": "time_series",
                 "legendFormat": "Prometheus scrape minio",

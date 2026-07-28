@@ -19,6 +19,15 @@ Internet → nginx :443 (wise-eat.cloud / ws.wise-eat.com)
          ↘    ↓    ↙
     host.k3s.internal → 10.42.0.1 (cni0) sur le VPS
       :6379 Redis   :6380 BullMQ   :27017|:27027|:27028 Mongo   :8883 MQTT
+      :9000 MinIO (hostPort) — public https://storage.wise-eat.com via nginx
+```
+
+### MinIO (stockage S3)
+
+Cutover Docker → pods (mêmes volumes, zéro perte) : [minio/MIGRATE.md](./minio/MIGRATE.md)
+
+```bash
+sudo ./install.sh migrate-minio-k8s
 ```
 
 ## Résilience
@@ -251,6 +260,7 @@ infra/k8s/
     service.yaml            # NodePort 30900
     poddisruptionbudget.yaml
     secret.env.example
+  minio/                    # S3 MinIO hostPath + hostPort (voir minio/MIGRATE.md)
   headlamp/                 # UI Kubernetes (NodePort 30850)
   scripts/
     deploy-ws-production.sh # WS — commande principale

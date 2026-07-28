@@ -1,0 +1,106 @@
+# MinIO réplica 1 — ports host 9002/9012, data /var/lib/wise-eat/minio-replica-1.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-replica-1
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/instance: replica-1
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: minio
+      app.kubernetes.io/instance: replica-1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: minio
+        app.kubernetes.io/component: storage
+        app.kubernetes.io/instance: replica-1
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+          imagePullPolicy: IfNotPresent
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-env
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-env
+                  key: MINIO_ROOT_PASSWORD
+            # URL publique réplica (dr1-storage) — clé dédiée dans le Secret.
+            - name: MINIO_SERVER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: minio-env
+                  key: MINIO_REPLICA_1_SERVER_URL
+            - name: MINIO_BROWSER_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: minio-env
+                  key: MINIO_BROWSER_REDIRECT_URL
+            - name: MINIO_PROMETHEUS_AUTH_TYPE
+              value: public
+          ports:
+            # Conteneur :9000/:9001 → hôte :9002/:9012 (comme docker-compose.replicas).
+            - name: api
+              containerPort: 9000
+              hostPort: 9002
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              hostPort: 9012
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/wise-eat/minio-replica-1
+            type: Directory

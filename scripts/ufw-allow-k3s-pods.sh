@@ -29,6 +29,11 @@ for port in 11211 11213 11214; do
   ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods Memcached :${port}" || true
 done
 
+# MinIO k8s hostPort (API + console primaire / réplicas) — pas d’ouverture Internet.
+for port in 9000 9001 9002 9004 9012 9014; do
+  ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods MinIO :${port}" || true
+done
+
 ufw reload
-log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached plaintext OK"
-log "Les ports restent aussi bindés sur 127.0.0.1 (PM2) et ${K3S_CNI_GATEWAY:-10.42.0.1} (pods)."
+log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached/MinIO plaintext OK"
+log "Les ports restent aussi bindés sur 127.0.0.1 et ${K3S_CNI_GATEWAY:-10.42.0.1} (pods)."

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-replica-1
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/instance: replica-1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/instance: replica-1
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: console
+      protocol: TCP

@@ -66,8 +66,32 @@ log "    Mot de passe : MINIO_CONSOLE_BASIC_AUTH_PASSWORD dans ${MINIO_ENV}"
 log "    (≠ MINIO_ROOT_USER / MINIO_ROOT_PASSWORD — identifiants MinIO après la popup)"
 log "  Couche 2 : identifiants MinIO (MINIO_ROOT_USER dans .env.minio)"
 
-if [[ -f "${MINIO_ENV}" ]] && docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
-  log "Recréation conteneur MinIO (MINIO_BROWSER_REDIRECT_URL)…"
+# Appliquer MINIO_BROWSER_REDIRECT_URL : pods K8s (post-migration) ou Docker legacy.
+minio_k8s=false
+if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
+  _kubectl=(kubectl)
+  if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+    _kubectl=(sudo k3s kubectl)
+  fi
+  if "${_kubectl[@]}" -n wise-eat get deploy/minio >/dev/null 2>&1; then
+    ready="$("${_kubectl[@]}" -n wise-eat get deploy/minio -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+    [[ "${ready}" == "1" ]] && minio_k8s=true
+  fi
+fi
+
+if [[ "${minio_k8s}" == "true" ]]; then
+  log "MinIO K8s — sync secret + rollout (MINIO_BROWSER_REDIRECT_URL → cdn)"
+  bash "${SCRIPT_DIR}/../k8s/scripts/create-minio-secret.sh" 2>/dev/null || \
+    bash "${WISE_EAT_ROOT:-${SCRIPT_DIR}/..}/k8s/scripts/create-minio-secret.sh"
+  _kubectl=(kubectl)
+  if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+    _kubectl=(sudo k3s kubectl)
+  fi
+  "${_kubectl[@]}" -n wise-eat rollout restart deploy/minio
+  "${_kubectl[@]}" -n wise-eat rollout status deploy/minio --timeout=120s || \
+    warn "Rollout minio non terminé — vérifier console :9001"
+elif [[ -f "${MINIO_ENV}" ]] && docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
+  log "Recréation conteneur MinIO Docker (MINIO_BROWSER_REDIRECT_URL)…"
   cd "${MINIO_DIR}"
   docker compose --env-file .env.minio up -d --force-recreate minio
 fi

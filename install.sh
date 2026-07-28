@@ -34,7 +34,9 @@ Usage:
 Composants:
   redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
   memcached     Memcached 1 primary (:11211) + 2 réplicas
-  minio         MinIO Docker (S3 :9000, console :9001, volume 10G)
+  minio         MinIO Docker (S3 :9000, console :9001, volume 10G) — legacy
+  minio-k8s     Applique pods MinIO k8s (secret + kustomize, hostPath existant)
+  migrate-minio-k8s  Cutover prod Docker → K8s (backup + stop + apply, zéro perte)
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
   mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 512 Mo RAM / nœud)
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
@@ -141,6 +143,18 @@ run_component() {
       ;;
     minio)
       bash "${SCRIPTS}/install-minio.sh"
+      ;;
+    minio-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/create-minio-secret.sh"
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/minio"
+      else
+        kubectl apply -k "${INFRA_ROOT}/k8s/minio"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      ;;
+    migrate-minio-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-minio-docker-to-k8s.sh"
       ;;
     emqx)
       bash "${SCRIPTS}/install-emqx.sh"

@@ -111,7 +111,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(up{job=~\"minio-cluster|minio-node|minio\", instance=\"wise-eat-minio:9000\"})",
+          "expr": "min(up{job=~\"minio-cluster|minio-node|minio\", instance=~\"wise-eat-minio:9000|minio:9000|127.0.0.1:9000\"})",
           "instant": true,
           "format": "time_series",
           "legendFormat": "Prometheus scrape minio",

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Répare le scrape Prometheus → MinIO (Grafana vide malgré curl :9000 OK).
+# Post-migration K8s : scrape 127.0.0.1:9000 (hostPort) — pas wise-eat-minio Docker.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -9,36 +10,56 @@ require_root
 log "=== Réparation scrape MinIO → Prometheus ==="
 
 ensure_docker
-ensure_wise_eat_infra_network
+API_PORT="${MINIO_API_PORT:-9000}"
 
-if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
-  warn "MinIO absent — installation"
-  bash "${SCRIPT_DIR}/install-minio.sh"
+# Détecter MinIO K8s (hostPort) vs Docker — ne pas recreate Docker si pods actifs.
+minio_k8s_ready=false
+if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
+  KUBECTL=(kubectl)
+  if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+    KUBECTL=(sudo k3s kubectl)
+  fi
+  if "${KUBECTL[@]}" -n wise-eat get deploy/minio >/dev/null 2>&1; then
+    ready="$("${KUBECTL[@]}" -n wise-eat get deploy/minio -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+    if [[ "${ready}" == "1" ]]; then
+      minio_k8s_ready=true
+      log "MinIO K8s détecté (deploy/minio Ready)"
+    fi
+  fi
 fi
 
-sync_component minio
-cd "${MINIO_DIR}"
-set -a && source .env.minio && set +a
+if [[ "${minio_k8s_ready}" != "true" ]]; then
+  ensure_wise_eat_infra_network
+  if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
+    warn "MinIO Docker absent et pas de pod Ready — install Docker legacy"
+    bash "${SCRIPT_DIR}/install-minio.sh"
+  fi
+  sync_component minio
+  cd "${MINIO_DIR}"
+  set -a && source .env.minio && set +a
+  API_PORT="${MINIO_API_PORT:-9000}"
+  log "Recréation MinIO Docker (réseaux wise-eat-minio + wise-eat-infra)"
+  docker compose --env-file .env.minio up -d --force-recreate minio
+  ensure_minio_on_wise_eat_infra || true
+else
+  if [[ -f "${MINIO_ENV}" ]]; then
+    set -a && source "${MINIO_ENV}" && set +a
+    API_PORT="${MINIO_API_PORT:-9000}"
+  fi
+fi
 
-log "Recréation MinIO (réseaux wise-eat-minio + wise-eat-infra)"
-docker compose --env-file .env.minio up -d --force-recreate minio
-
-if ! wait_for_minio_local "${MINIO_API_PORT:-9000}"; then
-  die "MinIO ne répond pas sur 127.0.0.1:${MINIO_API_PORT:-9000} — docker logs wise-eat-minio"
+if ! wait_for_minio_local "${API_PORT}"; then
+  die "MinIO ne répond pas sur 127.0.0.1:${API_PORT}"
 fi
 
 log "Attente métriques MinIO (endpoint /minio/v2/metrics/cluster)…"
 for _ in $(seq 1 20); do
-  if curl -sf "http://127.0.0.1:${MINIO_API_PORT:-9000}/minio/v2/metrics/cluster" \
+  if curl -sf "http://127.0.0.1:${API_PORT}/minio/v2/metrics/cluster" \
     | grep -qE '(^|\n)minio_cluster_health_status'; then
     break
   fi
   sleep 1
 done
-
-ensure_minio_on_wise_eat_infra || die "wise-eat-minio injoignable sur wise-eat-infra"
-
-log "Réseaux MinIO : $(docker inspect wise-eat-minio --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
 
 sync_component monitoring
 cd "${MON_DIR}"
@@ -63,20 +84,13 @@ else
   wait_for_prometheus_ready 60 || die "Prometheus injoignable après restart"
 fi
 
-log "Test réseau wise-eat-infra → wise-eat-minio:9000"
-if probe_minio_from_infra_network; then
-  log "OK  wise-eat-infra → wise-eat-minio:9000 (métriques cluster)"
+# Prometheus en network_mode=host scrape 127.0.0.1:9000 (prometheus.yml).
+log "Test métriques locales 127.0.0.1:${API_PORT}"
+if curl -sf "http://127.0.0.1:${API_PORT}/minio/v2/metrics/cluster" \
+  | grep -qE '(^|\n)minio_'; then
+  log "OK  métriques MinIO sur 127.0.0.1:${API_PORT}"
 else
-  warn "Probe curl sidecar échoué"
-  diagnose_minio_infra_probe
-  log "Attente scrape Prometheus (15s) avant verdict…"
-  sleep 15
-  if prometheus_minio_scrape_up; then
-    warn "Prometheus scrape minio UP — probe sidecar ignoré (réseau OK pour Prometheus)"
-  else
-    docker network inspect wise-eat-infra --format '{{range .Containers}}{{.Name}} {{end}}' || true
-    die "MinIO injoignable depuis wise-eat-infra — voir diagnostic ci-dessus"
-  fi
+  die "Métriques MinIO absentes sur 127.0.0.1:${API_PORT}"
 fi
 
 log "Attente scrape Prometheus (20s)…"
@@ -120,4 +134,4 @@ fi
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 
-log "Terminé — scrape via wise-eat-minio:9000 (pas host:9000 = API Nest)"
+log "Terminé — scrape via 127.0.0.1:${API_PORT} (Docker bind ou K8s hostPort)"
