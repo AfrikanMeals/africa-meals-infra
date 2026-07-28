@@ -59,10 +59,18 @@ docker run -d --name wise-eat-mongodb-exporter --restart unless-stopped \
   --collector.topmetrics \
   --log.level=warn
 
+# Succès = scrape Mongo réel (mongodb_up / mongo_up / asserts). Pas seulement le process HTTP.
+exporter_metrics_ok() {
+  local body="$1"
+  echo "${body}" | grep -qE '^mongodb_up [01]|^mongodb_mongod_up [01]|^mongo_up [01]' \
+    || echo "${body}" | grep -qE '^mongodb_asserts_total\{|^mongodb_ss_connections|^mongodb_mongod_replset_'
+}
+
 sleep 6
 METRICS="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
-if echo "${METRICS}" | grep -qE '^mongodb_up |^mongodb_mongod_up '; then
+if exporter_metrics_ok "${METRICS}"; then
   log "OK  exporter :9216 métriques mongodb_*"
+  echo "${METRICS}" | grep -E '^mongodb_up |^mongodb_mongod_up |^mongo_up |^mongodb_asserts_total\{' | head -5 || true
 elif [[ -z "${METRICS}" ]]; then
   warn "FAIL :9216 vide / injoignable — docker logs wise-eat-mongodb-exporter"
   docker logs wise-eat-mongodb-exporter --tail=40 2>&1 || true
@@ -92,16 +100,26 @@ PY
     --web.listen-address=":9216" \
     --log.level=warn
   sleep 6
-  if curl -sf http://127.0.0.1:9216/metrics 2>/dev/null | grep -qE '^mongodb_up |^mongodb_mongod_up '; then
+  METRICS="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+  if exporter_metrics_ok "${METRICS}"; then
     log "OK  exporter host-network :9216"
   else
-    warn "FAIL exporter — docker logs wise-eat-mongodb-exporter"
+    warn "FAIL exporter — docker logs (KeyNotFound HMAC = horloge / RS en élection)"
     docker logs wise-eat-mongodb-exporter --tail=40 2>&1 || true
+    date -u; warn "Comparer date -u avec mongosh Date()"
   fi
 else
-  warn "FAIL pas de mongodb_up dans /metrics — sample :"
-  echo "${METRICS}" | grep -iE 'mongo|up|error' | head -20 || true
-  docker logs wise-eat-mongodb-exporter --tail=25 2>&1 || true
+  # Sample présent mais pas de série Mongo → souvent KeyNotFound pendant élection ; retry court.
+  warn "Scrape partiel — retry 15s (HMAC/clusterTime post-élection)"
+  sleep 15
+  METRICS="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+  if exporter_metrics_ok "${METRICS}"; then
+    log "OK  exporter :9216 après retry"
+  else
+    warn "FAIL métriques Mongo — sample :"
+    echo "${METRICS}" | grep -iE '^mongodb_|^mongo_up' | head -20 || true
+    docker logs wise-eat-mongodb-exporter --tail=25 2>&1 || true
+  fi
 fi
 
 # Sync creds monitoring
