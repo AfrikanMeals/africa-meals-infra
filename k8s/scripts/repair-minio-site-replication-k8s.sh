@@ -66,13 +66,32 @@ log "Purge SR (endpoints Docker) + re-add via Services k8s (${NAMESPACE})"
     mc alias set replica2 http://minio-replica-2.wise-eat.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
 
     # Purger toute SR résiduelle (même endpoints Docker morts).
+    # Après rm sur primary, les peers peuvent déjà répondre « not enabled » — ignorer.
     mc admin replicate rm primary  --all --force || true
     mc admin replicate rm replica1 --all --force || true
     mc admin replicate rm replica2 --all --force || true
 
-    # Réplicas vides avant add (exigence MinIO site replication).
-    mc rb --force "replica1/${MINIO_BUCKET}" 2>/dev/null || true
-    mc rb --force "replica2/${MINIO_BUCKET}" 2>/dev/null || true
+    # MinIO : un seul site peut avoir des données au moment du add.
+    # Vider TOUS les buckets des réplicas (pas seulement MINIO_BUCKET).
+    strip_all_buckets() {
+      site="$1"
+      mc ls "${site}" 2>/dev/null | while IFS= read -r line; do
+        last=""
+        for word in ${line}; do
+          last="${word}"
+        done
+        b="${last%/}"
+        [ -n "${b}" ] || continue
+        echo "Suppression ${site}/${b}"
+        mc rb --force "${site}/${b}" 2>/dev/null || true
+      done
+      # Filet si le parse mc ls rate (noms connus post-cutover).
+      for b in "${MINIO_BUCKET}" wise-eat-writelock-test wise-eat-tmp wise-eat-repair; do
+        mc rb --force "${site}/${b}" 2>/dev/null || true
+      done
+    }
+    strip_all_buckets replica1
+    strip_all_buckets replica2
 
     mc admin replicate add primary replica1 replica2
 

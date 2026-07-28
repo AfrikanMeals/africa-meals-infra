@@ -64,8 +64,11 @@ Symptômes : `Access Denied` / `PrefixAccessDenied` / PutObject KO ; Grafana Int
 
 ```bash
 # Reconfigure SR via Services k8s (in-cluster DNS)
+# Prérequis : réplicas sans aucun bucket (le script les vide ; primary garde les données)
 sudo ./install.sh repair-minio-site-replication-k8s
 ```
+
+Si `only one cluster may have data` : lister/vider les buckets restants sur `:9002` / `:9004` puis relancer.
 
 Endpoints attendus après repair :
 
