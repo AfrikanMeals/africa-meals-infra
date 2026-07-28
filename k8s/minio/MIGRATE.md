@@ -54,8 +54,41 @@ Le script :
 ## Interdits
 
 - `docker compose down -v` / suppression de `/var/lib/wise-eat/minio*`
-- Relancer `install.sh minio-replication` au cutover (`mc admin replicate add` peut `rb --force` les buckets réplicas)
+- Relancer `install.sh minio-replication` au cutover (`mc admin replicate add` peut `rb --force` les buckets réplicas ; script Docker-only)
 - Deux writers sur le même volume (Docker Up + pod Ready)
+
+## Post-cutover obligatoire — site-replication
+
+Après le cutover, la SR pointe encore vers les DNS Docker morts (`wise-eat-minio:9000`, …).
+Symptômes : `Access Denied` / `PrefixAccessDenied` / PutObject KO ; Grafana Internode vide.
+
+```bash
+# Reconfigure SR via Services k8s (in-cluster DNS)
+sudo ./install.sh repair-minio-site-replication-k8s
+```
+
+Endpoints attendus après repair :
+
+| Site | Endpoint |
+|------|----------|
+| primary | `http://minio.wise-eat.svc.cluster.local:9000` |
+| replica1 | `http://minio-replica-1.wise-eat.svc.cluster.local:9000` |
+| replica2 | `http://minio-replica-2.wise-eat.svc.cluster.local:9000` |
+
+Si PutObject échoue encore avec `PrefixAccessDenied` sur `.minio.sys` :
+
+```bash
+chown -R 1000:1000 /var/lib/wise-eat/minio*
+rm -rf /var/lib/wise-eat/minio/.minio.sys/buckets/.usage-cache.bin
+kubectl -n wise-eat rollout restart deploy/minio deploy/minio-replica-1 deploy/minio-replica-2
+```
+
+Resync manuel (syntaxe mc : source + cible) :
+
+```bash
+mc admin replicate resync start primary replica1
+mc admin replicate resync start primary replica2
+```
 
 ## Vérifications post-cutover
 
@@ -78,6 +111,10 @@ kubectl -n wise-eat exec deploy/africa-meals-api -- \
 #   sudo ./install.sh repair-minio-prometheus
 
 # Upload smoke depuis l’API (média) + URL publique storage.wise-eat.com
+
+# Site-replication (après cutover) — endpoints Services k8s, pas Docker
+sudo ./install.sh repair-minio-site-replication-k8s
+# mc admin replicate info → *.svc.cluster.local (plus wise-eat-minio)
 ```
 
 ## Reprise après échec mid-cutover (Docker stop, pods pas Ready)

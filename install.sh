@@ -37,6 +37,7 @@ Composants:
   minio         MinIO Docker (S3 :9000, console :9001, volume 10G) — legacy
   minio-k8s     Applique pods MinIO k8s (secret + kustomize, hostPath existant)
   migrate-minio-k8s  Cutover prod Docker → K8s (backup + stop + apply, zéro perte)
+  repair-minio-site-replication-k8s  Reconfigure SR MinIO (Services k8s, plus DNS Docker)
   emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
   mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 512 Mo RAM / nœud)
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
@@ -157,6 +158,10 @@ run_component() {
     migrate-minio-k8s)
       bash "${INFRA_ROOT}/k8s/scripts/migrate-minio-docker-to-k8s.sh"
       ;;
+    repair-minio-site-replication-k8s)
+      # Post-cutover : endpoints SR Docker morts → Services *.svc.cluster.local
+      bash "${INFRA_ROOT}/k8s/scripts/repair-minio-site-replication-k8s.sh"
+      ;;
     emqx)
       bash "${SCRIPTS}/install-emqx.sh"
       ;;
@@ -271,6 +276,7 @@ run_component() {
       bash "${SCRIPTS}/install-minio-replica-storage.sh"
       ;;
     repair-minio-replication)
+      # Legacy Docker Compose uniquement — sous k8s utiliser repair-minio-site-replication-k8s
       bash "${SCRIPTS}/repair-minio-replication.sh"
       ;;
     nginx)
