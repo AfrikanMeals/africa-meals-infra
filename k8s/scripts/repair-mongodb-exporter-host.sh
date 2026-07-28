@@ -30,7 +30,16 @@ set +a
 : "${MONGO_ROOT_PASSWORD:?}"
 PRIMARY_PORT="${MONGO_PRIMARY_PORT:-27017}"
 
-URI="mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@host.docker.internal:${PRIMARY_PORT}/admin?authSource=admin&directConnection=true"
+# Encode user/pass (sinon @ : / dans le mot de passe → URI invalide → pas de mongodb_up).
+export PRIMARY_PORT
+URI="$(python3 - <<'PY'
+import urllib.parse, os
+u = urllib.parse.quote(os.environ["MONGO_ROOT_USER"], safe="")
+p = urllib.parse.quote(os.environ["MONGO_ROOT_PASSWORD"], safe="")
+port = os.environ.get("PRIMARY_PORT", "27017")
+print(f"mongodb://{u}:{p}@host.docker.internal:{port}/admin?authSource=admin&directConnection=true")
+PY
+)"
 
 docker rm -f wise-eat-mongodb-exporter 2>/dev/null || true
 
@@ -50,11 +59,48 @@ docker run -d --name wise-eat-mongodb-exporter --restart unless-stopped \
   --collector.topmetrics \
   --log.level=warn
 
-sleep 4
-if curl -sf http://127.0.0.1:9216/metrics 2>/dev/null | grep -qE '^mongodb_up |^mongodb_mongod_up '; then
+sleep 6
+METRICS="$(curl -sf http://127.0.0.1:9216/metrics 2>/dev/null || true)"
+if echo "${METRICS}" | grep -qE '^mongodb_up |^mongodb_mongod_up '; then
   log "OK  exporter :9216 métriques mongodb_*"
+elif [[ -z "${METRICS}" ]]; then
+  warn "FAIL :9216 vide / injoignable — docker logs wise-eat-mongodb-exporter"
+  docker logs wise-eat-mongodb-exporter --tail=40 2>&1 || true
+  # Fallback réseau host (hostPort 127.0.0.1 parfois hors host-gateway).
+  warn "Retry exporter en --network host → 127.0.0.1:${PRIMARY_PORT}"
+  docker rm -f wise-eat-mongodb-exporter 2>/dev/null || true
+  URI_HOST="$(python3 - <<'PY'
+import urllib.parse, os
+u = urllib.parse.quote(os.environ["MONGO_ROOT_USER"], safe="")
+p = urllib.parse.quote(os.environ["MONGO_ROOT_PASSWORD"], safe="")
+port = os.environ.get("PRIMARY_PORT", "27017")
+print(f"mongodb://{u}:{p}@127.0.0.1:{port}/admin?authSource=admin&directConnection=true")
+PY
+)"
+  docker run -d --name wise-eat-mongodb-exporter --restart unless-stopped \
+    --network host \
+    "${EXPORTER_IMAGE}" \
+    --mongodb.uri="${URI_HOST}" \
+    --mongodb.direct-connect \
+    --mongodb.global-conn-pool \
+    --mongodb.connect-timeout-ms=10000 \
+    --compatible-mode \
+    --collector.diagnosticdata \
+    --collector.replicasetstatus \
+    --collector.dbstats \
+    --collector.topmetrics \
+    --web.listen-address=":9216" \
+    --log.level=warn
+  sleep 6
+  if curl -sf http://127.0.0.1:9216/metrics 2>/dev/null | grep -qE '^mongodb_up |^mongodb_mongod_up '; then
+    log "OK  exporter host-network :9216"
+  else
+    warn "FAIL exporter — docker logs wise-eat-mongodb-exporter"
+    docker logs wise-eat-mongodb-exporter --tail=40 2>&1 || true
+  fi
 else
-  warn "FAIL exporter :9216 — docker logs wise-eat-mongodb-exporter"
+  warn "FAIL pas de mongodb_up dans /metrics — sample :"
+  echo "${METRICS}" | grep -iE 'mongo|up|error' | head -20 || true
   docker logs wise-eat-mongodb-exporter --tail=25 2>&1 || true
 fi
 
@@ -69,4 +115,4 @@ if [[ -f "${MON_ENV}" ]]; then
   done
 fi
 
-log "Exporter MongoDB host OK — job Prometheus :9216 inchangé"
+log "Exporter MongoDB : job Prometheus :9216 inchangé"

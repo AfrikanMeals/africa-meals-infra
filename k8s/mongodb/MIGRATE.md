@@ -124,11 +124,27 @@ kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replic
 
 ### Apply Invalid : `volumeMounts… Not found: "keyfile"`
 
-Après un patch hostPath d’urgence, le strategic merge laisse un mount `keyfile` orphelin. Forcer :
+Après un patch hostPath d’urgence, managedFields / last-applied laissent un mount `keyfile` orphelin. **Delete + apply** (data hostPath intacte) :
 
 ```bash
+kubectl -n wise-eat delete deploy mongo-1 mongo-2 mongo-3 --wait=true
+# Les 3 ensemble (majorité rs0)
 kubectl apply -k k8s/mongodb --server-side --force-conflicts
-# ou : delete deploy mongo-{1,2,3} puis apply (data hostPath intacte)
+kubectl -n wise-eat rollout status deploy/mongo-1 deploy/mongo-2 deploy/mongo-3 --timeout=180s
+# Attendre élection PRIMARY (30–90s)
+sleep 45
+kubectl -n wise-eat exec deploy/mongo-1 -- mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" \
+  --authenticationDatabase admin --quiet --eval 'rs.status().members.map(m=>m.name+"="+m.stateStr)'
+```
+
+### RS : SECONDARY / `(not reachable/healthy)`
+
+Souvent juste après recreate — attendre, puis DNS :
+
+```bash
+kubectl -n wise-eat get pods -l app.kubernetes.io/name=mongodb
+kubectl -n wise-eat exec deploy/mongo-1 -- getent hosts wise-eat-mongo-2 wise-eat-mongo-3
+# Relancer rs.status() ; si toujours down → delete+apply ci-dessus
 ```
 
 ### Mid-cutover : `Port :27017 encore occupé`
