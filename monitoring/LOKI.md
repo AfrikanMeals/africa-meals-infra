@@ -51,9 +51,10 @@ cd /opt/wise-eat && git pull && sudo ./install.sh loki
 ```
 
 1. Datasource URL = `http://127.0.0.1:3100` (jamais `http://loki:3100`)  
-2. Save & test **seulement** quand `/ready` = 200  
-3. Explore → `{job=~".+"}` ; dashboard Search = `.*`  
-4. Conteneur `wise-eat-ollama` exclu du scrape Docker (logs trop volumineux)
+2. Header provisionné : `X-Scope-OrgID: fake` (requis pour healthcheck Grafana 13 + Loki sans auth)  
+3. Save & test **seulement** quand `curl -sf http://127.0.0.1:3100/ready` → `ready`  
+4. Si Save & test échoue mais Explore marche → ignorer le bouton ; sinon `docker logs wise-eat-grafana --tail=40` pendant le test  
+5. Conteneur `wise-eat-ollama` exclu du scrape Docker
 
 ## RAM / disque
 
