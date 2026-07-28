@@ -33,7 +33,10 @@ Usage:
 
 Composants:
   redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
-  memcached     Memcached 1 primary (:11211) + 2 réplicas
+  memcached     Memcached Docker 1 primary (:11211) + 2 réplicas — legacy
+  memcached-k8s Applique pods Memcached k8s (hostPort 11211/11213/11214)
+  migrate-memcached-k8s  Cutover Memcached Docker → K8s (cache froid attendu)
+  repair-memcached-exporters  Exporters Grafana → 127.0.0.1 (post-cutover k8s)
   minio         MinIO Docker (S3 :9000, console :9001, volume 10G) — legacy
   minio-k8s     Applique pods MinIO k8s (secret + kustomize, hostPath existant)
   migrate-minio-k8s  Cutover prod Docker → K8s (backup + stop + apply, zéro perte)
@@ -142,6 +145,20 @@ run_component() {
       ;;
     memcached)
       bash "${SCRIPTS}/install-memcached.sh"
+      ;;
+    memcached-k8s)
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/memcached"
+      else
+        kubectl apply -k "${INFRA_ROOT}/k8s/memcached"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      ;;
+    migrate-memcached-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-memcached-docker-to-k8s.sh"
+      ;;
+    repair-memcached-exporters)
+      bash "${INFRA_ROOT}/k8s/scripts/repair-memcached-exporters-host.sh"
       ;;
     minio)
       bash "${SCRIPTS}/install-minio.sh"

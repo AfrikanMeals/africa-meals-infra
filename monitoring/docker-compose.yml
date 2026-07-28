@@ -100,16 +100,15 @@ services:
     ports:
       - "127.0.0.1:9122:9121"
 
+  # host network : Memcached est en k8s hostPort (127.0.0.1:11211) — DNS Docker morts après cutover.
   memcached-exporter:
     image: prom/memcached-exporter:v0.15.3
     container_name: wise-eat-memcached-exporter
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     command:
-      - '--memcached.address=wise-eat-memcached:11211'
-    ports:
-      - "127.0.0.1:9150:9150"
+      - '--memcached.address=127.0.0.1:11211'
+      - '--web.listen-address=127.0.0.1:9150'
 
   redis-exporter-cache-replica-1:
     profiles: ["cluster-b"]
@@ -176,24 +175,20 @@ services:
     image: prom/memcached-exporter:v0.15.3
     container_name: wise-eat-memcached-exporter-replica-1
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     command:
-      - '--memcached.address=wise-eat-memcached-replica-1:11211'
-    ports:
-      - "127.0.0.1:9151:9150"
+      - '--memcached.address=127.0.0.1:11213'
+      - '--web.listen-address=127.0.0.1:9151'
 
   memcached-exporter-replica-2:
     profiles: ["cluster-b"]
     image: prom/memcached-exporter:v0.15.3
     container_name: wise-eat-memcached-exporter-replica-2
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     command:
-      - '--memcached.address=wise-eat-memcached-replica-2:11211'
-    ports:
-      - "127.0.0.1:9152:9150"
+      - '--memcached.address=127.0.0.1:11214'
+      - '--web.listen-address=127.0.0.1:9152'
 
   mongodb-exporter:
     image: percona/mongodb_exporter:0.44.0
