@@ -62,9 +62,10 @@ spec:
               hostPort: 6379
               protocol: TCP
           resources:
+            # Request bas (scheduler single-node) ; limit 1Gi pour maxmemory 768mb.
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 50m
+              memory: 256Mi
             limits:
               cpu: "1"
               memory: 1Gi
