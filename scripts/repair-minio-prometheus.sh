@@ -64,24 +64,46 @@ done
 sync_component monitoring
 cd "${MON_DIR}"
 
-if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-prometheus$'; then
-  bash "${SCRIPT_DIR}/install-monitoring.sh"
-fi
+# Sur le VPS, Prometheus/Grafana sont souvent créés via docker run (recreate-*-host.sh),
+# pas via compose — « compose up » échoue alors (Conflict container name).
+RECREATE_PROM="${INFRA_ROOT}/k8s/scripts/recreate-prometheus-host.sh"
+RECREATE_GRAFANA="${INFRA_ROOT}/k8s/scripts/recreate-grafana-host.sh"
 
-docker compose --env-file .env.monitoring up -d prometheus
+reload_or_recreate_prometheus() {
+  # 1. Reload lifecycle si le conteneur tourne déjà (bind-mount prometheus.yml).
+  if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-prometheus'; then
+    if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
+      log "Prometheus config rechargée (/-/reload)"
+      return 0
+    fi
+    warn "Reload HTTP échoué — recreate host network"
+  fi
+  if [[ -x "${RECREATE_PROM}" ]]; then
+    bash "${RECREATE_PROM}"
+    return 0
+  fi
+  # Fallback compose (dev) — uniquement si le nom n'est pas déjà pris hors compose.
+  if docker ps -a --format '{{.Names}}' | grep -qx 'wise-eat-prometheus'; then
+    docker restart wise-eat-prometheus
+  else
+    docker compose --env-file .env.monitoring up -d prometheus
+  fi
+}
+
+if ! docker ps --format '{{.Names}}' | grep -qx 'wise-eat-prometheus'; then
+  if [[ -x "${RECREATE_PROM}" ]]; then
+    bash "${RECREATE_PROM}"
+  else
+    bash "${SCRIPT_DIR}/install-monitoring.sh"
+  fi
+else
+  reload_or_recreate_prometheus
+fi
 
 if ! wait_for_prometheus_ready 60; then
-  warn "Prometheus pas ready — logs :"
-  docker compose --env-file .env.monitoring logs --tail=30 prometheus || true
-  die "Prometheus injoignable sur :9090"
-fi
-
-if curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1; then
-  log "Prometheus config rechargée"
-else
-  warn "Reload HTTP indisponible — redémarrage Prometheus"
-  docker compose --env-file .env.monitoring restart prometheus
-  wait_for_prometheus_ready 60 || die "Prometheus injoignable après restart"
+  warn "Prometheus pas ready — recreate forcé"
+  [[ -x "${RECREATE_PROM}" ]] && bash "${RECREATE_PROM}"
+  wait_for_prometheus_ready 60 || die "Prometheus injoignable sur :9090"
 fi
 
 # Prometheus en network_mode=host scrape 127.0.0.1:9000 (prometheus.yml).
@@ -132,20 +154,19 @@ print(f'  minio_cluster_health_status: {len(r)} série(s)')
 fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
-docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 
-# Dashboard MinIO provisionné en lecture seule — restart Grafana pour recharger JSON patché.
-if docker ps --format '{{.Names}}' | grep -q '^wise-eat-grafana$'; then
-  log "Restart Grafana (recharge dashboard MinIO provisionné)"
-  docker compose --env-file .env.monitoring restart grafana 2>/dev/null || true
-fi
-
-bash "${SCRIPT_DIR}/verify-minio-ops.sh" || warn "verify-minio-ops : corriger avant de valider Grafana"
-
-# Forcer rechargement du dashboard provisionné (sites primary/replicas).
-if docker ps --format '{{.Names}}' | grep -q '^wise-eat-grafana$'; then
+# Grafana host network — ne pas utiliser compose up (Conflict comme Prometheus).
+log "Recharge Grafana (dashboard MinIO provisionné)"
+if [[ -x "${RECREATE_GRAFANA}" ]]; then
+  bash "${RECREATE_GRAFANA}" || warn "recreate-grafana-host échoué"
+elif docker ps -a --format '{{.Names}}' | grep -qx 'wise-eat-grafana'; then
+  docker restart wise-eat-grafana || true
+else
   docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 fi
+
+sleep 5
+bash "${SCRIPT_DIR}/verify-minio-ops.sh" || warn "verify-minio-ops : corriger avant de valider Grafana"
 
 log "Terminé — scrape primary:9000 + replica-1:9002 + replica-2:9004 (cluster/node/bucket)"
 log "Grafana : filtre « MinIO site » = primary | replica-1 | replica-2"
