@@ -24,7 +24,11 @@ Internet → nginx :443 (wise-eat.cloud / ws.wise-eat.com)
 
 ### MinIO (stockage S3)
 
-Cutover Docker → pods (mêmes volumes, zéro perte) : [minio/MIGRATE.md](./minio/MIGRATE.md)
+Cutover Docker → pods (mêmes volumes, zéro perte) :
+- MinIO : [minio/MIGRATE.md](./minio/MIGRATE.md) · `sudo ./install.sh migrate-minio-k8s`
+- Redis : [redis/MIGRATE.md](./redis/MIGRATE.md) · `sudo ./install.sh migrate-redis-k8s`
+- Memcached : [memcached/MIGRATE.md](./memcached/MIGRATE.md) · `sudo ./install.sh migrate-memcached-k8s`
+- EMQX : [emqx/MIGRATE.md](./emqx/MIGRATE.md) · `sudo ./install.sh migrate-emqx-k8s`
 
 ```bash
 sudo ./install.sh migrate-minio-k8s
@@ -261,6 +265,9 @@ infra/k8s/
     poddisruptionbudget.yaml
     secret.env.example
   minio/                    # S3 MinIO hostPath + hostPort (voir minio/MIGRATE.md)
+  redis/                    # Redis cache+bull hostPath AOF (voir redis/MIGRATE.md)
+  memcached/                # Memcached hostPort (voir memcached/MIGRATE.md)
+  emqx/                     # MQTT EMQX hostPath Mnesia (voir emqx/MIGRATE.md)
   headlamp/                 # UI Kubernetes (NodePort 30850)
   scripts/
     deploy-ws-production.sh # WS — commande principale

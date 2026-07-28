@@ -1,0 +1,31 @@
+# Headless — DNS wise-eat-emqx-3 → pod IP (Erlang static seeds).
+apiVersion: v1
+kind: Service
+metadata:
+  name: wise-eat-emqx-3
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/component: mqtt
+    app.kubernetes.io/instance: "3"
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/instance: "3"
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: mqtt
+    - name: ws
+      port: 8083
+      targetPort: ws
+    - name: dashboard
+      port: 18083
+      targetPort: dashboard
+    - name: ekka
+      port: 4370
+      targetPort: ekka
+    - name: rpc
+      port: 5369
+      targetPort: rpc

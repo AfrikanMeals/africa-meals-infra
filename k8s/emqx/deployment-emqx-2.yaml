@@ -1,0 +1,135 @@
+# EMQX réplica 2 — pas de hostPort MQTT (cluster interne uniquement, comme Docker).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx-2
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/component: mqtt
+    app.kubernetes.io/instance: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: emqx
+      app.kubernetes.io/instance: "2"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: emqx
+        app.kubernetes.io/component: mqtt
+        app.kubernetes.io/instance: "2"
+    spec:
+      hostname: wise-eat-emqx-2
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: emqx
+          image: emqx/emqx:5.8.6
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: EMQX_NODE__COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: emqx-config
+                  key: EMQX_ERLANG_COOKIE
+            - name: EMQX_NODE__NAME
+              value: emqx@wise-eat-emqx-2
+            - name: EMQX_CLUSTER__DISCOVERY_STRATEGY
+              value: static
+            - name: EMQX_CLUSTER__STATIC__SEEDS
+              value: "[emqx@wise-eat-emqx-1,emqx@wise-eat-emqx-2,emqx@wise-eat-emqx-3]"
+            - name: EMQX_CLUSTER__AUTOHEAL
+              value: "true"
+            - name: EMQX_DASHBOARD__DEFAULT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: emqx-config
+                  key: EMQX_DASHBOARD_USERNAME
+            - name: EMQX_DASHBOARD__DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: emqx-config
+                  key: EMQX_DASHBOARD_PASSWORD
+            - name: EMQX_AUTHENTICATION__1__MECHANISM
+              value: password_based
+            - name: EMQX_AUTHENTICATION__1__BACKEND
+              value: built_in_database
+            - name: EMQX_AUTHENTICATION__1__ENABLE
+              value: "true"
+            - name: EMQX_AUTHENTICATION__1__USER_ID_TYPE
+              value: username
+            - name: EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME
+              value: sha256
+            - name: EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION
+              value: suffix
+            - name: EMQX_LOG__CONSOLE__LEVEL
+              value: warning
+            - name: EMQX_PROMETHEUS__VM_MEMORY_COLLECTOR
+              value: enabled
+            - name: EMQX_PROMETHEUS__VM_SYSTEM_INFO_COLLECTOR
+              value: enabled
+            - name: EMQX_PROMETHEUS__VM_STATISTICS_COLLECTOR
+              value: enabled
+            - name: EMQX_PROMETHEUS__MNESIA_COLLECTOR
+              value: enabled
+          ports:
+            - name: mqtt
+              containerPort: 1883
+              protocol: TCP
+            - name: ws
+              containerPort: 8083
+              protocol: TCP
+            - name: dashboard
+              containerPort: 18083
+              protocol: TCP
+            - name: ekka
+              containerPort: 4370
+              protocol: TCP
+            - name: rpc
+              containerPort: 5369
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 384Mi
+          volumeMounts:
+            - name: data
+              mountPath: /opt/emqx/data
+          startupProbe:
+            httpGet:
+              path: /api/v5/status
+              port: dashboard
+            periodSeconds: 5
+            failureThreshold: 36
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v5/status
+              port: dashboard
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v5/status
+              port: dashboard
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/wise-eat/emqx/data-emqx-2
+            type: Directory

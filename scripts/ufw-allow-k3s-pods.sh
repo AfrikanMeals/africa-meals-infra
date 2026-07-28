@@ -34,6 +34,11 @@ for port in 9000 9001 9002 9004 9012 9014; do
   ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods MinIO :${port}" || true
 done
 
+# EMQX primary hostPort (MQTT/WS/dashboard) — API/WS utilisent plutôt mqtts :8883 via nginx.
+for port in 1883 8083 18083; do
+  ufw allow from "${POD_CIDR}" to any port "${port}" proto tcp comment "k3s pods EMQX :${port}" || true
+done
+
 ufw reload
-log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached/MinIO plaintext OK"
+log "UFW : ${POD_CIDR} → Mongo/Redis/Memcached/MinIO/EMQX plaintext OK"
 log "Les ports restent aussi bindés sur 127.0.0.1 et ${K3S_CNI_GATEWAY:-10.42.0.1} (pods)."

@@ -226,7 +226,7 @@ scrape_configs:
         target_label: instance
         replacement: wise-eat-minio-replica-2:9004
 
-  # EMQX — primary sur localhost ; réplicas via file_sd (IP Docker, sync-emqx-prometheus-targets.sh)
+  # EMQX — primary localhost:18083 ; réplicas file_sd (pod IPs k8s ou IP Docker, sync-emqx-prometheus-targets.sh)
   - job_name: emqx
     metrics_path: /api/v5/prometheus/stats
     scheme: http

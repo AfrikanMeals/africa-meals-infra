@@ -44,7 +44,10 @@ Composants:
   minio-k8s     Applique pods MinIO k8s (secret + kustomize, hostPath existant)
   migrate-minio-k8s  Cutover prod Docker → K8s (backup + stop + apply, zéro perte)
   repair-minio-site-replication-k8s  Reconfigure SR MinIO (Services k8s, plus DNS Docker)
-  emqx          EMQX MQTT 1 primary (:1883) + 2 réplicas cluster
+  emqx          EMQX MQTT Docker 1 primary (:1883) + 2 réplicas — legacy
+  emqx-k8s      Applique pods EMQX k8s (hostPath Mnesia + hostPort primary)
+  migrate-emqx-k8s  Cutover EMQX Docker → K8s (zéro perte data-emqx-*)
+
   mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 512 Mo RAM / nœud)
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
@@ -204,6 +207,19 @@ run_component() {
       ;;
     emqx)
       bash "${SCRIPTS}/install-emqx.sh"
+      ;;
+    emqx-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/create-emqx-secret.sh"
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/emqx"
+      else
+        kubectl apply -k "${INFRA_ROOT}/k8s/emqx"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      bash "${SCRIPTS}/sync-emqx-prometheus-targets.sh" 2>/dev/null || true
+      ;;
+    migrate-emqx-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-emqx-docker-to-k8s.sh"
       ;;
     mongodb)
       bash "${SCRIPTS}/install-mongodb.sh"

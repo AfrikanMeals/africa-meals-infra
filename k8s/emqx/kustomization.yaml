@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - deployment-emqx-1.yaml
+  - deployment-emqx-2.yaml
+  - deployment-emqx-3.yaml
+  - service-emqx-1.yaml
+  - service-emqx-2.yaml
+  - service-emqx-3.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: wise-eat
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: emqx/emqx
+    newName: emqx/emqx
+    newTag: "5.8.6"

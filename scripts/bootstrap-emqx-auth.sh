@@ -22,6 +22,15 @@ MQTT_SUB_USER="${MQTT_SUB_USERNAME:-wise-eat-mqtt}"
 MQTT_PUB_USER="${MQTT_PUB_USERNAME:-wise-eat-admin}"
 
 emqx_auth_configured_via_docker_env() {
+  # Post-cutover k8s : auth via env Deployment (même clé).
+  if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
+    local kc=(kubectl)
+    command -v kubectl >/dev/null 2>&1 || kc=(sudo k3s kubectl)
+    if "${kc[@]}" -n wise-eat get deploy/emqx-1 >/dev/null 2>&1; then
+      "${kc[@]}" -n wise-eat get deploy/emqx-1 -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' 2>/dev/null \
+        | grep -q 'EMQX_AUTHENTICATION__1__BACKEND' && return 0
+    fi
+  fi
   docker ps --format '{{.Names}}' | grep -qx 'wise-eat-emqx-1' || return 1
   docker inspect wise-eat-emqx-1 --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
     | grep -q 'EMQX_AUTHENTICATION__1__BACKEND=built_in_database'
