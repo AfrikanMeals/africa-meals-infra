@@ -47,8 +47,9 @@ spec:
             - name: data
               mountPath: /data/db
           resources:
+            # LimitRange wise-eat : cpu.min ≥ 50m · memory.min ≥ 256Mi (sinon Forbidden / 0 replicas).
             requests:
-              cpu: 10m
+              cpu: 50m
               memory: 256Mi
             limits:
               cpu: 100m

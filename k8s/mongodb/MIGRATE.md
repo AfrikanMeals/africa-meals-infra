@@ -85,6 +85,51 @@ Restaurer dump (corruption seulement) :
 # Voir docs/MONGODB_BACKUP.md + restore-mongodb.sh
 ```
 
+## Rollout figé / pods Pending (VPS RAM)
+
+Symptôme : `Waiting for deployment "mongo-1" … 0 out of 1` + icônes warning Headlamp.
+
+```bash
+kubectl -n wise-eat get pods -l app.kubernetes.io/name=mongodb -o wide
+kubectl -n wise-eat describe pods -l app.kubernetes.io/name=mongodb | grep -E 'Forbidden|Insufficient|Warning|Failed' | tail -30
+kubectl describe node | grep -A8 'Allocated resources'
+```
+
+**Cause fréquente 1 — LimitRange** : initContainer `cpu: 10m` < min `50m` → pod Forbidden (0 replicas).  
+Fix manifests (cpu init ≥ 50m) puis :
+
+```bash
+cd /opt/wise-eat && git pull
+kubectl apply -k k8s/mongodb
+```
+
+**Cause fréquente 2 — Insufficient memory** (~768Mi requests pour 3 nœuds) :
+
+```bash
+# Libère ~1 Go de requests (réplicas Redis) — safe court terme
+kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replica-2 \
+  deploy/redis-bullmq-replica-1 deploy/redis-bullmq-replica-2 --replicas=0
+kubectl -n wise-eat scale deploy/africa-meals-api deploy/africa-meals-ws --replicas=1
+
+# Attendre Ready
+kubectl -n wise-eat get pods -l app.kubernetes.io/name=mongodb -w
+
+# Puis reprendre la fin du migrate (ou relancer avec SKIP_DUMP=1 SKIP_BACKUP_TAR=1)
+SKIP_DUMP=1 SKIP_BACKUP_TAR=1 sudo ./install.sh migrate-mongodb-k8s
+
+# Remettre réplicas Redis
+kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replica-2 \
+  deploy/redis-bullmq-replica-1 deploy/redis-bullmq-replica-2 --replicas=1
+```
+
+Si Mongo Docker déjà stop et pods toujours impossibles → **rollback Docker** (ports libres d’abord) :
+
+```bash
+kubectl -n wise-eat scale deploy/mongo-1 deploy/mongo-2 deploy/mongo-3 --replicas=0
+# attendre : ss -tlnp | grep -E '27017|27027|27028' vide
+cd /opt/wise-eat/mongodb && docker compose --env-file .env.mongodb up -d
+```
+
 ## Interdits
 
 - `docker compose down -v` / wipe `data-mongo-*`

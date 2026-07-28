@@ -204,13 +204,51 @@ chmod 400 "${MONGODB_DIR}/keyfile" || true
 
 bash "${SCRIPT_DIR}/create-mongodb-secret.sh"
 
+# Libère ~1 Go de requests (réplicas Redis) le temps que les 3×256Mi Mongo schedulent.
+# Restauré après Ready (sauf SKIP_REDIS_SCALE=1).
+REDIS_SCALE_BACK=()
+if [[ "${SKIP_REDIS_SCALE:-0}" != "1" ]]; then
+  for dep in redis-cache-replica-1 redis-cache-replica-2 redis-bullmq-replica-1 redis-bullmq-replica-2; do
+    if "${KUBECTL[@]}" -n "${NAMESPACE}" get "deploy/${dep}" >/dev/null 2>&1; then
+      cur="$("${KUBECTL[@]}" -n "${NAMESPACE}" get "deploy/${dep}" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)"
+      if [[ "${cur}" != "0" && -n "${cur}" ]]; then
+        log "Scale temporaire ${dep} → 0 (libère requests RAM pour Mongo)"
+        "${KUBECTL[@]}" -n "${NAMESPACE}" scale "deploy/${dep}" --replicas=0
+        REDIS_SCALE_BACK+=("${dep}:${cur}")
+      fi
+    fi
+  done
+  # API/WS au calme (HPA peut remonter après).
+  for dep in africa-meals-api africa-meals-ws; do
+    if "${KUBECTL[@]}" -n "${NAMESPACE}" get "deploy/${dep}" >/dev/null 2>&1; then
+      "${KUBECTL[@]}" -n "${NAMESPACE}" scale "deploy/${dep}" --replicas=1 2>/dev/null || true
+    fi
+  done
+fi
+
 log "kubectl apply -k k8s/mongodb"
 "${KUBECTL[@]}" create namespace "${NAMESPACE}" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 "${KUBECTL[@]}" apply -k "${MONGODB_KUSTOMIZE}"
 
 for dep in mongo-1 mongo-2 mongo-3; do
-  "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status "deploy/${dep}" --timeout=360s
+  if ! "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status "deploy/${dep}" --timeout=360s; then
+    warn "Rollout ${dep} bloqué — diagnostic :"
+    "${KUBECTL[@]}" -n "${NAMESPACE}" get pods -l app.kubernetes.io/name=mongodb -o wide 2>/dev/null || true
+    "${KUBECTL[@]}" -n "${NAMESPACE}" describe pods -l app.kubernetes.io/name=mongodb 2>/dev/null \
+      | grep -E 'Warning|Failed|Forbidden|Insufficient|Events|Status:' | tail -40 || true
+    die "Rollout ${dep} échoué — souvent LimitRange (cpu≥50m) ou Insufficient memory. Voir k8s/mongodb/MIGRATE.md § Pending"
+  fi
 done
+
+# Remettre les réplicas Redis après Mongo Ready.
+if ((${#REDIS_SCALE_BACK[@]} > 0)); then
+  for entry in "${REDIS_SCALE_BACK[@]}"; do
+    dep="${entry%%:*}"
+    n="${entry##*:}"
+    log "Restore scale ${dep} → ${n}"
+    "${KUBECTL[@]}" -n "${NAMESPACE}" scale "deploy/${dep}" --replicas="${n}" || warn "scale ${dep} non bloquant"
+  done
+fi
 
 wait_mongo_ping "${PRIMARY_PORT}" "primary" || die "Primary :${PRIMARY_PORT} pas prêt"
 wait_mongo_ping "${R1_PORT}" "replica-1" || die "Replica-1 :${R1_PORT} pas prêt"
