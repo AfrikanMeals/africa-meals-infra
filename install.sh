@@ -148,11 +148,14 @@ run_component() {
       ;;
     redis-k8s)
       bash "${INFRA_ROOT}/k8s/scripts/create-redis-secret.sh"
+      # Les 2 LimitRange du ns wise-eat : le max le plus bas s’applique.
       if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
         sudo k3s kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
+        sudo k3s kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-ws/limitrange.yaml" || true
         sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/redis"
       else
         kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
+        kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-ws/limitrange.yaml" || true
         kubectl apply -k "${INFRA_ROOT}/k8s/redis"
       fi
       bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true

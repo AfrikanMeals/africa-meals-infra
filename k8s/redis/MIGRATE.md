@@ -27,6 +27,11 @@ chmod +x k8s/scripts/create-redis-secret.sh \
 # Vérifier alignement mots de passe API ↔ .env.redis (sans afficher les secrets)
 # CACHE_REDIS_PASSWORD dans redis/.env.redis == REDIS_PASSWORD dans .env.prod
 
+# LimitRange : API + WS doivent avoir max ≥ 1Gi (sinon pods Forbidden 512Mi)
+kubectl apply -f k8s/africa-meals-api/limitrange.yaml
+kubectl apply -f k8s/africa-meals-ws/limitrange.yaml
+kubectl -n wise-eat get limitrange -o custom-columns=NAME:.metadata.name,MAX:.spec.limits[0].max.memory
+
 sudo k8s/scripts/migrate-redis-docker-to-k8s.sh --dry-run
 sudo ./install.sh migrate-redis-k8s
 ```

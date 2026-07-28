@@ -156,9 +156,19 @@ command -v nc >/dev/null 2>&1 || die "nc requis"
 # 2. Secret ACL + replicaof k8s (avant stop — pas de dépendance runtime)
 bash "${SCRIPT_DIR}/create-redis-secret.sh"
 
-# 3. LimitRange max 2Gi (Redis cache 1Gi)
-if [[ -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" ]]; then
-  "${KUBECTL[@]}" apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
+# 3. LimitRange max 2Gi — appliquer API ET WS (plusieurs LimitRange = le max le plus bas gagne).
+for lr in \
+  "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" \
+  "${INFRA_ROOT}/k8s/africa-meals-ws/limitrange.yaml"; do
+  if [[ -f "${lr}" ]]; then
+    log "Apply LimitRange $(basename "$(dirname "${lr}")")"
+    "${KUBECTL[@]}" apply -f "${lr}" || true
+  fi
+done
+# Vérifier qu’aucun LimitRange ne reste à max 512Mi
+if "${KUBECTL[@]}" -n "${NAMESPACE}" get limitrange -o jsonpath='{range .items[*]}{.metadata.name}{" max="}{.spec.limits[0].max.memory}{"\n"}{end}' 2>/dev/null \
+  | grep -q '512Mi'; then
+  die "LimitRange max encore 512Mi — kubectl -n ${NAMESPACE} get limitrange -o yaml"
 fi
 
 # 4. Stop Docker AVANT backup — AOF figé (évite « file changed as we read it »)
