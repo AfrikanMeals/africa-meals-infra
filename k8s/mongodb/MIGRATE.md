@@ -122,6 +122,14 @@ kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replic
   deploy/redis-bullmq-replica-1 deploy/redis-bullmq-replica-2 --replicas=1
 ```
 
+### Mid-cutover : `Port :27017 encore occupé`
+
+Normal si les pods k8s tiennent déjà le hostPort. Le script skip automatique si `deploy/mongo-*` + pods existent ; sinon :
+
+```bash
+SKIP_DUMP=1 SKIP_BACKUP_TAR=1 SKIP_PORT_WAIT=1 sudo ./install.sh migrate-mongodb-k8s
+```
+
 ### CrashLoopBackOff (keyfile)
 
 ```bash

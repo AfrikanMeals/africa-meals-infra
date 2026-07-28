@@ -68,6 +68,12 @@ mongo_docker_running() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -qE '^wise-eat-mongo-[123]$'
 }
 
+# True si un pod mongo k8s existe déjà (hostPort = ports « occupés » légitimes en mid-cutover).
+mongo_k8s_present() {
+  "${KUBECTL[@]}" -n "${NAMESPACE}" get deploy/mongo-1 >/dev/null 2>&1 \
+    && [[ "$("${KUBECTL[@]}" -n "${NAMESPACE}" get pods -l app.kubernetes.io/name=mongodb --no-headers 2>/dev/null | wc -l | tr -d ' ')" != "0" ]]
+}
+
 wait_port_free() {
   local port="$1" i
   for i in $(seq 1 60); do
@@ -188,12 +194,17 @@ if [[ "${SKIP_BACKUP_TAR}" != "1" ]]; then
   log "Backup tar OK ($(du -h "${BACKUP_FILE}" | awk '{print $1}'))"
 fi
 
-for port in "${PRIMARY_PORT}" "${R1_PORT}" "${R2_PORT}"; do
-  if ! wait_port_free "${port}"; then
-    die "Port :${port} encore occupé — ss -tlnp | grep ${port}"
-  fi
-  log "Port libre :${port}"
-done
+# Ports hostPort : libres seulement si on part de Docker. Mid-cutover k8s = déjà bindés OK.
+if [[ "${SKIP_PORT_WAIT:-0}" == "1" ]] || mongo_k8s_present; then
+  log "Skip attente ports libres (SKIP_PORT_WAIT ou pods mongo k8s déjà présents)"
+else
+  for port in "${PRIMARY_PORT}" "${R1_PORT}" "${R2_PORT}"; do
+    if ! wait_port_free "${port}"; then
+      die "Port :${port} encore occupé — ss -tlnp | grep ${port} (ou SKIP_PORT_WAIT=1 si pods k8s déjà up)"
+    fi
+    log "Port libre :${port}"
+  done
+fi
 
 if mongo_docker_running; then
   die "Conteneur mongo Docker encore Up — abort"
