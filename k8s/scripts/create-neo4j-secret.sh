@@ -9,8 +9,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-# shellcheck source=../../scripts/lib/env-file-sanitize.sh
-source "${SCRIPT_DIR}/../../scripts/lib/env-file-sanitize.sh"
 
 NAMESPACE="${K8S_NAMESPACE:-wise-eat}"
 SECRET_NAME="${K8S_NEO4J_SECRET:-neo4j-config}"
@@ -38,36 +36,23 @@ NEO4J_HEAP_MAX="${NEO4J_HEAP_MAX:-512m}"
 NEO4J_PAGECACHE="${NEO4J_PAGECACHE:-128m}"
 NEO4J_BOLT_ADVERTISED="${NEO4J_BOLT_ADVERTISED:-localhost:7687}"
 NEO4J_HTTP_ADVERTISED="${NEO4J_HTTP_ADVERTISED:-localhost:7474}"
-# JSON array string (défaut aucun plugin).
-NEO4J_PLUGINS="${NEO4J_PLUGINS:-[]}"
 
-# Format officiel image Neo4j : user/password.
+# Format officiel image Neo4j : user/password (literals = OK si password contient /, #, etc.).
 NEO4J_AUTH="${NEO4J_USER}/${NEO4J_PASSWORD}"
-
-FILTERED="$(mktemp)"
-trap 'rm -f "${FILTERED}"' EXIT
-
-cat > "${FILTERED}" <<EOF
-NEO4J_AUTH=${NEO4J_AUTH}
-NEO4J_USER=${NEO4J_USER}
-NEO4J_PASSWORD=${NEO4J_PASSWORD}
-NEO4J_HEAP_INITIAL=${NEO4J_HEAP_INITIAL}
-NEO4J_HEAP_MAX=${NEO4J_HEAP_MAX}
-NEO4J_PAGECACHE=${NEO4J_PAGECACHE}
-NEO4J_BOLT_ADVERTISED=${NEO4J_BOLT_ADVERTISED}
-NEO4J_HTTP_ADVERTISED=${NEO4J_HTTP_ADVERTISED}
-NEO4J_PLUGINS=${NEO4J_PLUGINS}
-EOF
-
-SANITIZED="$(mktemp)"
-env_file_sanitize_file "${FILTERED}" "${SANITIZED}"
-mv "${SANITIZED}" "${FILTERED}"
 
 "${KUBECTL[@]}" create namespace "${NAMESPACE}" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
+# --from-literal évite le parse env-file qui casse sur caractères spéciaux du mot de passe.
 "${KUBECTL[@]}" create secret generic "${SECRET_NAME}" \
   --namespace="${NAMESPACE}" \
-  --from-env-file="${FILTERED}" \
+  --from-literal="NEO4J_AUTH=${NEO4J_AUTH}" \
+  --from-literal="NEO4J_USER=${NEO4J_USER}" \
+  --from-literal="NEO4J_PASSWORD=${NEO4J_PASSWORD}" \
+  --from-literal="NEO4J_HEAP_INITIAL=${NEO4J_HEAP_INITIAL}" \
+  --from-literal="NEO4J_HEAP_MAX=${NEO4J_HEAP_MAX}" \
+  --from-literal="NEO4J_PAGECACHE=${NEO4J_PAGECACHE}" \
+  --from-literal="NEO4J_BOLT_ADVERTISED=${NEO4J_BOLT_ADVERTISED}" \
+  --from-literal="NEO4J_HTTP_ADVERTISED=${NEO4J_HTTP_ADVERTISED}" \
   --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
 
 echo "Secret ${SECRET_NAME} appliqué dans ${NAMESPACE} (depuis ${NEO4J_ENV})"

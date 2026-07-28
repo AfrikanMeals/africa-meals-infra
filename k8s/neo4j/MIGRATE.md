@@ -41,6 +41,23 @@ kubectl -n wise-eat patch deploy/neo4j --type='json' -p='[
 ]'
 ```
 
+Si pod `CrashLoopBackOff` :
+
+```bash
+kubectl -n wise-eat logs deploy/neo4j --tail=80
+```
+
+| Log | Fix |
+|-----|-----|
+| `Unrecognized setting … PORT.7687.TCP.PORT` | `enableServiceLinks: false` (déjà dans le Deployment) |
+| `Folder /logs is not accessible for user: 7474` | `chown -R 7474:7474 /var/lib/wise-eat/neo4j` + initContainer |
+
+```bash
+chown -R 7474:7474 /var/lib/wise-eat/neo4j
+kubectl apply -k k8s/neo4j
+kubectl -n wise-eat rollout status deploy/neo4j --timeout=300s
+```
+
 ## Vérifications
 
 ```bash

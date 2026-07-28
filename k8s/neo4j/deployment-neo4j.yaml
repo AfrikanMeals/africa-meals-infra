@@ -1,6 +1,6 @@
 # Neo4j Community — mêmes ports / volume que Docker (wise-eat-neo4j).
 # hostPort 7474/7687 : nginx db-graph + API bolt://host.k3s.internal:7687.
-# UID image officielle = 7474.
+# UID image officielle = 7474. hostPath n’applique pas fsGroup → initContainer chown.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,12 +27,47 @@ spec:
         app.kubernetes.io/component: graph
         app.kubernetes.io/instance: primary
     spec:
+      # Fix: Service links injectent NEO4J_PORT_7687_TCP_* → Neo4j lit « PORT.7687.TCP.PORT » et crash.
+      enableServiceLinks: false
       securityContext:
         runAsUser: 7474
         runAsGroup: 7474
         fsGroup: 7474
       restartPolicy: Always
       terminationGracePeriodSeconds: 60
+      # Fix: hostPath ignoré par fsGroup → CrashLoop « Folder /logs not accessible for 7474 ».
+      initContainers:
+        - name: fix-perms
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - |
+              # 1. Ownership image Neo4j (7474)
+              chown -R 7474:7474 /data /logs /import /plugins
+              # 2. Écriture user+group (évite SECURE_FILE_PERMISSIONS trop strict)
+              chmod -R u+rwX,g+rwX /data /logs /import /plugins
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /logs
+            - name: import
+              mountPath: /import
+            - name: plugins
+              mountPath: /plugins
+          resources:
+            # LimitRange wise-eat : memory.min ≥ 128–256Mi (sinon Forbidden).
+            requests:
+              cpu: 10m
+              memory: 256Mi
+            limits:
+              cpu: 100m
+              memory: 256Mi
       containers:
         - name: neo4j
           image: neo4j:5.26-community
@@ -77,11 +112,7 @@ spec:
                 secretKeyRef:
                   name: neo4j-config
                   key: NEO4J_HTTP_ADVERTISED
-            - name: NEO4J_PLUGINS
-              valueFrom:
-                secretKeyRef:
-                  name: neo4j-config
-                  key: NEO4J_PLUGINS
+            # Pas de NEO4J_PLUGINS=[] — certaines builds plantent sur tableau vide.
           ports:
             - name: http
               containerPort: 7474
@@ -92,13 +123,13 @@ spec:
               hostPort: 7687
               protocol: TCP
           resources:
-            # Aligné mem_limit Docker 1g ; request bas pour scheduler VPS 8 Go.
+            # Aligné mem_limit Docker 1g ; headroom JVM sous LimitRange 2Gi.
             requests:
               cpu: 100m
               memory: 512Mi
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 1280Mi
           volumeMounts:
             - name: data
               mountPath: /data
@@ -113,7 +144,7 @@ spec:
               path: /
               port: http
             periodSeconds: 5
-            failureThreshold: 36
+            failureThreshold: 48
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
