@@ -98,7 +98,8 @@ Composants:
   verify-tls    Vérifie certs LE + HAProxy/Stunnel
   verify-ipv6-endpoints  Test AAAA + TCP/TLS depuis Mac ou VPS (./scripts/… sans sudo)
   repair-ipv6-ufw  UFW IPv6 + ports TLS/MQTT + hairpin broker (sur VPS)
-  monitoring    Prometheus + Grafana + node/redis/memcached exporters
+  monitoring    Prometheus + Grafana + exporters + Loki/Promtail
+  loki          Loki + Promtail (logs → Grafana dossier Logs)
   repair-monitoring  Répare exporters + sync mots de passe Redis (Grafana vide)
   repair-prometheus-host-targets  Corrige node_exporter DOWN (prometheus.yml → 127.0.0.1:9100)
   repair-grafana-stack  Grafana N/A partout : exporters + Prometheus + datasource
@@ -392,6 +393,9 @@ run_component() {
       ;;
     monitoring)
       bash "${SCRIPTS}/install-monitoring.sh"
+      ;;
+    loki)
+      bash "${SCRIPTS}/install-loki.sh"
       ;;
     repair-monitoring)
       bash "${SCRIPTS}/repair-monitoring.sh"

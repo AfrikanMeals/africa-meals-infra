@@ -132,8 +132,14 @@ if [[ -x "${SCRIPT_DIR}/sync-emqx-prometheus-targets.sh" ]]; then
 fi
 
 echo ""
+# Loki / Promtail (dossier Grafana Logs) — non bloquant si pull lent.
+if [[ -x "${SCRIPT_DIR}/verify-loki-stack.sh" ]]; then
+  bash "${SCRIPT_DIR}/verify-loki-stack.sh" || warn "Loki partiel — sudo ./install.sh loki"
+fi
+
 log "Métriques Redis : curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '"
 log "Métriques Memcached : curl -s http://127.0.0.1:9150/metrics | grep '^memcached_up '"
+log "Loki/Promtail : curl -s http://127.0.0.1:3100/ready · :9080/ready"
 log "Grafana   : https://console.wise-eat.com (ou tunnel SSH → :3000)"
 log "Prometheus: https://logs.wise-eat.com (basic auth — voir .env.monitoring)"
-log "Dashboards : Redis · Memcached · MinIO · EMQX · MongoDB · Ollama (#25086) · Neo4j"
+log "Dashboards : Logs (Loki) · Redis · Memcached · MinIO · EMQX · MongoDB · Ollama · Neo4j"

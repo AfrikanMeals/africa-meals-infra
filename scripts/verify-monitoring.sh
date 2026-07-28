@@ -20,6 +20,13 @@ check() {
 
 fail=0
 
+log "=== Loki + Promtail (dossier Grafana Logs) ==="
+if [[ -x "${SCRIPT_DIR}/verify-loki-stack.sh" ]]; then
+  bash "${SCRIPT_DIR}/verify-loki-stack.sh" || warn "Loki/Promtail partiel — sudo ./install.sh loki"
+else
+  warn "verify-loki-stack.sh absent"
+fi
+
 log "=== Grafana → Prometheus (N/A partout si KO) ==="
 if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'wise-eat-grafana'; then
   warn "FAIL Grafana absent — sudo ./install.sh repair-grafana-stack"

@@ -1,0 +1,197 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "title": "Log volume by job (lines / 1m)",
+      "description": "Volume Loki — streams Docker, k3s et journal.",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (job) (count_over_time({job=~\"$job\"} |= \"$search\" [1m]))",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": { "mode": "normal", "group": "A" },
+            "fillOpacity": 40,
+            "lineWidth": 1,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "All logs (job filter)",
+      "type": "logs",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 7 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=~\"$job\"} |= \"$search\"",
+          "queryType": "range",
+          "maxLines": 1000
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "title": "API / WS (namespace wise-eat)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 21 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"africa-meals-api|africa-meals-ws\"} |= \"$search\"",
+          "queryType": "range",
+          "maxLines": 500
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "title": "Docker (wise-eat-* containers)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 21 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"docker\", container=~\"wise-eat-.*\"} |= \"$search\"",
+          "queryType": "range",
+          "maxLines": 500
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "title": "Data stores k8s (mongo · redis · emqx · minio · neo4j · memcached)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 33 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"kubernetes\", namespace=\"wise-eat\", app=~\"mongodb|mongo|redis.*|emqx|minio|neo4j|memcached.*\"} |= \"$search\"",
+          "queryType": "range",
+          "maxLines": 500
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "title": "Systemd journal (nginx · k3s · docker)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 33 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"journal\", unit=~\"$unit\"} |= \"$search\"",
+          "queryType": "range",
+          "maxLines": 500
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["loki", "logs", "wise-eat"],
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "Job",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(job)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "unit",
+        "label": "Systemd unit",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values({job=\"journal\"}, unit)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "search",
+        "label": "Search",
+        "type": "textbox",
+        "current": { "selected": true, "text": "", "value": "" }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Wise Eat — Logs (Loki)",
+  "uid": "wise-eat-loki-logs",
+  "version": 1
+}
