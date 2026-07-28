@@ -3,45 +3,62 @@
 # Default: dry-run (inspect only). Set APPLY=1 to mutate.
 #
 # Usage:
-#   ./scripts/harden-s3-bucket.sh                      # dry-run, bucket from AWS_S3_BUCKET
+#   ./scripts/harden-s3-bucket.sh                      # dry-run, bucket + keys from .env.prod
 #   AWS_S3_BUCKET=wise-eat ./scripts/harden-s3-bucket.sh
-#   APPLY=1 AWS_S3_BUCKET=wise-eat ./scripts/harden-s3-bucket.sh
+#   APPLY=1 ./scripts/harden-s3-bucket.sh
 #
-# Requires: aws CLI authenticated (IAM with s3:GetBucketPublicAccessBlock,
-# s3:PutBucketPublicAccessBlock, s3:GetBucketPolicy, s3:PutBucketPolicy / DeleteBucketPolicy).
+# Credentials: exports AWS_* from /opt/wise-eat-api/.env.prod if not already set
+# (same source as Mongo cloud backups). IAM needs:
+#   s3:GetBucketPublicAccessBlock, s3:PutBucketPublicAccessBlock,
+#   s3:GetBucketPolicy, s3:PutBucketPolicy / DeleteBucketPolicy
+# Si la clé API n’a que Get/PutObject → utiliser la console AWS ou une clé admin.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# shellcheck source=lib/api-env.sh
+source "${SCRIPT_DIR}/lib/api-env.sh"
+
 log() { printf '%s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-BUCKET="${AWS_S3_BUCKET:-}"
 APPLY="${APPLY:-0}"
 REMOVE_PUBLIC_POLICY="${REMOVE_PUBLIC_POLICY:-1}"
+
+# Charger bucket / région / clés depuis .env.prod si absents de l’environnement.
+if [[ -z "${AWS_S3_BUCKET:-}" ]]; then
+  AWS_S3_BUCKET="$(api_env_var AWS_S3_BUCKET 2>/dev/null || true)"
+fi
+if [[ -z "${AWS_REGION:-}" ]]; then
+  AWS_REGION="$(api_env_var AWS_REGION 2>/dev/null || true)"
+fi
+if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
+  AWS_ACCESS_KEY_ID="$(api_env_var AWS_ACCESS_KEY_ID 2>/dev/null || true)"
+fi
+if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+  AWS_SECRET_ACCESS_KEY="$(api_env_var AWS_SECRET_ACCESS_KEY 2>/dev/null || true)"
+fi
+export AWS_S3_BUCKET AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+
+BUCKET="${AWS_S3_BUCKET:-}"
 REGION="${AWS_REGION:-}"
 
-if [[ -z "${BUCKET}" ]]; then
-  API_ENV="${MONGO_CLOUD_API_ENV:-/opt/wise-eat-api/.env.prod}"
-  if [[ -f "${API_ENV}" ]]; then
-    # shellcheck disable=SC1090
-    set -a
-    # shellcheck disable=SC1091
-    source <(grep -E '^(AWS_S3_BUCKET|AWS_REGION)=' "${API_ENV}" | sed 's/\r$//' || true)
-    set +a
-    BUCKET="${AWS_S3_BUCKET:-}"
-    REGION="${AWS_REGION:-${REGION}}"
-  fi
-fi
-
-[[ -n "${BUCKET}" ]] || die "Set AWS_S3_BUCKET (e.g. wise-eat)"
+[[ -n "${BUCKET}" ]] || die "Set AWS_S3_BUCKET or add it to ${API_ENV_FILE}"
 BUCKET="${BUCKET#s3://}"
 BUCKET="${BUCKET%%/*}"
 
 command -v aws >/dev/null 2>&1 || die "aws CLI required"
 command -v python3 >/dev/null 2>&1 || die "python3 required (policy rewrite)"
+
+if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+  if [[ ! -f "${HOME}/.aws/credentials" && -z "${AWS_PROFILE:-}" ]]; then
+    die "AWS credentials missing. Export AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or add them to ${API_ENV_FILE}"
+  fi
+else
+  log "Using AWS_ACCESS_KEY_ID from env / ${API_ENV_FILE} (…${AWS_ACCESS_KEY_ID: -4})"
+fi
 
 AWS_ARGS=(--bucket "${BUCKET}")
 [[ -n "${REGION}" ]] && AWS_ARGS+=(--region "${REGION}")
