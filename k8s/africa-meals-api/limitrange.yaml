@@ -21,7 +21,8 @@ spec:
         memory: 512Mi
         cpu: 100m
       max:
-        memory: 512Mi
+        # Redis cache k8s : maxmemory 768mb + overhead → limite pod 1Gi (API reste ≤512Mi).
+        memory: 2Gi
         cpu: "2"
       min:
         memory: 256Mi

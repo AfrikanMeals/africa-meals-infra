@@ -1,0 +1,113 @@
+# Redis BullMQ primary — hostPort 6380 → container 6379, AOF, noeviction.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-bullmq
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: bullmq
+    app.kubernetes.io/instance: primary
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/component: bullmq
+      app.kubernetes.io/instance: primary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/component: bullmq
+        app.kubernetes.io/instance: primary
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 512mb
+            - --maxmemory-policy
+            - noeviction
+            - --tcp-keepalive
+            - "300"
+            - --aclfile
+            - /etc/redis/users.acl
+          env:
+            - name: BULL_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-config
+                  key: BULL_REDIS_PASSWORD
+          ports:
+            - name: redis
+              containerPort: 6379
+              hostPort: 6380
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: acl
+              mountPath: /etc/redis/users.acl
+              subPath: bull-users.acl
+              readOnly: true
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/wise-eat/redis/data-bullmq
+            type: Directory
+        - name: acl
+          secret:
+            secretName: redis-config
+            items:
+              - key: bull-users.acl
+                path: bull-users.acl

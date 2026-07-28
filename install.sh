@@ -32,7 +32,10 @@ Usage:
   sudo $0 all
 
 Composants:
-  redis         Redis 1 primary (:6379/:6380) + 2 réplicas chacun
+  redis         Redis Docker cache+bull (:6379/:6380) + réplicas — legacy
+  redis-k8s     Applique pods Redis k8s (hostPath AOF + hostPort)
+  migrate-redis-k8s  Cutover Redis Docker → K8s (zéro perte AOF)
+  repair-redis-exporters  Exporters Grafana Redis → 127.0.0.1 (post-cutover)
   memcached     Memcached Docker 1 primary (:11211) + 2 réplicas — legacy
   memcached-k8s Applique pods Memcached k8s (hostPort 11211/11213/11214)
   migrate-memcached-k8s  Cutover Memcached Docker → K8s (cache froid attendu)
@@ -142,6 +145,23 @@ run_component() {
   case "${name}" in
     redis)
       bash "${SCRIPTS}/install-redis.sh"
+      ;;
+    redis-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/create-redis-secret.sh"
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/redis"
+      else
+        kubectl apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
+        kubectl apply -k "${INFRA_ROOT}/k8s/redis"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      ;;
+    migrate-redis-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-redis-docker-to-k8s.sh"
+      ;;
+    repair-redis-exporters)
+      bash "${INFRA_ROOT}/k8s/scripts/repair-redis-exporters-host.sh"
       ;;
     memcached)
       bash "${SCRIPTS}/install-memcached.sh"

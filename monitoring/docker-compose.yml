@@ -70,35 +70,34 @@ services:
       - "127.0.0.1:9400:9400"
       - "127.0.0.1:9401:9401"
 
+  # host network : Redis k8s hostPort — DNS Docker morts après cutover.
   redis-exporter-cache:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-cache
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-cache:6379
+      REDIS_ADDR: redis://127.0.0.1:6379
       REDIS_USER: wise-eat-cache
       REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
       REDIS_EXPORTER_CHECK_KEYS: ""
       REDIS_EXPORTER_IS_TILE38: "false"
-    ports:
-      - "127.0.0.1:9121:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9121
 
   redis-exporter-bullmq:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-bullmq
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-bullmq:6379
+      REDIS_ADDR: redis://127.0.0.1:6380
       REDIS_USER: wise-eat-bull
       REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    ports:
-      - "127.0.0.1:9122:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9122
 
   # host network : Memcached est en k8s hostPort (127.0.0.1:11211) — DNS Docker morts après cutover.
   memcached-exporter:
@@ -115,60 +114,56 @@ services:
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-cache-replica-1
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-cache-replica-1:6379
+      REDIS_ADDR: redis://127.0.0.1:6371
       REDIS_USER: wise-eat-cache
       REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    ports:
-      - "127.0.0.1:9123:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9123
 
   redis-exporter-cache-replica-2:
     profiles: ["cluster-b"]
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-cache-replica-2
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-cache-replica-2:6379
+      REDIS_ADDR: redis://127.0.0.1:6372
       REDIS_USER: wise-eat-cache
       REDIS_PASSWORD: ${CACHE_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    ports:
-      - "127.0.0.1:9125:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9125
 
   redis-exporter-bullmq-replica-1:
     profiles: ["cluster-b"]
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-bullmq-replica-1
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-bullmq-replica-1:6379
+      REDIS_ADDR: redis://127.0.0.1:6390
       REDIS_USER: wise-eat-bull
       REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    ports:
-      - "127.0.0.1:9124:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9124
 
   redis-exporter-bullmq-replica-2:
     profiles: ["cluster-b"]
     image: oliver006/redis_exporter:v1.67.0
     container_name: wise-eat-redis-exporter-bullmq-replica-2
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    network_mode: host
     environment:
-      REDIS_ADDR: redis://wise-eat-redis-bullmq-replica-2:6379
+      REDIS_ADDR: redis://127.0.0.1:6391
       REDIS_USER: wise-eat-bull
       REDIS_PASSWORD: ${BULL_REDIS_PASSWORD}
       REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
-    ports:
-      - "127.0.0.1:9126:9121"
+    command:
+      - --web.listen-address=127.0.0.1:9126
 
   memcached-exporter-replica-1:
     profiles: ["cluster-b"]

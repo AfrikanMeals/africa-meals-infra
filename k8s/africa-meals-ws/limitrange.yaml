@@ -21,7 +21,8 @@ spec:
         memory: 512Mi
         cpu: 100m
       max:
-        memory: 512Mi
+        # Aligné API — Redis / workloads cache peuvent monter jusqu’à 2Gi.
+        memory: 2Gi
         cpu: "2"
       min:
         memory: 256Mi

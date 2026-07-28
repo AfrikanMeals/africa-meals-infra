@@ -1,0 +1,114 @@
+# Redis cache primary — hostPort 6379 + hostPath data-cache (AOF).
+# Creds ACL : Secret redis-config (depuis redis/.env.redis).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/instance: primary
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/component: cache
+      app.kubernetes.io/instance: primary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/component: cache
+        app.kubernetes.io/instance: primary
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 768mb
+            - --maxmemory-policy
+            - allkeys-lru
+            - --tcp-keepalive
+            - "300"
+            - --aclfile
+            - /etc/redis/users.acl
+          env:
+            - name: CACHE_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-config
+                  key: CACHE_REDIS_PASSWORD
+          ports:
+            - name: redis
+              containerPort: 6379
+              hostPort: 6379
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: acl
+              mountPath: /etc/redis/users.acl
+              subPath: cache-users.acl
+              readOnly: true
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-cache --pass "$CACHE_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-cache --pass "$CACHE_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-cache --pass "$CACHE_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/wise-eat/redis/data-cache
+            type: Directory
+        - name: acl
+          secret:
+            secretName: redis-config
+            items:
+              - key: cache-users.acl
+                path: cache-users.acl

@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - deployment-redis-cache.yaml
+  - deployment-redis-bullmq.yaml
+  - deployment-redis-cache-replica-1.yaml
+  - deployment-redis-cache-replica-2.yaml
+  - deployment-redis-bullmq-replica-1.yaml
+  - deployment-redis-bullmq-replica-2.yaml
+  - service-redis-cache.yaml
+  - service-redis-bullmq.yaml
+  - service-redis-cache-replica-1.yaml
+  - service-redis-cache-replica-2.yaml
+  - service-redis-bullmq-replica-1.yaml
+  - service-redis-bullmq-replica-2.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: wise-eat
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: redis
+    newName: redis
+    newTag: 7-alpine

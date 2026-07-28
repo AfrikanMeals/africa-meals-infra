@@ -1,0 +1,112 @@
+# Redis bullmq replica-2 — hostPort 6391, replicaof via Secret bull-replica-2.conf.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-bullmq-replica-2
+  namespace: wise-eat
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: bullmq
+    app.kubernetes.io/instance: replica-2
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/component: bullmq
+      app.kubernetes.io/instance: replica-2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/component: bullmq
+        app.kubernetes.io/instance: replica-2
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - redis-server
+            - /etc/redis/replica.conf
+          env:
+            - name: BULL_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-config
+                  key: BULL_REDIS_PASSWORD
+          ports:
+            - name: redis
+              containerPort: 6379
+              hostPort: 6391
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: conf
+              mountPath: /etc/redis/replica.conf
+              subPath: replica.conf
+              readOnly: true
+            - name: acl
+              mountPath: /etc/redis/users.acl
+              subPath: users.acl
+              readOnly: true
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 3
+            failureThreshold: 40
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli --user wise-eat-bull --pass "$BULL_REDIS_PASSWORD" ping | grep -q PONG
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/wise-eat/redis/data-bullmq-replica-2
+            type: Directory
+        - name: conf
+          secret:
+            secretName: redis-config
+            items:
+              - key: bull-replica-2.conf
+                path: replica.conf
+        - name: acl
+          secret:
+            secretName: redis-config
+            items:
+              - key: bull-users.acl
+                path: users.acl
