@@ -55,6 +55,21 @@ fi
 curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 || true
 
 sleep 8
+
+# Sanity : Grafana (host) doit joindre Loki — sinon Explore « Unable to connect ».
+if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-grafana'; then
+  gnet="$(docker inspect wise-eat-grafana -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
+  if [[ "${gnet}" != "host" ]]; then
+    warn "Grafana network_mode=${gnet} (attendu host) — sudo ./install.sh repair-grafana-stack"
+  elif docker exec wise-eat-grafana wget -qO- --timeout=5 http://127.0.0.1:3100/ready 2>/dev/null \
+    | grep -qiE 'ready'; then
+    log "OK  Grafana → Loki (127.0.0.1:3100)"
+  else
+    warn "FAIL Grafana → Loki — curl/wget depuis le conteneur Grafana"
+    docker exec wise-eat-grafana wget -S -O- --timeout=5 http://127.0.0.1:3100/ready 2>&1 | tail -15 || true
+  fi
+fi
+
 bash "${SCRIPT_DIR}/verify-loki-stack.sh" || warn "verify-loki-stack partiel"
 
 # Smoke query (doit renvoyer des lignes si streams OK).
