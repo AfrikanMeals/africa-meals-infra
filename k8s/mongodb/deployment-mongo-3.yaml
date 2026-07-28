@@ -42,10 +42,22 @@ spec:
           command:
             - sh
             - -c
-            - chown -R 999:999 /data/db
+            - |
+              # 1. Data mongod (UID image mongo)
+              chown -R 999:999 /data/db
+              # 2. Fix: Secret monté root → mongod refuse keyFile
+              mkdir -p /etc/mongodb
+              cp /mongodb-keyfile-src/keyfile /etc/mongodb/keyfile
+              chown 999:999 /etc/mongodb/keyfile
+              chmod 400 /etc/mongodb/keyfile
           volumeMounts:
             - name: data
               mountPath: /data/db
+            - name: keyfile-secret
+              mountPath: /mongodb-keyfile-src
+              readOnly: true
+            - name: keyfile-runtime
+              mountPath: /etc/mongodb
           resources:
             # LimitRange wise-eat : cpu.min ≥ 50m · memory.min ≥ 256Mi (sinon Forbidden / 0 replicas).
             requests:
@@ -84,7 +96,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/db
-            - name: keyfile
+            - name: keyfile-runtime
               mountPath: /etc/mongodb
               readOnly: true
           startupProbe:
@@ -122,10 +134,12 @@ spec:
           hostPath:
             path: /var/lib/wise-eat/mongodb/data-mongo-3
             type: Directory
-        - name: keyfile
+        - name: keyfile-secret
           secret:
             secretName: mongodb-config
             defaultMode: 0400
             items:
               - key: keyfile
                 path: keyfile
+        - name: keyfile-runtime
+          emptyDir: {}

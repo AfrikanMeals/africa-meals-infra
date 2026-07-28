@@ -122,6 +122,21 @@ kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replic
   deploy/redis-bullmq-replica-1 deploy/redis-bullmq-replica-2 --replicas=1
 ```
 
+### CrashLoopBackOff (keyfile)
+
+```bash
+kubectl -n wise-eat logs deploy/mongo-1 --tail=40
+# typique : "permissions on /etc/mongodb/keyfile are too open" / error opening keyFile
+```
+
+Cause : Secret monté en root — mongod (UID 999) exige owner 999 + mode `400`.  
+Fix : initContainer copie Secret → emptyDir `chown 999` / `chmod 400`, puis :
+
+```bash
+cd /opt/wise-eat && git pull && kubectl apply -k k8s/mongodb
+kubectl -n wise-eat rollout status deploy/mongo-1 deploy/mongo-2 deploy/mongo-3 --timeout=180s
+```
+
 Si Mongo Docker déjà stop et pods toujours impossibles → **rollback Docker** (ports libres d’abord) :
 
 ```bash
