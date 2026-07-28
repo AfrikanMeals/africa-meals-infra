@@ -37,11 +37,23 @@ Grafana : `https://console.wise-eat.com` → Dashboards → dossier **Logs** →
 Variable **Search** : défaut `.*` (ne pas laisser vide — évite erreur plugin).  
 Explore → datasource **Loki** (ex. `{job="kubernetes"}` ou `{job="docker"}`).
 
-### Grafana « Aucune donnée » / plugin error
+### Grafana « Unable to connect with Loki »
 
-1. Connections → Data sources → **Loki** = `http://127.0.0.1:3100` → Save & test  
-2. Explore → `{job=~".+"}` sur 1h — si OK, le dashboard doit suivre (Search=`.*`)  
-3. Si Promtail flood « timestamp too old » : `git pull && sudo ./install.sh loki` (drop `older_than: 168h`)
+Cause fréquente : Loki `/ready` → **HTTP 503** (ingester pas prêt / flood Promtail), alors que `/labels` et Explore marchent encore.
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3100/ready   # doit être 200
+docker stop wise-eat-promtail
+docker restart wise-eat-loki
+# attendre :
+until curl -sf http://127.0.0.1:3100/ready | grep -q ready; do sleep 2; done
+cd /opt/wise-eat && git pull && sudo ./install.sh loki
+```
+
+1. Datasource URL = `http://127.0.0.1:3100` (jamais `http://loki:3100`)  
+2. Save & test **seulement** quand `/ready` = 200  
+3. Explore → `{job=~".+"}` ; dashboard Search = `.*`  
+4. Conteneur `wise-eat-ollama` exclu du scrape Docker (logs trop volumineux)
 
 ## RAM / disque
 

@@ -32,18 +32,44 @@ source_dotenv .env.monitoring
 [[ -f loki/loki-config.yml ]] || die "Absent loki/loki-config.yml — git pull"
 [[ -f promtail/promtail-config.yml ]] || die "Absent promtail/promtail-config.yml — git pull"
 
-# k3s : Promtail lit /etc/rancher/k3s/k3s.yaml (pods). Absent = Docker + journal seulement.
 if [[ ! -f /etc/rancher/k3s/k3s.yaml ]]; then
   warn "k3s.yaml absent — scrape pods k8s désactivé jusqu’à install k3s"
 fi
 
-log "Pull + up Loki / Promtail (+ Grafana datasource)"
 COMPOSE_ARGS=(--env-file .env.monitoring)
-docker compose "${COMPOSE_ARGS[@]}" pull loki promtail
-# --no-deps : ne pas recréer redis-exporter / dépendances (conflits de noms).
-docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps loki promtail
 
-# Grafana : restart seul (recharge provisioning loki.yml + dashboards Logs).
+log "Pull images Loki / Promtail"
+docker compose "${COMPOSE_ARGS[@]}" pull loki promtail
+
+# 1. Stop Promtail d’abord — sinon flood immédiat → Loki /ready = 503 → Grafana « Unable to connect ».
+log "Stop Promtail (éviter flood pendant démarrage Loki)"
+docker compose "${COMPOSE_ARGS[@]}" stop promtail 2>/dev/null || docker stop wise-eat-promtail 2>/dev/null || true
+
+# 2. Loki seul jusqu’à /ready=200
+log "Recreate Loki — attendre /ready"
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps loki
+ready=0
+for i in $(seq 1 45); do
+  code="$(curl -s -o /tmp/loki-ready.body -w '%{http_code}' --max-time 2 http://127.0.0.1:3100/ready 2>/dev/null || echo 000)"
+  body="$(cat /tmp/loki-ready.body 2>/dev/null || true)"
+  if [[ "${code}" == "200" ]] && echo "${body}" | grep -qi ready; then
+    log "OK  Loki /ready HTTP 200 (${i}s)"
+    ready=1
+    break
+  fi
+  sleep 2
+done
+if [[ "${ready}" != "1" ]]; then
+  warn "Loki /ready pas encore 200 — logs :"
+  docker logs wise-eat-loki --tail=30 2>&1 | sed 's/^/      /' || true
+  warn "On démarre Promtail quand même ; Save & test Grafana peut échouer jusqu’à ready"
+fi
+
+# 3. Promtail après Loki ready
+log "Start Promtail (drop Ollama + older_than 168h)"
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --no-deps promtail
+
+# 4. Grafana restart (provisioning) — sans toucher aux exporters
 if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-grafana'; then
   docker restart wise-eat-grafana
   log "Grafana redémarré (datasource Loki + folder Logs)"
@@ -51,28 +77,27 @@ else
   docker compose "${COMPOSE_ARGS[@]}" up -d --no-deps grafana || warn "Grafana absent — sudo ./install.sh monitoring"
 fi
 
-# Reload Prometheus (jobs loki/promtail) — non bloquant.
 curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 || true
+sleep 5
 
-sleep 8
-
-# Sanity : Grafana (host) doit joindre Loki — sinon Explore « Unable to connect ».
+# Health Grafana → Loki : /ready doit être 200 (sinon Save & test UI échoue).
 if docker ps --format '{{.Names}}' | grep -qx 'wise-eat-grafana'; then
   gnet="$(docker inspect wise-eat-grafana -f '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
   if [[ "${gnet}" != "host" ]]; then
-    warn "Grafana network_mode=${gnet} (attendu host) — sudo ./install.sh repair-grafana-stack"
-  elif docker exec wise-eat-grafana wget -qO- --timeout=5 http://127.0.0.1:3100/ready 2>/dev/null \
-    | grep -qiE 'ready'; then
-    log "OK  Grafana → Loki (127.0.0.1:3100)"
+    warn "Grafana network_mode=${gnet} (attendu host)"
   else
-    warn "FAIL Grafana → Loki — curl/wget depuis le conteneur Grafana"
-    docker exec wise-eat-grafana wget -S -O- --timeout=5 http://127.0.0.1:3100/ready 2>&1 | tail -15 || true
+    code="$(docker exec wise-eat-grafana wget -q -S -O- --timeout=5 http://127.0.0.1:3100/ready 2>&1 \
+      | awk '/HTTP\//{print $2; exit}' || true)"
+    if [[ "${code}" == "200" ]]; then
+      log "OK  Grafana → Loki /ready HTTP 200"
+    else
+      warn "Grafana → Loki /ready HTTP ${code:-?} — attendre 30s puis Save & test à nouveau"
+    fi
   fi
 fi
 
 bash "${SCRIPT_DIR}/verify-loki-stack.sh" || warn "verify-loki-stack partiel"
 
-# Smoke query (doit renvoyer des lignes si streams OK).
 if curl -sfG --data-urlencode 'query={job=~".+"}' \
   --data-urlencode 'limit=5' \
   "http://127.0.0.1:3100/loki/api/v1/query_range" \
@@ -81,9 +106,8 @@ if curl -sfG --data-urlencode 'query={job=~".+"}' \
   | grep -q '"values"'; then
   log "OK  Loki query_range a des valeurs (1h)"
 else
-  warn "query_range vide — attendre 30s ou voir Explore Grafana"
+  warn "query_range vide — attendre 30s"
 fi
 
-log "Grafana → Connections → Data sources → Loki doit être http://127.0.0.1:3100"
-log "Explore → Loki → {job=\"kubernetes\"} ou {job=\"docker\"}"
-log "Dashboard → folder Logs (Search défaut = .*)"
+log "Datasource URL : http://127.0.0.1:3100 — Save & test seulement si curl -sf http://127.0.0.1:3100/ready → ready"
+log "Explore → {job=\"kubernetes\"}  |  Dashboard Logs (Search=.*)"
