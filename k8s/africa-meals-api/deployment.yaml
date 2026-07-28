@@ -7,7 +7,8 @@ metadata:
     app.kubernetes.io/name: africa-meals-api
     app.kubernetes.io/component: api
 spec:
-  replicas: 5
+  # Valeur initiale ; le HPA (min 1 / max 5) prend le contrôle après apply.
+  replicas: 1
   revisionHistoryLimit: 5
   progressDeadlineSeconds: 900
   minReadySeconds: 15

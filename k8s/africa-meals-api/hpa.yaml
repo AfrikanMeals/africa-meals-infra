@@ -1,5 +1,6 @@
-# HPA API — scale horizontal sous charge (uploads médias / pics trafic).
-# MinIO reste replicas:1 (hostPath) ; la capacité app se gère ici, pas sur le storage.
+# HPA API — scale horizontal sous charge (uploads / pics).
+# VPS 8 Go : min 1 libère ~2 Go de requests au calme ; max 5 plafonne à ~2,5 Go.
+# MinIO reste replicas:1 (hostPath) — pas d’HPA storage.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -12,8 +13,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: africa-meals-api
-  minReplicas: 5
-  maxReplicas: 10
+  minReplicas: 1
+  maxReplicas: 5
   metrics:
     # Seuil CPU plus bas (60) → scale-up plus tôt lors des pics d’upload S3.
     - type: Resource

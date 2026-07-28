@@ -196,5 +196,6 @@ kubectl delete pod -n wise-eat -l app.kubernetes.io/name=africa-meals-ws --field
 kubectl get pods -n wise-eat -w
 
 # Scale (déconseillé — garder 3)
-kubectl scale deployment africa-meals-ws -n wise-eat --replicas=3
+# Préférer le HPA (min 1 / max 3) ; scale manuel seulement en secours :
+kubectl scale deployment africa-meals-ws -n wise-eat --replicas=1
 ```

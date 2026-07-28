@@ -6,7 +6,8 @@ metadata:
   labels:
     app.kubernetes.io/name: africa-meals-ws
 spec:
-  minAvailable: 2
+  # Aligné HPA min 1 — évite PDB impossible avec un seul pod WS.
+  minAvailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: africa-meals-ws

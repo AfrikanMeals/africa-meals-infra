@@ -6,7 +6,8 @@ metadata:
   labels:
     app.kubernetes.io/name: africa-meals-api
 spec:
-  minAvailable: 3
+  # Aligné HPA min 1 — minAvailable:3 bloquait les drains avec 1–2 pods.
+  minAvailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: africa-meals-api
