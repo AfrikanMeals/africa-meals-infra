@@ -64,6 +64,7 @@ Composants:
   minio-storage nginx reverse-proxy → MinIO S3 (storage.wise-eat.com)
   minio-console  nginx reverse-proxy → MinIO Console (cdn.wise-eat.com, basic auth)
   repair-minio-prometheus  Répare scrape Prometheus → MinIO (Grafana vide)
+  verify-minio-ops  Health API + console Admin (cdn) + scrape Grafana/Prometheus
   repair-emqx-prometheus   Répare scrape Prometheus → EMQX (Grafana No data)
   repair-emqx-boot         Recovery EMQX crash-loop (502 worker / schema prometheus)
   repair-emqx-cluster      Force 3 nœuds EMQX (primary + 2 réplicas)
@@ -241,6 +242,9 @@ run_component() {
       ;;
     repair-minio-prometheus)
       bash "${SCRIPTS}/repair-minio-prometheus.sh"
+      ;;
+    verify-minio-ops)
+      bash "${SCRIPTS}/verify-minio-ops.sh"
       ;;
     repair-emqx-prometheus)
       bash "${SCRIPTS}/repair-emqx-prometheus.sh"

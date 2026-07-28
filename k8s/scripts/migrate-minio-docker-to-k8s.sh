@@ -184,14 +184,34 @@ wait_minio_health "${API_PORT}" "primaire" || die "Primaire K8s ne répond pas �
 wait_minio_health "${R1_PORT}" "réplica-1" || die "Réplica 1 K8s down — voir MIGRATE.md rollback"
 wait_minio_health "${R2_PORT}" "réplica-2" || die "Réplica 2 K8s down — voir MIGRATE.md rollback"
 
-# Smoke public (nginx inchangé → 127.0.0.1:9000)
+# Smoke public S3 + console Admin (nginx → 127.0.0.1:9000 / :9001)
 STORAGE_DOMAIN="${MINIO_STORAGE_DOMAIN:-storage.wise-eat.com}"
+CONSOLE_DOMAIN="${MINIO_CONSOLE_DOMAIN:-cdn.wise-eat.com}"
+CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
 if curl -sfI "https://${STORAGE_DOMAIN}/minio/health/live" >/dev/null 2>&1 \
   || curl -sf "https://${STORAGE_DOMAIN}/minio/health/live" >/dev/null 2>&1; then
   log "OK HTTPS public https://${STORAGE_DOMAIN}"
 else
   warn "HTTPS ${STORAGE_DOMAIN} non vérifié (DNS/cert) — health local OK"
 fi
+
+# Console Admin locale (hostPort 9001) — prérequis cdn.wise-eat.com
+console_code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${CONSOLE_PORT}/" || echo 000)"
+if [[ "${console_code}" =~ ^(200|204|301|302|307|401|403)$ ]]; then
+  log "OK Console Admin locale :${CONSOLE_PORT} (HTTP ${console_code})"
+else
+  warn "Console :${CONSOLE_PORT} HTTP ${console_code} — vérifier hostPort console + nginx ${CONSOLE_DOMAIN}"
+fi
+
+# Grafana / Prometheus : reload scrape + vérif ops (label instance=wise-eat-minio:9000)
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^wise-eat-prometheus$'; then
+  log "Reload Prometheus (scrape MinIO 127.0.0.1:9000)"
+  curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 \
+    || docker restart wise-eat-prometheus >/dev/null 2>&1 \
+    || warn "Reload Prometheus échoué — sudo ./install.sh repair-minio-prometheus"
+fi
+bash "${INFRA_ROOT}/scripts/verify-minio-ops.sh" || \
+  warn "verify-minio-ops a des échecs — Grafana/Console à corriger avant de considérer le cutover OK"
 
 # --- Bascule secret API ---
 if [[ "${SKIP_API_SECRET}" != "1" ]]; then

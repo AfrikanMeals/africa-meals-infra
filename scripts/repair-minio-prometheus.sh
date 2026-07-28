@@ -134,4 +134,13 @@ fi
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
 
+# Dashboard MinIO provisionné en lecture seule — restart Grafana pour recharger JSON patché.
+if docker ps --format '{{.Names}}' | grep -q '^wise-eat-grafana$'; then
+  log "Restart Grafana (recharge dashboard MinIO provisionné)"
+  docker compose --env-file .env.monitoring restart grafana 2>/dev/null || true
+fi
+
+bash "${SCRIPT_DIR}/verify-minio-ops.sh" || warn "verify-minio-ops : corriger avant de valider Grafana"
+
 log "Terminé — scrape via 127.0.0.1:${API_PORT} (Docker bind ou K8s hostPort)"
+log "Grafana : dossier MinIO / uid wise-eat-minio-20826 — Admin console : https://cdn.wise-eat.com"

@@ -80,16 +80,19 @@ if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
 fi
 
 if [[ "${minio_k8s}" == "true" ]]; then
+  # Secret K8s porte MINIO_BROWSER_REDIRECT_URL=https://cdn.wise-eat.com (login console).
   log "MinIO K8s — sync secret + rollout (MINIO_BROWSER_REDIRECT_URL → cdn)"
-  bash "${SCRIPT_DIR}/../k8s/scripts/create-minio-secret.sh" 2>/dev/null || \
-    bash "${WISE_EAT_ROOT:-${SCRIPT_DIR}/..}/k8s/scripts/create-minio-secret.sh"
-  _kubectl=(kubectl)
-  if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
-    _kubectl=(sudo k3s kubectl)
-  fi
+  bash "${INFRA_ROOT}/k8s/scripts/create-minio-secret.sh"
   "${_kubectl[@]}" -n wise-eat rollout restart deploy/minio
   "${_kubectl[@]}" -n wise-eat rollout status deploy/minio --timeout=120s || \
     warn "Rollout minio non terminé — vérifier console :9001"
+  # Console doit répondre sur hostPort 9001 (nginx cdn.wise-eat.com).
+  if curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${MINIO_CONSOLE_BACKEND_PORT}/" \
+    | grep -qE '^(200|204|301|302|307|401|403)$'; then
+    log "Console locale OK :${MINIO_CONSOLE_BACKEND_PORT}"
+  else
+    warn "Console :${MINIO_CONSOLE_BACKEND_PORT} non joignable — sudo ./scripts/verify-minio-ops.sh"
+  fi
 elif [[ -f "${MINIO_ENV}" ]] && docker ps --format '{{.Names}}' | grep -q '^wise-eat-minio$'; then
   log "Recréation conteneur MinIO Docker (MINIO_BROWSER_REDIRECT_URL)…"
   cd "${MINIO_DIR}"

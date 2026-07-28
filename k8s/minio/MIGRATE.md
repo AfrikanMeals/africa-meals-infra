@@ -58,14 +58,22 @@ Le script :
 ## Vérifications post-cutover
 
 ```bash
+# Bundle ops : API + MinIO Admin (cdn) + Grafana/Prometheus
+sudo ./install.sh verify-minio-ops
+
 curl -sf http://127.0.0.1:9000/minio/health/live
+curl -sf http://127.0.0.1:9001/   # console Admin locale (hostPort)
 curl -sf http://127.0.0.1:9002/minio/health/live
 curl -sf http://127.0.0.1:9004/minio/health/live
 curl -sfI https://storage.wise-eat.com/minio/health/live
+# MinIO Admin : https://cdn.wise-eat.com (basic auth nginx puis login MINIO_ROOT_*)
 
 kubectl -n wise-eat get deploy,pods -l app.kubernetes.io/name=minio
 kubectl -n wise-eat exec deploy/africa-meals-api -- \
   wget -qO- http://host.k3s.internal:9000/minio/health/live
+
+# Grafana : dashboard MinIO (instance=wise-eat-minio:9000) — si vide :
+#   sudo ./install.sh repair-minio-prometheus
 
 # Upload smoke depuis l’API (média) + URL publique storage.wise-eat.com
 ```
