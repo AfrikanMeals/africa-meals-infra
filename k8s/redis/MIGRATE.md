@@ -31,7 +31,15 @@ sudo k8s/scripts/migrate-redis-docker-to-k8s.sh --dry-run
 sudo ./install.sh migrate-redis-k8s
 ```
 
-Fenêtre : ~1–2 min (stop → Ready). Pause workers BullMQ recommandée.
+Fenêtre : ~1–2 min (stop → backup → Ready). Pause workers BullMQ recommandée.
+
+Le script **arrête Docker avant le tar** (AOF figé). Si reprise après échec mid-cutover (Redis déjà stop) :
+
+```bash
+sudo ./install.sh migrate-redis-k8s
+# ou urgence sans re-backup :
+# sudo SKIP_BACKUP=1 ./k8s/scripts/migrate-redis-docker-to-k8s.sh
+```
 
 ## Vérifications
 

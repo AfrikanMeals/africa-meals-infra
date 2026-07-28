@@ -153,32 +153,21 @@ command -v nc >/dev/null 2>&1 || die "nc requis"
 [[ -x "${INFRA_ROOT}/scripts/ufw-allow-k3s-pods.sh" ]] \
   && bash "${INFRA_ROOT}/scripts/ufw-allow-k3s-pods.sh" || true
 
-# 2. Backup tar
-if [[ "${SKIP_BACKUP}" != "1" ]]; then
-  STAMP="$(date +%Y%m%d-%H%M%S)"
-  BAK="/var/backups/wise-eat-redis/pre-k8s-${STAMP}"
-  mkdir -p "${BAK}"
-  log "Backup AOF → ${BAK}"
-  tar -C "${REDIS_DIR}" -czf "${BAK}/redis-data.tgz" "${DATA_DIRS[@]}" \
-    || die "Backup tar échoué"
-  log "Backup OK ($(du -sh "${BAK}/redis-data.tgz" | awk '{print $1}'))"
-fi
-
-# 3. Secret ACL + replicaof k8s
+# 2. Secret ACL + replicaof k8s (avant stop — pas de dépendance runtime)
 bash "${SCRIPT_DIR}/create-redis-secret.sh"
 
-# 4. LimitRange max 2Gi (Redis cache 1Gi)
+# 3. LimitRange max 2Gi (Redis cache 1Gi)
 if [[ -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" ]]; then
   "${KUBECTL[@]}" apply -f "${INFRA_ROOT}/k8s/africa-meals-api/limitrange.yaml" || true
 fi
 
-# 5. Stop Docker
+# 4. Stop Docker AVANT backup — AOF figé (évite « file changed as we read it »)
 cd "${REDIS_DIR}"
 if redis_docker_running; then
-  log "Stop Redis Docker…"
+  log "Stop Redis Docker (avant backup cohérent)…"
   compose_redis stop
 else
-  log "Aucun Redis Docker Up — reprise"
+  log "Aucun Redis Docker Up — reprise mid-cutover"
 fi
 
 PORTS=(6379 6380 6371 6372 6390 6391)
@@ -189,6 +178,29 @@ done
 
 if redis_docker_running; then
   die "Conteneur Redis Docker encore Up — abort"
+fi
+
+# 5. Backup tar sur volumes arrêtés
+if [[ "${SKIP_BACKUP}" != "1" ]]; then
+  STAMP="$(date +%Y%m%d-%H%M%S)"
+  BAK="/var/backups/wise-eat-redis/pre-k8s-${STAMP}"
+  mkdir -p "${BAK}"
+  log "Backup AOF → ${BAK}"
+  # tar exit 1 = fichier modifié pendant lecture (non fatal si archive créée)
+  set +e
+  tar -C "${REDIS_DIR}" -czf "${BAK}/redis-data.tgz" "${DATA_DIRS[@]}"
+  tar_rc=$?
+  set -e
+  if [[ ! -s "${BAK}/redis-data.tgz" ]]; then
+    die "Backup tar vide ou absent — abort"
+  fi
+  if [[ "${tar_rc}" -gt 1 ]]; then
+    die "Backup tar échoué (rc=${tar_rc})"
+  fi
+  if [[ "${tar_rc}" -eq 1 ]]; then
+    warn "tar rc=1 (fichier modifié) — archive quand même utilisée (Redis déjà stop)"
+  fi
+  log "Backup OK ($(du -sh "${BAK}/redis-data.tgz" | awk '{print $1}'))"
 fi
 
 # Permissions UID Redis
