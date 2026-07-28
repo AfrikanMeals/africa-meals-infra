@@ -94,15 +94,17 @@ services:
     image: dbgate/dbgate:6.8.2
     container_name: wise-eat-dbgate
     restart: unless-stopped
+    # host-gateway : joindre Mongo k8s hostPort même hors réseau wise-eat-infra.
+    # Pas de depends_on mongo-* : après cutover k8s, compose up dbgate ne doit pas relancer Docker mongo.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - wise-eat-infra
-    depends_on:
-      mongo-1:
-        condition: service_healthy
     environment:
       CONNECTIONS: wiseeat
       LABEL_wiseeat: Wise Eat MongoDB
-      URL_wiseeat: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true
+      # Post-cutover k8s : host.docker.internal (hostPort). Pré-cutover Docker : wise-eat-mongo-1.
+      URL_wiseeat: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@${MONGO_DBGATE_HOST:-host.docker.internal}:27017/admin?authSource=admin&directConnection=true
       ENGINE_wiseeat: mongo@dbgate-plugin-mongo
       # Auth web gérée par nginx (basic auth) sur data.wise-eat.com
       SKIP_ALL_AUTH: "1"

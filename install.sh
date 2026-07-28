@@ -48,7 +48,10 @@ Composants:
   emqx-k8s      Applique pods EMQX k8s (hostPath Mnesia + hostPort primary)
   migrate-emqx-k8s  Cutover EMQX Docker → K8s (zéro perte data-emqx-*)
 
-  mongodb       MongoDB 8 replica set rs0 (1 primary + 2 réplicas, 5 Go, 512 Mo RAM / nœud)
+  mongodb       MongoDB 8 Docker rs0 (1 primary + 2 réplicas) — legacy
+  mongodb-k8s   Applique pods Mongo k8s (hostPath + hostPort 27017/27027/27028)
+  migrate-mongodb-k8s  Cutover Mongo Docker → K8s (dump + zéro perte)
+  repair-mongodb-exporters  Exporter Grafana → host.docker.internal:27017
   ollama        Ollama Docker (nomic-embed-text + llama3.2:3b, :11434 local)
   ollama-gateway nginx reverse-proxy → Ollama (ai.wise-eat.com, basic auth, IPv4/IPv6)
   repair-ollama-monitoring Recréer Ollama + ollama-exporter (Grafana #25086)
@@ -226,6 +229,21 @@ run_component() {
       ;;
     mongodb)
       bash "${SCRIPTS}/install-mongodb.sh"
+      ;;
+    mongodb-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/create-mongodb-secret.sh"
+      if command -v k3s >/dev/null 2>&1 && ! command -v kubectl >/dev/null 2>&1; then
+        sudo k3s kubectl apply -k "${INFRA_ROOT}/k8s/mongodb"
+      else
+        kubectl apply -k "${INFRA_ROOT}/k8s/mongodb"
+      fi
+      bash "${SCRIPTS}/ufw-allow-k3s-pods.sh" 2>/dev/null || true
+      ;;
+    migrate-mongodb-k8s)
+      bash "${INFRA_ROOT}/k8s/scripts/migrate-mongodb-docker-to-k8s.sh"
+      ;;
+    repair-mongodb-exporters)
+      bash "${INFRA_ROOT}/k8s/scripts/repair-mongodb-exporter-host.sh"
       ;;
     ollama)
       bash "${SCRIPTS}/install-ollama.sh"

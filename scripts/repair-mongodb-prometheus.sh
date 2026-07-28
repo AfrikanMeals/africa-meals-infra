@@ -11,12 +11,24 @@ log "=== Réparation scrape MongoDB → Prometheus ==="
 ensure_docker
 ensure_wise_eat_infra_network
 
-if ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-mongo-1$'; then
-  warn "MongoDB absent — installation"
+# Post-cutover k8s : hostPort suffit ; exporter via host-gateway.
+mongo_k8s_ready=false
+if command -v kubectl >/dev/null 2>&1 || command -v k3s >/dev/null 2>&1; then
+  kc=(kubectl)
+  command -v kubectl >/dev/null 2>&1 || kc=(sudo k3s kubectl)
+  if "${kc[@]}" -n wise-eat get deploy/mongo-1 >/dev/null 2>&1; then
+    mongo_k8s_ready=true
+  fi
+fi
+if [[ "${mongo_k8s_ready}" != "true" ]] && ! docker ps --format '{{.Names}}' | grep -q '^wise-eat-mongo-1$'; then
+  warn "MongoDB absent — installation Docker"
   bash "${SCRIPT_DIR}/install-mongodb.sh"
 fi
-
-ensure_mongodb_on_wise_eat_infra || die "MongoDB injoignable sur wise-eat-infra"
+if [[ "${mongo_k8s_ready}" == "true" ]] && [[ -x "${WISE_EAT_ROOT}/k8s/scripts/repair-mongodb-exporter-host.sh" ]]; then
+  bash "${WISE_EAT_ROOT}/k8s/scripts/repair-mongodb-exporter-host.sh"
+elif [[ "${mongo_k8s_ready}" != "true" ]]; then
+  ensure_mongodb_on_wise_eat_infra || die "MongoDB injoignable sur wise-eat-infra"
+fi
 
 if [[ -f "${MONGODB_ENV}" ]]; then
   set -a && source "${MONGODB_ENV}" && set +a

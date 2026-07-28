@@ -185,14 +185,16 @@ services:
       - '--memcached.address=127.0.0.1:11214'
       - '--web.listen-address=127.0.0.1:9152'
 
+  # Post-cutover k8s : host-gateway → hostPort :27017 (DNS wise-eat-mongo-1 mort).
+  # Pré-cutover : MONGO_EXPORTER_URI=mongodb://…@wise-eat-mongo-1:27017/… + réseau wise-eat-infra.
   mongodb-exporter:
     image: percona/mongodb_exporter:0.44.0
     container_name: wise-eat-mongodb-exporter
     restart: unless-stopped
-    networks:
-      - wise-eat-infra
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command:
-      - '--mongodb.uri=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@wise-eat-mongo-1:27017/admin?authSource=admin&directConnection=true'
+      - '--mongodb.uri=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@host.docker.internal:27017/admin?authSource=admin&directConnection=true'
       - '--mongodb.direct-connect'
       - '--mongodb.global-conn-pool'
       - '--mongodb.connect-timeout-ms=10000'
