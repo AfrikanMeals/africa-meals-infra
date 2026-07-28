@@ -65,23 +65,29 @@ else
   bad "Métriques cluster absentes — Grafana MinIO sera vide"
 fi
 
-# 5. Scrape Prometheus (network_mode=host → 127.0.0.1:9000)
+# 5. Scrape Prometheus — primary + 2 réplicas (job minio-cluster)
 if curl -sf http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
-  prom_up="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-    --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio",instance="wise-eat-minio:9000"}' \
-    2>/dev/null || true)"
-  if echo "${prom_up}" | grep -q '"value":\[.*,"1"\]'; then
-    ok "Prometheus scrape up{instance=wise-eat-minio:9000}=1"
-  else
-    # Relabel absent : accepter tout job minio UP
-    prom_any="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
-      --data-urlencode 'query=up{job=~"minio-cluster|minio-node|minio"}' 2>/dev/null || true)"
-    if echo "${prom_any}" | grep -q '"value":\[.*,"1"\]'; then
-      ok "Prometheus scrape MinIO UP (instance label non standard — OK pour la plupart des panneaux)"
+  sites_ok=0
+  for site in primary replica-1 replica-2; do
+    prom_up="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+      --data-urlencode "query=up{job=\"minio-cluster\",minio_site=\"${site}\"}" \
+      2>/dev/null || true)"
+    if echo "${prom_up}" | grep -q '"value":\[.*,"1"\]'; then
+      ok "Prometheus scrape minio-cluster minio_site=${site}=1"
+      sites_ok=$((sites_ok + 1))
     else
-      bad "Prometheus scrape MinIO DOWN — sudo ./install.sh repair-minio-prometheus"
+      bad "Prometheus scrape minio_site=${site} DOWN — reload prometheus.yml (3 targets)"
     fi
+  done
+  # Métriques bucket (fallback Number of Buckets / Objects)
+  bucket_up="$(curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+    --data-urlencode 'query=up{job="minio-bucket",minio_site="primary"}' 2>/dev/null || true)"
+  if echo "${bucket_up}" | grep -q '"value":\[.*,"1"\]'; then
+    ok "Prometheus scrape minio-bucket (primary)=1"
+  else
+    bad "Prometheus job minio-bucket DOWN — buckets/objets Grafana peuvent rester N/A"
   fi
+  [[ "${sites_ok}" -ge 1 ]] || bad "Aucun site MinIO scrapé"
 else
   bad "Prometheus injoignable :9090 — sudo ./install.sh monitoring"
 fi

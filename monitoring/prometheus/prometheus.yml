@@ -118,8 +118,8 @@ scrape_configs:
           memcached_replica: '2'
           memcached_port: '11214'
 
-  # MinIO — 127.0.0.1:9000 (Docker bind ou pod k8s hostPort ; API Nest = NodePort 30900).
-  # Prometheus network_mode=host requis pour joindre ce target.
+  # MinIO — primaire :9000 + réplicas site-replication :9002/:9004 (hostPort k8s ou Docker).
+  # Prometheus network_mode=host requis. Labels minio_site pour filtre Grafana (cluster / replicas).
   - job_name: minio-cluster
     metrics_path: /minio/v2/metrics/cluster
     scheme: http
@@ -130,10 +130,30 @@ scrape_configs:
         labels:
           namespace: wise-eat
           storage_engine: minio
+          minio_site: primary
+      - targets: ['127.0.0.1:9002']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-1
+      - targets: ['127.0.0.1:9004']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-2
     relabel_configs:
-      # Label stable pour Grafana (dashboard MinIO filtre instance=wise-eat-minio:9000).
-      - target_label: instance
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9000'
+        target_label: instance
         replacement: wise-eat-minio:9000
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9002'
+        target_label: instance
+        replacement: wise-eat-minio-replica-1:9002
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9004'
+        target_label: instance
+        replacement: wise-eat-minio-replica-2:9004
 
   - job_name: minio-node
     metrics_path: /minio/v2/metrics/node
@@ -145,9 +165,66 @@ scrape_configs:
         labels:
           namespace: wise-eat
           storage_engine: minio
+          minio_site: primary
+      - targets: ['127.0.0.1:9002']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-1
+      - targets: ['127.0.0.1:9004']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-2
     relabel_configs:
-      - target_label: instance
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9000'
+        target_label: instance
         replacement: wise-eat-minio:9000
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9002'
+        target_label: instance
+        replacement: wise-eat-minio-replica-1:9002
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9004'
+        target_label: instance
+        replacement: wise-eat-minio-replica-2:9004
+
+  # Métriques bucket (objets / buckets) — souvent plus tôt que cluster_* après restart scanner.
+  - job_name: minio-bucket
+    metrics_path: /minio/v2/metrics/bucket
+    scheme: http
+    scrape_interval: 30s
+    scrape_timeout: 25s
+    static_configs:
+      - targets: ['127.0.0.1:9000']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: primary
+      - targets: ['127.0.0.1:9002']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-1
+      - targets: ['127.0.0.1:9004']
+        labels:
+          namespace: wise-eat
+          storage_engine: minio
+          minio_site: replica-2
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9000'
+        target_label: instance
+        replacement: wise-eat-minio:9000
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9002'
+        target_label: instance
+        replacement: wise-eat-minio-replica-1:9002
+      - source_labels: [__address__]
+        regex: '127\.0\.0\.1:9004'
+        target_label: instance
+        replacement: wise-eat-minio-replica-2:9004
 
   # EMQX — primary sur localhost ; réplicas via file_sd (IP Docker, sync-emqx-prometheus-targets.sh)
   - job_name: emqx

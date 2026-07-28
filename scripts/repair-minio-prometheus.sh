@@ -142,5 +142,11 @@ fi
 
 bash "${SCRIPT_DIR}/verify-minio-ops.sh" || warn "verify-minio-ops : corriger avant de valider Grafana"
 
-log "Terminé — scrape via 127.0.0.1:${API_PORT} (Docker bind ou K8s hostPort)"
-log "Grafana : dossier MinIO / uid wise-eat-minio-20826 — Admin console : https://cdn.wise-eat.com"
+# Forcer rechargement du dashboard provisionné (sites primary/replicas).
+if docker ps --format '{{.Names}}' | grep -q '^wise-eat-grafana$'; then
+  docker compose --env-file .env.monitoring up -d grafana 2>/dev/null || true
+fi
+
+log "Terminé — scrape primary:9000 + replica-1:9002 + replica-2:9004 (cluster/node/bucket)"
+log "Grafana : filtre « MinIO site » = primary | replica-1 | replica-2"
+log "Admin console : https://cdn.wise-eat.com"

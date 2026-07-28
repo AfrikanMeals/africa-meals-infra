@@ -21,7 +21,7 @@
       }
     ]
   },
-  "description": "M\u00e9triques MinIO (Prometheus). Jobs : minio-cluster + minio-node. Capacit\u00e9 / objets : remplis apr\u00e8s le premier scan MinIO (quelques minutes). KMS : N/A si chiffrement KMS d\u00e9sactiv\u00e9.",
+  "description": "M\u00e9triques MinIO (Prometheus) \u2014 primary :9000 + replica-1 :9002 + replica-2 :9004. Filtrer via \u00ab MinIO site \u00bb. Buckets/objets : cluster_* ou fallback /metrics/bucket. KMS : N/A si chiffrement KMS d\u00e9sactiv\u00e9 (attendu).",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 25202,
@@ -111,10 +111,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(up{job=~\"minio-cluster|minio-node|minio\", instance=~\"wise-eat-minio:9000|minio:9000|127.0.0.1:9000\"})",
+          "expr": "up{job=\"minio-cluster\", minio_site=~\"$minio_site\"}",
           "instant": true,
           "format": "time_series",
-          "legendFormat": "Prometheus scrape minio",
+          "legendFormat": "{{minio_site}}",
           "refId": "A"
         },
         {
@@ -122,14 +122,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(minio_cluster_health_status{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_health_status{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "instant": true,
           "format": "time_series",
-          "legendFormat": "cluster health",
+          "legendFormat": "cluster health ({{minio_site}})",
           "refId": "B"
         }
       ],
-      "title": "MinIO \u2014 scrape Prometheus / sant\u00e9 cluster",
+      "title": "MinIO \u2014 scrape Prometheus / sant\u00e9 (primary + replicas)",
       "type": "stat"
     },
     {
@@ -169,7 +169,7 @@
         "h": 6,
         "w": 3,
         "x": 0,
-        "y": 4
+        "y": 8
       },
       "id": 1,
       "links": [],
@@ -199,7 +199,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "time() - max(minio_node_process_starttime_seconds{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "time() - max(minio_node_process_starttime_seconds{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -250,7 +250,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 4
+        "y": 8
       },
       "id": 65,
       "links": [],
@@ -280,7 +280,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_s3_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_s3_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -364,7 +364,7 @@
         "h": 6,
         "w": 4,
         "x": 6,
-        "y": 4
+        "y": 8
       },
       "id": 50,
       "interval": "1m",
@@ -401,7 +401,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_cluster_capacity_usable_total_bytes{job=~\"minio-cluster|minio-node|minio\"}) - max(minio_cluster_capacity_usable_free_bytes{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_capacity_usable_total_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}) - max(minio_cluster_capacity_usable_free_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "instant": true,
           "interval": "1m",
@@ -416,7 +416,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_cluster_capacity_usable_free_bytes{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_capacity_usable_free_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "hide": false,
           "interval": "1m",
           "legendFormat": "Free",
@@ -533,7 +533,7 @@
         "h": 6,
         "w": 6,
         "x": 10,
-        "y": 4
+        "y": 8
       },
       "id": 68,
       "options": {
@@ -557,7 +557,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_usage_total_bytes{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_usage_total_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "interval": "",
           "legendFormat": "Usage",
           "range": true,
@@ -595,7 +595,7 @@
         "h": 6,
         "w": 5,
         "x": 16,
-        "y": 4
+        "y": 8
       },
       "id": 52,
       "links": [],
@@ -627,7 +627,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_cluster_objects_size_distribution{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_objects_size_distribution{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -708,7 +708,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 4
+        "y": 8
       },
       "id": 61,
       "links": [],
@@ -742,7 +742,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_node_file_descriptor_open_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_node_file_descriptor_open_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -792,7 +792,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 7
+        "y": 11
       },
       "id": 64,
       "links": [],
@@ -822,7 +822,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_s3_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_s3_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -902,7 +902,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 7
+        "y": 11
       },
       "id": 62,
       "links": [],
@@ -936,7 +936,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_node_go_routine_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_node_go_routine_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -975,7 +975,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 10
+        "y": 14
       },
       "id": 94,
       "options": {
@@ -1004,7 +1004,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": true,
-          "expr": "minio_cluster_health_status{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_status{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "interval": "",
@@ -1046,7 +1046,7 @@
         "h": 4,
         "w": 3,
         "x": 3,
-        "y": 10
+        "y": 14
       },
       "id": 78,
       "links": [],
@@ -1075,7 +1075,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max(minio_cluster_drive_online_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_drive_online_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -1094,7 +1094,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max(minio_cluster_drive_offline_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_drive_offline_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -1150,7 +1150,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 10
+        "y": 14
       },
       "id": 66,
       "links": [],
@@ -1181,7 +1181,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_bucket_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_bucket_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}) or count(count by (bucket) (minio_bucket_usage_total_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}))",
           "format": "time_series",
           "instant": true,
           "interval": "1m",
@@ -1258,7 +1258,7 @@
         "h": 6,
         "w": 7,
         "x": 9,
-        "y": 10
+        "y": 14
       },
       "id": 63,
       "options": {
@@ -1281,7 +1281,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_s3_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_s3_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "Data Received [{{server}}]",
@@ -1356,7 +1356,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 10
+        "y": 14
       },
       "id": 70,
       "options": {
@@ -1379,7 +1379,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_s3_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_s3_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "Data Sent [{{server}}]",
@@ -1430,7 +1430,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 12
+        "y": 16
       },
       "id": 53,
       "links": [],
@@ -1460,7 +1460,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_cluster_nodes_online_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "count(up{job=\"minio-cluster\", minio_site=~\"$minio_site\"} == 1)",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -1519,7 +1519,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 13
+        "y": 17
       },
       "id": 44,
       "links": [],
@@ -1550,7 +1550,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "max(minio_cluster_usage_object_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_cluster_usage_object_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}) or sum(minio_bucket_usage_object_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "instant": true,
           "interval": "1m",
@@ -1592,7 +1592,7 @@
         "h": 2,
         "w": 3,
         "x": 0,
-        "y": 14
+        "y": 18
       },
       "id": 80,
       "links": [],
@@ -1622,7 +1622,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_heal_time_last_activity_nano_seconds{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_heal_time_last_activity_nano_seconds{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -1666,7 +1666,7 @@
         "h": 2,
         "w": 3,
         "x": 3,
-        "y": 14
+        "y": 18
       },
       "id": 81,
       "links": [],
@@ -1696,7 +1696,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_usage_last_activity_nano_seconds{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_usage_last_activity_nano_seconds{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -1734,7 +1734,7 @@
         "h": 6,
         "w": 9,
         "x": 0,
-        "y": 16
+        "y": 20
       },
       "hiddenSeries": false,
       "id": 60,
@@ -1769,7 +1769,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_total{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -1832,7 +1832,7 @@
         "h": 6,
         "w": 7,
         "x": 9,
-        "y": 16
+        "y": 20
       },
       "hiddenSeries": false,
       "id": 88,
@@ -1867,7 +1867,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_4xx_errors_total{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_4xx_errors_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -1930,7 +1930,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 16
+        "y": 20
       },
       "hiddenSeries": false,
       "id": 86,
@@ -1965,7 +1965,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server,api) (increase(minio_s3_requests_5xx_errors_total{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server,api) (increase(minio_s3_requests_5xx_errors_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server,api}}",
@@ -2032,7 +2032,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 26
       },
       "id": 99,
       "options": {
@@ -2062,7 +2062,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_online_drives{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_erasure_set_online_drives{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2079,7 +2079,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_read_quorum{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_erasure_set_read_quorum{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2096,7 +2096,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_write_quorum{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_erasure_set_write_quorum{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2113,7 +2113,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_healing_drives{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_erasure_set_healing_drives{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2130,7 +2130,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "minio_cluster_health_erasure_set_status{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_health_erasure_set_status{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2177,7 +2177,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 26
       },
       "id": 76,
       "options": {
@@ -2207,7 +2207,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "minio_node_process_resident_memory_bytes{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_node_process_resident_memory_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2240,7 +2240,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 34
       },
       "hiddenSeries": false,
       "id": 73,
@@ -2275,7 +2275,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_io_rchar_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_io_rchar_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2288,7 +2288,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_io_wchar_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_io_wchar_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Node WChar [{{server}}]",
           "refId": "B"
@@ -2359,7 +2359,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 34
       },
       "id": 77,
       "options": {
@@ -2386,7 +2386,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(minio_node_process_cpu_total_seconds{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_process_cpu_total_seconds{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "{{server}}",
           "range": true,
@@ -2461,7 +2461,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 37
+        "y": 41
       },
       "id": 17,
       "links": [],
@@ -2486,7 +2486,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(minio_inter_node_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_inter_node_traffic_sent_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2502,7 +2502,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_inter_node_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_inter_node_traffic_received_bytes{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Internode Bytes Sent [{{server}}]",
           "refId": "B"
@@ -2538,7 +2538,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 37
+        "y": 41
       },
       "hiddenSeries": false,
       "id": 8,
@@ -2575,7 +2575,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "max(minio_node_file_descriptor_open_total{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "max(minio_node_file_descriptor_open_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "interval": "",
           "legendFormat": "Open FDs [{{server}}]",
           "refId": "B"
@@ -2641,7 +2641,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 48
       },
       "hiddenSeries": false,
       "id": 11,
@@ -2678,7 +2678,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_syscall_read_total{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_syscall_read_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2693,7 +2693,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_syscall_write_total{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_syscall_write_total{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "",
           "legendFormat": "Write Syscalls [{{server}}]",
           "refId": "B"
@@ -2754,7 +2754,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 48
       },
       "hiddenSeries": false,
       "id": 95,
@@ -2789,7 +2789,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_objects_scanned{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_objects_scanned{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -2850,7 +2850,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 51
+        "y": 55
       },
       "hiddenSeries": false,
       "id": 75,
@@ -2885,7 +2885,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_versions_scanned{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_versions_scanned{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -2946,7 +2946,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 51
+        "y": 55
       },
       "hiddenSeries": false,
       "id": 96,
@@ -2981,7 +2981,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_directories_scanned{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_directories_scanned{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -3057,7 +3057,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 58
+        "y": 62
       },
       "id": 89,
       "links": [],
@@ -3087,7 +3087,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "minio_cluster_kms_uptime{job=~\"minio-cluster|minio-node|minio\"}",
+          "expr": "minio_cluster_kms_uptime{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -3125,7 +3125,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 58
+        "y": 62
       },
       "hiddenSeries": false,
       "id": 91,
@@ -3160,7 +3160,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (increase(minio_cluster_kms_request_error{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server) (increase(minio_cluster_kms_request_error{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server}}",
@@ -3221,7 +3221,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 58
+        "y": 62
       },
       "hiddenSeries": false,
       "id": 90,
@@ -3256,7 +3256,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (minio_cluster_kms_online{job=~\"minio-cluster|minio-node|minio\"})",
+          "expr": "sum by (server) (minio_cluster_kms_online{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"})",
           "interval": "1m",
           "legendFormat": "{{server}}",
           "refId": "A"
@@ -3317,7 +3317,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 58
+        "y": 62
       },
       "hiddenSeries": false,
       "id": 98,
@@ -3352,7 +3352,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_bucket_scans_finished{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_bucket_scans_finished{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -3416,7 +3416,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 62
+        "y": 66
       },
       "hiddenSeries": false,
       "id": 92,
@@ -3451,7 +3451,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (increase(minio_cluster_kms_request_failure{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server) (increase(minio_cluster_kms_request_failure{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "{{server}}",
@@ -3514,7 +3514,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 62
+        "y": 66
       },
       "hiddenSeries": false,
       "id": 93,
@@ -3549,7 +3549,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "sum by (server) (rate(minio_cluster_kms_request_success{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval]))",
+          "expr": "sum by (server) (rate(minio_cluster_kms_request_success{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval]))",
           "interval": "1m",
           "intervalFactor": 2,
           "legendFormat": "KMS Request Success [{{server}}]",
@@ -3609,7 +3609,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 65
+        "y": 69
       },
       "hiddenSeries": false,
       "id": 97,
@@ -3644,7 +3644,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(minio_node_scanner_bucket_scans_started{job=~\"minio-cluster|minio-node|minio\"}[$__rate_interval])",
+          "expr": "rate(minio_node_scanner_bucket_scans_started{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}[$__rate_interval])",
           "interval": "1m",
           "legendFormat": "[{{server}}]",
           "refId": "A"
@@ -3693,6 +3693,57 @@
   "templating": {
     "list": [
       {
+        "name": "minio_site",
+        "label": "MinIO site (cluster / replicas)",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\"}, minio_site)",
+        "query": {
+          "query": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\"}, minio_site)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "hide": 0,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "allValue": "primary|replica-1|replica-2"
+      },
+      {
+        "name": "instance",
+        "label": "Instance",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}, instance)",
+        "query": {
+          "query": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\", minio_site=~\"$minio_site\"}, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "hide": 0,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
         "name": "scrape_jobs",
         "label": "Prometheus job",
         "type": "query",
@@ -3700,12 +3751,12 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=~\"minio-cluster|minio-node|minio\"}, job)",
+        "definition": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\"}, job)",
         "query": {
-          "query": "label_values(up{job=~\"minio-cluster|minio-node|minio\"}, job)",
+          "query": "label_values(up{job=~\"minio-cluster|minio-node|minio-bucket|minio\"}, job)",
           "refId": "StandardVariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "includeAll": true,
         "multi": true,
         "hide": 0,
