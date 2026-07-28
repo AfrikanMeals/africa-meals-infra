@@ -179,7 +179,9 @@ fetch_minio_dashboard() {
   curl -fsSL "https://grafana.com/api/dashboards/25202/revisions/latest/download" -o "${tmp}"
   python3 "${SCRIPT_DIR}/patch-grafana-minio-dashboard.py" "${tmp}" "${out}"
   rm -f "${tmp}"
-  log "Dashboard MinIO → ${out} (Grafana.com #25202, équivalent Prometheus de #20826)"
+  # Sites primary + replica-1/2 + fallbacks buckets (ne pas laisser le patch base seul).
+  python3 "${SCRIPT_DIR}/patch-grafana-minio-dashboard-sites.py" "${out}"
+  log "Dashboard MinIO → ${out} (Grafana.com #25202 + sites primary/replicas)"
 }
 
 fetch_emqx_dashboard() {

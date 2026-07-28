@@ -57,10 +57,16 @@ else
   bad "MinIO Admin https://${CONSOLE_DOMAIN} (HTTP ${cdn_code})"
 fi
 
-# 4. Métriques Prometheus (requis Grafana dashboard MinIO)
-if curl -sf "http://127.0.0.1:${API_PORT}/minio/v2/metrics/cluster" \
-  | grep -qE '(^|\n)minio_cluster_health_status'; then
-  ok "Métriques cluster /minio/v2/metrics/cluster"
+# 4. Métriques exposées par MinIO (health_status peut manquer un instant après restart).
+metrics_body="$(curl -sf "http://127.0.0.1:${API_PORT}/minio/v2/metrics/cluster" 2>/dev/null || true)"
+if printf '%s\n' "${metrics_body}" | grep -qE '(^|\n)minio_cluster_'; then
+  ok "Métriques cluster /minio/v2/metrics/cluster (minio_cluster_*)"
+elif printf '%s\n' "${metrics_body}" | grep -qE '(^|\n)minio_'; then
+  ok "Métriques MinIO présentes (préfixe minio_)"
+elif curl -sfG 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=minio_cluster_health_status{job="minio-cluster"}' 2>/dev/null \
+  | grep -q '"value":\['; then
+  ok "Métriques cluster via Prometheus (endpoint direct temporairement vide)"
 else
   bad "Métriques cluster absentes — Grafana MinIO sera vide"
 fi

@@ -154,6 +154,9 @@ print(f'  minio_cluster_health_status: {len(r)} série(s)')
 fi
 
 bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
+# Filet : sites patch même si fetch a partiellement échoué.
+python3 "${SCRIPT_DIR}/patch-grafana-minio-dashboard-sites.py" \
+  "${MON_DIR}/grafana/dashboards/MinIO/minio-storage.json" 2>/dev/null || true
 
 # Grafana host network — ne pas utiliser compose up (Conflict comme Prometheus).
 log "Recharge Grafana (dashboard MinIO provisionné)"
