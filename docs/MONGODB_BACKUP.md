@@ -82,6 +82,15 @@ Avant de retirer la lecture anonyme sur le bucket médias + backups :
 2. Appliquer le runbook : `africa-meals-api/docs/FIREBASE_STORAGE.md` § Production private bucket
 3. Script : `GCS_BUCKET=… ./scripts/harden-gcs-bucket.sh` puis `APPLY=1` (versioning recommandé pour `mongodb/`)
 
+### Bucket S3 privé (Block Public Access)
+
+Si les backups Mongo et les médias partagent `AWS_S3_BUCKET` :
+
+1. Proxy médias ON (forcé si S3 dans le pool admin) — voir `africa-meals-api/docs/S3_STORAGE.md`
+2. Ne pas définir `AWS_S3_PUBLIC_BASE_URL` (pas de CloudFront)
+3. Script : `AWS_S3_BUCKET=… ./scripts/harden-s3-bucket.sh` puis `APPLY=1`
+4. Les uploads backup restent authentifiés IAM sur `mongodb/*` — compatibles bucket privé
+
 ## Commandes
 
 ```bash
@@ -155,4 +164,4 @@ Détail : `./scripts/mongodb-backup.sh restore-help` ou [MONGODB_BACKUP.html](./
 - **GCS / Firebase** : rôle `Storage Object Admin` (ou `Creator` + `Viewer`) sur le préfixe `mongodb/`.
 - **AWS S3** : `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` sur `arn:aws:s3:::BUCKET/mongodb/*`.
 
-Utiliser un bucket **dédié backups** (distinct du bucket médias publics) si possible.
+Utiliser un bucket **dédié backups** (distinct du bucket médias) si possible.
