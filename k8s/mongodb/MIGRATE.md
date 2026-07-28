@@ -122,6 +122,15 @@ kubectl -n wise-eat scale deploy/redis-cache-replica-1 deploy/redis-cache-replic
   deploy/redis-bullmq-replica-1 deploy/redis-bullmq-replica-2 --replicas=1
 ```
 
+### Apply Invalid : `volumeMounts… Not found: "keyfile"`
+
+Après un patch hostPath d’urgence, le strategic merge laisse un mount `keyfile` orphelin. Forcer :
+
+```bash
+kubectl apply -k k8s/mongodb --server-side --force-conflicts
+# ou : delete deploy mongo-{1,2,3} puis apply (data hostPath intacte)
+```
+
 ### Mid-cutover : `Port :27017 encore occupé`
 
 Normal si les pods k8s tiennent déjà le hostPort. Le script skip automatique si `deploy/mongo-*` + pods existent ; sinon :

@@ -239,7 +239,13 @@ fi
 
 log "kubectl apply -k k8s/mongodb"
 "${KUBECTL[@]}" create namespace "${NAMESPACE}" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f -
-"${KUBECTL[@]}" apply -k "${MONGODB_KUSTOMIZE}"
+# Server-side : évite Invalid volumeMount « keyfile » après patch hostPath mid-cutover.
+if ! "${KUBECTL[@]}" apply -k "${MONGODB_KUSTOMIZE}" --server-side --force-conflicts 2>/tmp/mongo-apply.err; then
+  warn "server-side apply échoué — delete deploy + recreate (hostPath data intact)"
+  cat /tmp/mongo-apply.err >&2 || true
+  "${KUBECTL[@]}" -n "${NAMESPACE}" delete deploy mongo-1 mongo-2 mongo-3 --wait=true --timeout=120s || true
+  "${KUBECTL[@]}" apply -k "${MONGODB_KUSTOMIZE}" --server-side --force-conflicts
+fi
 
 for dep in mongo-1 mongo-2 mongo-3; do
   if ! "${KUBECTL[@]}" -n "${NAMESPACE}" rollout status "deploy/${dep}" --timeout=360s; then
