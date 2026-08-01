@@ -86,6 +86,12 @@ MONGO_ADMIN_BACKEND_HOST="${MONGO_ADMIN_BACKEND_HOST:-127.0.0.1}"
 MONGO_ADMIN_BACKEND_PORT="${MONGO_ADMIN_BACKEND_PORT:-8081}"
 MONGO_ADMIN_BASIC_AUTH_USER="${MONGO_ADMIN_BASIC_AUTH_USER:-mongo-admin}"
 MONGO_ADMIN_HTASSWD_FILE="${MONGO_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/mongo-admin}"
+# RedisInsight admin UI (redis.wise-eat.com) — distinct de cache.wise-eat.com (TLS Redis)
+REDIS_ADMIN_DOMAIN="${REDIS_ADMIN_DOMAIN:-redis.wise-eat.com}"
+REDIS_ADMIN_BACKEND_HOST="${REDIS_ADMIN_BACKEND_HOST:-127.0.0.1}"
+REDIS_ADMIN_BACKEND_PORT="${REDIS_ADMIN_BACKEND_PORT:-5540}"
+REDIS_ADMIN_BASIC_AUTH_USER="${REDIS_ADMIN_BASIC_AUTH_USER:-redis-admin}"
+REDIS_ADMIN_HTASSWD_FILE="${REDIS_ADMIN_HTASSWD_FILE:-/etc/nginx/htpasswd/redis-admin}"
 # HAProxy TLS TCP (remplace Stunnel) + UI stats
 HAPROXY_PROXY_DOMAIN="${HAPROXY_PROXY_DOMAIN:-proxy.wise-eat.com}"
 HAPROXY_STATS_HOST="${HAPROXY_STATS_HOST:-127.0.0.1}"
@@ -335,6 +341,35 @@ ensure_mongodb_admin_basic_auth_file() {
     log "Basic auth MongoDB Admin : ${user} → ${file}"
   elif [[ -f "${file}" ]]; then
     log "Basic auth MongoDB Admin : ${file} (inchangé)"
+  fi
+}
+
+# Basic auth nginx pour RedisInsight (redis.wise-eat.com).
+ensure_redis_admin_basic_auth_file() {
+  local user="${REDIS_ADMIN_BASIC_AUTH_USER:-redis-admin}"
+  local pass="${REDIS_ADMIN_BASIC_AUTH_PASSWORD:-}"
+  local file="${REDIS_ADMIN_HTASSWD_FILE}"
+
+  if [[ -z "${pass}" ]] && [[ -f "${REDIS_ENV}" ]]; then
+    pass="$(read_env_var_from_file "${REDIS_ENV}" REDIS_ADMIN_BASIC_AUTH_PASSWORD || true)"
+    user="$(read_env_var_from_file "${REDIS_ENV}" REDIS_ADMIN_BASIC_AUTH_USER || echo "${user}")"
+  fi
+
+  if [[ -z "${pass}" ]] && [[ ! -f "${file}" ]]; then
+    die "REDIS_ADMIN_BASIC_AUTH_PASSWORD requis dans ${REDIS_ENV} (ou fichier ${file} déjà présent)"
+  fi
+
+  mkdir -p "$(dirname "${file}")"
+  apt install -y apache2-utils 2>/dev/null || true
+  command -v htpasswd >/dev/null 2>&1 || die "apache2-utils requis (htpasswd)"
+
+  if [[ -n "${pass}" ]]; then
+    htpasswd -bc "${file}" "${user}" "${pass}"
+    chmod 640 "${file}"
+    chown root:www-data "${file}" 2>/dev/null || true
+    log "Basic auth Redis Admin : ${user} → ${file}"
+  elif [[ -f "${file}" ]]; then
+    log "Basic auth Redis Admin : ${file} (inchangé)"
   fi
 }
 

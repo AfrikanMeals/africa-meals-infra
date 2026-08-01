@@ -93,6 +93,7 @@ sudo ./install.sh verify-tls
 | `worker.wise-eat.com` | 80 / 443 | EMQX Dashboard (basic auth nginx) | proxy OK |
 | `db.wise-eat.com` | **80** (ACME) + **27018** (MongoDB TLS) | HAProxy → primary | **27018 en DNS only** (pas de proxy orange) |
 | `data.wise-eat.com` | 80 / 443 | DbGate admin MongoDB (basic auth nginx) | proxy OK |
+| `redis.wise-eat.com` | 80 / 443 | RedisInsight admin (basic auth nginx) | proxy OK |
 | `db-graph.wise-eat.com` | 80 / 443 + **7688** (Bolt TLS) | Neo4j Browser (basic auth) + Bolt | **443 proxy OK** ; **7688 DNS only** |
 | `ai.wise-eat.com` | 80 / 443 | Ollama API (basic auth nginx, dual-stack) | proxy OK (A + AAAA) |
 | `analytics.wise-eat.com` | 80 / 443 | Matomo Analytics (self-hosted) | proxy OK |
@@ -170,6 +171,7 @@ Détails techniques :
 | `MONGO_TLS_DOMAIN` | `db.wise-eat.com` | MongoDB TLS public (Stunnel :27018) |
 | `MONGO_TLS_PORT` | `27018` | Port TLS MongoDB (Stunnel → primary :27017) |
 | `MONGO_ADMIN_DOMAIN` | `data.wise-eat.com` | DbGate admin MongoDB (nginx + basic auth) |
+| `REDIS_ADMIN_DOMAIN` | `redis.wise-eat.com` | RedisInsight (nginx + basic auth) — ≠ `cache.wise-eat.com` (TLS Redis) |
 | `NEO4J_ADMIN_DOMAIN` | `db-graph.wise-eat.com` | Neo4j Browser public (nginx + basic auth) + Bolt TLS :7688 |
 | `OLLAMA_GATEWAY_DOMAIN` | `ai.wise-eat.com` | Ollama API public (nginx + basic auth) |
 | `MATOMO_DOMAIN` | `analytics.wise-eat.com` | Matomo Analytics public (nginx + TLS) |
@@ -194,6 +196,7 @@ Profil cible : **2 vCPU / 8 Go RAM / 2 Go swap**. Chaque conteneur a un `mem_lim
 |-----------|-----|----------------|--------------|
 | MongoDB ×3 | 512 Mo | 512 Mo | 1 Go |
 | DbGate | 512 Mo | 256 Mo | 768 Mo |
+| RedisInsight | 384 Mo | 128 Mo | 512 Mo |
 | Ollama | 3 Go | 1 Go | 4 Go |
 | EMQX ×3 | 256 Mo | 128 Mo | 384 Mo |
 | Prometheus | 512 Mo | 256 Mo | 768 Mo |
@@ -496,6 +499,26 @@ REDIS_TLS_REJECT_UNAUTHORIZED=true
 REDIS_PORT=6371
 BULLMQ_REDIS_PORT=6390
 ```
+
+### RedisInsight (`redis.wise-eat.com`)
+
+UI admin Redis (clés, CLI, monitoring) — **distinct** de `cache.wise-eat.com` (TLS applicatif).
+
+```bash
+# DNS A (+ AAAA) redis.wise-eat.com → VPS (Cloudflare proxy OK pour :443)
+cd /opt/wise-eat && git pull
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com ./install.sh redis-admin
+# Si 502 : sudo ./install.sh repair-redis-admin
+```
+
+| URL | Service |
+|-----|---------|
+| `https://redis.wise-eat.com` | RedisInsight (basic auth nginx) |
+| `127.0.0.1:5540` | Backend local (non exposé public) |
+
+- Auth web : `REDIS_ADMIN_BASIC_AUTH_USER` / `REDIS_ADMIN_BASIC_AUTH_PASSWORD` dans `redis/.env.redis`
+- Connexions préconfigurées : **cache** (`wise-eat-cache@host.docker.internal:6379`) + **bullmq** (`wise-eat-bull@:6380`)
+- Compatible Redis Docker **ou** k8s hostPort (même ports locaux)
 
 **Memcached** : pas de réplication native — les 2 réplicas sont des **pools standby** (bascule manuelle vers `:11213` ou `:11214`). Ne pas lister les 3 pools en même temps sauf sharding voulu.
 

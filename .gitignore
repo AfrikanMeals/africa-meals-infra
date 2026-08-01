@@ -2,6 +2,7 @@
 redis/.env.redis
 redis/cache-users.acl
 redis/bull-users.acl
+redis/data-redisinsight/
 redis/data-cache/
 redis/data-bullmq/
 redis/data-cache-replica-1/

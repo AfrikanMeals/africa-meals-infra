@@ -61,6 +61,8 @@ Composants:
   haproxy-proxy nginx → HAProxy stats (proxy.wise-eat.com, basic auth)
   repair-haproxy  Répare HAProxy TLS + UI proxy.wise-eat.com
   mongodb-admin nginx reverse-proxy → DbGate (data.wise-eat.com, basic auth)
+  redis-admin   nginx → RedisInsight (redis.wise-eat.com, basic auth)
+  repair-redis-admin  Répare RedisInsight + nginx (redis.wise-eat.com 502)
   neo4j-admin   nginx → Neo4j Browser (db-graph.wise-eat.com) + Bolt TLS :7688
   repair-neo4j-admin  Répare Neo4j Browser + nginx (db-graph.wise-eat.com 502)
   mongodb-backup Cron sauvegarde MongoDB (dump quotidien + snapshot hebdo)
@@ -277,6 +279,12 @@ run_component() {
       ;;
     mongodb-admin)
       bash "${SCRIPTS}/install-mongodb-admin.sh"
+      ;;
+    redis-admin)
+      bash "${SCRIPTS}/install-redis-admin.sh"
+      ;;
+    repair-redis-admin)
+      bash "${SCRIPTS}/repair-redis-admin.sh"
       ;;
     neo4j-admin)
       bash "${SCRIPTS}/install-neo4j-admin.sh"

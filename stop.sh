@@ -26,6 +26,7 @@ Usage:
 
 Composants Docker (compose stop / down, données conservées) :
   redis         Redis cache + BullMQ (+ réplicas)
+  redis-admin   RedisInsight (UI redis.wise-eat.com)
   memcached     Memcached (+ réplicas)
   minio         MinIO S3
   emqx          EMQX MQTT cluster
@@ -67,6 +68,7 @@ EOF
 list_components() {
   cat <<EOF
 redis
+redis-admin
 memcached
 minio
 emqx
@@ -166,6 +168,24 @@ stop_component() {
   case "${name}" in
     redis)
       compose_halt "${REDIS_DIR}" "${REDIS_ENV}"
+      ;;
+    redis-admin)
+      # Compose séparé (docker-compose.redisinsight.yml) — project wise-eat-redisinsight
+      if [[ -f "${REDIS_DIR}/docker-compose.redisinsight.yml" ]]; then
+        log "Arrêt RedisInsight (wise-eat-redisinsight)"
+        (
+          cd "${REDIS_DIR}"
+          args=()
+          [[ -f "${REDIS_ENV}" ]] && args+=(--env-file "${REDIS_ENV}")
+          if [[ "${STOP_MODE}" == "down" ]]; then
+            docker compose -f docker-compose.redisinsight.yml "${args[@]}" down --remove-orphans 2>/dev/null || true
+          else
+            docker compose -f docker-compose.redisinsight.yml "${args[@]}" stop 2>/dev/null || true
+          fi
+        )
+      else
+        docker stop wise-eat-redisinsight 2>/dev/null || true
+      fi
       ;;
     memcached)
       if [[ -f "${MEMCACHED_DIR}/.env.memcached" ]]; then
