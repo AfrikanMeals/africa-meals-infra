@@ -118,6 +118,7 @@ if curl -sf "http://127.0.0.1:9217/metrics" 2>/dev/null | grep -q '^neo4j_export
   log "OK  neo4j-exporter (:9217) — métriques neo4j_* exposées"
 else
   warn "FAIL neo4j-exporter (:9217) — conteneur wise-eat-neo4j-exporter arrêté ?"
+  warn "      sudo ./install.sh repair-neo4j-exporters   # k8s: host network + bolt://127.0.0.1:7687"
   warn "      sudo ./install.sh repair-neo4j-prometheus"
   fail=1
 fi

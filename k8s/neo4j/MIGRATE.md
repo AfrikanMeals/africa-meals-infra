@@ -13,7 +13,7 @@ Remplacer le conteneur Docker `wise-eat-neo4j` par un Deployment k3s **hostPath 
 - **Auth** : Secret `neo4j-config` ← `.env.neo4j` (`NEO4J_AUTH=user/password`)
 - **UID** : `7474` (image officielle)
 - **RAM** : request **512Mi** · limit **1Gi** (heap/pagecache via secret)
-- **Grafana** : exporter → `host.docker.internal:7687`, metrics `:9217`
+- **Grafana** : exporter Docker host network → `bolt://127.0.0.1:7687`, metrics `:9217`
 
 ## Cutover (prod)
 
@@ -70,8 +70,11 @@ kubectl -n wise-eat exec deploy/neo4j -- \
 kubectl -n wise-eat exec deploy/africa-meals-api -- \
   sh -c 'nc -z -w 2 host.k3s.internal 7687 && echo OK'
 
-# Grafana
+# Grafana / exporter (host network → Bolt loopback)
 curl -sf http://127.0.0.1:9217/metrics | grep '^neo4j_exporter_up '
+# attendu : neo4j_exporter_up 1
+# si 0 : sudo ./install.sh repair-neo4j-exporters
+#        docker logs wise-eat-neo4j-exporter --tail=40
 
 # Public
 # https://db-graph.wise-eat.com
@@ -95,8 +98,9 @@ cd /opt/wise-eat/neo4j
 set -a && source .env.neo4j && set +a
 docker compose --env-file .env.neo4j up -d
 
-# Exporter Docker DNS (optionnel)
+# Exporter Docker DNS (optionnel, pré-cutover)
 # NEO4J_URI=bolt://wise-eat-neo4j:7687 dans monitoring + compose up neo4j-exporter
+# Post-fix Grafana : exporter = network_mode host + bolt://127.0.0.1:7687
 ```
 
 ## Interdits

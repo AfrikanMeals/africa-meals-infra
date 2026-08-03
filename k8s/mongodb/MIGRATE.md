@@ -55,6 +55,11 @@ kubectl -n wise-eat exec deploy/africa-meals-api -- nc -z -w 2 host.k3s.internal
 curl -sf http://127.0.0.1:9216/metrics | grep -E '^mongodb_up |^mongodb_mongod_up '
 # openssl s_client -connect db.wise-eat.com:27018 </dev/null
 # https://data.wise-eat.com (DbGate)
+
+# Grafana Overview — CPU hôte (mongodb_sys_cpu_* non exposé par Percona)
+curl -sf http://127.0.0.1:9100/metrics | grep node_cpu_seconds_total | head
+# Après reload provisioning Grafana : panels CPU / System / User / Idle alimentés
+# (même pattern que Load Average → job=node, instance=wise-eat:9100)
 ```
 
 ## Apply sans cutover

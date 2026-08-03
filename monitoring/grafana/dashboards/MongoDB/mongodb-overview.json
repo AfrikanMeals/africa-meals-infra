@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "MongoDB Percona exporter (m\u00e9triques ss/sys). Base Grafana.com #18847 \u2014 job=mongodb, instance=wise-eat-mongo-1:27017.",
+  "description": "MongoDB Percona exporter (m\u00e9triques ss/sys). Base Grafana.com #18847 \u2014 job=mongodb, instance=wise-eat-mongo-1:27017. CPU / Load Average : h\u00f4te node_exporter (wise-eat:9100) \u2014 mongodb_sys_cpu_* non expos\u00e9.",
   "editable": false,
   "fiscalYearStartMonth": 0,
   "gnetId": 18847,
@@ -226,7 +226,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Nombre de CPU",
+      "description": "CPU h\u00f4te (node_exporter) \u2014 mongodb_sys_cpu_* non expos\u00e9 par l\u2019exporter Percona",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -275,7 +275,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "mongodb_sys_cpu_num_cpus{job=\"mongodb\",instance=~\"$instance\"}",
+          "expr": "count(count(node_cpu_seconds_total{job=\"node\",instance=\"wise-eat:9100\"}) by (cpu))",
           "format": "time_series",
           "instant": true,
           "key": "Q-c4651da4-4c67-4857-a730-7aeffab5e38a-0",
@@ -292,7 +292,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Charge du CPU pour le syst\u00e8me.",
+      "description": "CPU h\u00f4te (node_exporter) \u2014 mongodb_sys_cpu_* non expos\u00e9 par l\u2019exporter Percona",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -350,7 +350,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "rate(mongodb_sys_cpu_system_ms{job=\"mongodb\",instance=~\"$instance\"}[$__rate_interval])/mongodb_sys_cpu_num_cpus{job=\"mongodb\",instance=~\"$instance\"}/10",
+          "expr": "100 * avg(rate(node_cpu_seconds_total{job=\"node\",instance=\"wise-eat:9100\",mode=\"system\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": true,
           "key": "Q-c4651da4-4c67-4857-a730-7aeffab5e38a-0",
@@ -359,7 +359,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU System",
+      "title": "CPU System (h\u00f4te)",
       "type": "stat"
     },
     {
@@ -367,7 +367,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Charge du CPU pour l'utilisateur.",
+      "description": "CPU h\u00f4te (node_exporter) \u2014 mongodb_sys_cpu_* non expos\u00e9 par l\u2019exporter Percona",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -425,7 +425,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "rate(mongodb_sys_cpu_user_ms{job=\"mongodb\",instance=~\"$instance\"}[$__rate_interval])/mongodb_sys_cpu_num_cpus{job=\"mongodb\",instance=~\"$instance\"}/10",
+          "expr": "100 * avg(rate(node_cpu_seconds_total{job=\"node\",instance=\"wise-eat:9100\",mode=\"user\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": true,
           "key": "Q-c4651da4-4c67-4857-a730-7aeffab5e38a-0",
@@ -434,7 +434,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU User",
+      "title": "CPU User (h\u00f4te)",
       "type": "stat"
     },
     {
@@ -442,7 +442,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Disponibilit\u00e9 du CPU.",
+      "description": "CPU h\u00f4te (node_exporter) \u2014 mongodb_sys_cpu_* non expos\u00e9 par l\u2019exporter Percona",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -504,7 +504,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "rate(mongodb_sys_cpu_idle_ms{job=\"mongodb\",instance=~\"$instance\"}[$__rate_interval])/mongodb_sys_cpu_num_cpus{job=\"mongodb\",instance=~\"$instance\"}/10",
+          "expr": "100 * avg(rate(node_cpu_seconds_total{job=\"node\",instance=\"wise-eat:9100\",mode=\"idle\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": true,
           "key": "Q-c4651da4-4c67-4857-a730-7aeffab5e38a-0",
@@ -513,7 +513,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Idle",
+      "title": "CPU Idle (h\u00f4te)",
       "type": "stat"
     },
     {

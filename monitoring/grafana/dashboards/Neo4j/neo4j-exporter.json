@@ -1312,5 +1312,5 @@
   "uid": "wise-eat-neo4j-exporter",
   "version": 1,
   "weekStart": "",
-  "description": "Neo4j Community via PapaDanielVi/neo4j-exporter (Bolt). job=neo4j \u00b7 instance=wise-eat-neo4j:7687 \u00b7 scrape :9217. M\u00e9triques APOC store/tx optionnelles si plugins APOC install\u00e9s."
+  "description": "Neo4j Community via PapaDanielVi/neo4j-exporter (Bolt). job=neo4j \u00b7 bolt://127.0.0.1:7687 (k8s hostPort) \u00b7 scrape :9217. Panels cAdvisor name=wise-eat-neo4j vides post-cutover (pod k8s). M\u00e9triques APOC store/tx optionnelles si plugins APOC install\u00e9s."
 }

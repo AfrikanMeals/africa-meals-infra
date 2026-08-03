@@ -113,7 +113,7 @@ Composants:
   neo4j         Neo4j Community Docker (Bolt :7687, 1 Go RAM, volume 5 Go) — legacy
   neo4j-k8s     Applique pod Neo4j k8s (hostPath + hostPort 7474/7687)
   migrate-neo4j-k8s  Cutover Neo4j Docker → K8s (zéro perte volume)
-  repair-neo4j-exporters  Exporter Grafana → host.docker.internal:7687 (post-cutover)
+  repair-neo4j-exporters  Exporter Grafana → bolt://127.0.0.1:7687 host network (post-cutover)
   matomo-gateway nginx reverse-proxy → Matomo (analytics.wise-eat.com)
   update-matomo   Mise à jour Matomo via CLI (image Docker + core:update)
   repair-matomo   Recovery crash / 502 / update interrompue

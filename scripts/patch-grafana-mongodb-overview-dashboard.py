@@ -11,6 +11,8 @@ DS = {"type": "prometheus", "uid": PROM_UID}
 MONGO_JOB = "mongodb"
 MONGO_INSTANCE = "wise-eat-mongo-1:27017"
 NODE_INSTANCE = "wise-eat:9100"
+# CPU hôte : même instance que Load Average (mongodb_sys_cpu_* absent du scrape).
+NODE_CPU_FILTER = f'job="node",instance="{NODE_INSTANCE}"'
 
 # Fallbacks quand mongodb_ss_* absent (compatible-mode expose souvent l'alias legacy).
 METRIC_FALLBACKS: tuple[tuple[str, str], ...] = (
@@ -19,6 +21,11 @@ METRIC_FALLBACKS: tuple[tuple[str, str], ...] = (
     ("mongodb_ss_opcounters", "mongodb_op_counters_total"),
     ("mongodb_ss_mem_resident", "mongodb_memory"),
     ("mongodb_ss_mem_virtual", "mongodb_memory"),
+)
+
+# Titres panels CPU #18847 → descriptions hôte (node_exporter).
+CPU_PANEL_DESC = (
+    "CPU hôte (node_exporter) — mongodb_sys_cpu_* non exposé par l’exporter Percona"
 )
 
 
@@ -52,9 +59,38 @@ def add_metric_fallback(expr: str) -> str:
     return expr
 
 
+def patch_cpu_host_expr(expr: str) -> str | None:
+    """Remplace mongodb_sys_cpu_* (absentes) par CPU hôte node_exporter — comme Load Average."""
+    if "mongodb_sys_cpu_num_cpus" in expr and "rate(" not in expr:
+        return (
+            f"count(count(node_cpu_seconds_total{{{NODE_CPU_FILTER}}}) by (cpu))"
+        )
+    if "mongodb_sys_cpu_system_ms" in expr:
+        return (
+            f"100 * avg(rate(node_cpu_seconds_total"
+            f'{{{NODE_CPU_FILTER},mode="system"}}[$__rate_interval]))'
+        )
+    if "mongodb_sys_cpu_user_ms" in expr:
+        return (
+            f"100 * avg(rate(node_cpu_seconds_total"
+            f'{{{NODE_CPU_FILTER},mode="user"}}[$__rate_interval]))'
+        )
+    if "mongodb_sys_cpu_idle_ms" in expr:
+        return (
+            f"100 * avg(rate(node_cpu_seconds_total"
+            f'{{{NODE_CPU_FILTER},mode="idle"}}[$__rate_interval]))'
+        )
+    return None
+
+
 def patch_expr(expr: str) -> str:
     if not expr:
         return expr
+
+    # Fix: panels CPU No data — sys_cpu_* non scrapés → node_exporter :9100.
+    host_cpu = patch_cpu_host_expr(expr)
+    if host_cpu is not None:
+        return host_cpu
 
     expr = expr.replace("nmongodb_sys_", "mongodb_sys_")
 
@@ -117,8 +153,26 @@ def patch_expr(expr: str) -> str:
     return expr
 
 
+def patch_cpu_panel_meta(panel: dict) -> None:
+    """Titres / descriptions des 4 stats CPU → ancrage hôte node_exporter."""
+    title = (panel.get("title") or "").strip()
+    if title not in ("CPU", "CPU System", "CPU User", "CPU Idle",
+                     "CPU System (hôte)", "CPU User (hôte)", "CPU Idle (hôte)"):
+        return
+    # Garder le libellé court ; préciser l’origine dans la description.
+    if title == "CPU System":
+        panel["title"] = "CPU System (hôte)"
+    elif title == "CPU User":
+        panel["title"] = "CPU User (hôte)"
+    elif title == "CPU Idle":
+        panel["title"] = "CPU Idle (hôte)"
+    panel["description"] = CPU_PANEL_DESC
+
+
 def patch_targets(panel: dict) -> None:
     ptype = panel.get("type", "")
+    # Meta CPU avant rewrite expr (titres source #18847).
+    patch_cpu_panel_meta(panel)
     for target in panel.get("targets") or []:
         if not isinstance(target, dict):
             continue
@@ -194,7 +248,9 @@ def main() -> None:
     dash["title"] = "Wise Eat — MongoDB Overview"
     dash["description"] = (
         "MongoDB Percona exporter (métriques ss/sys). "
-        "Base Grafana.com #18847 — job=mongodb, instance=wise-eat-mongo-1:27017."
+        "Base Grafana.com #18847 — job=mongodb, instance=wise-eat-mongo-1:27017. "
+        "CPU / Load Average : hôte node_exporter (wise-eat:9100) — "
+        "mongodb_sys_cpu_* non exposé."
     )
     # Dashboard source embarque une plage figée en 2023 → tout affiche « No data ».
     dash["time"] = {"from": "now-24h", "to": "now"}

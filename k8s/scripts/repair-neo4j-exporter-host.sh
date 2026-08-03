@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Recrée neo4j-exporter → Bolt sur hostPort k8s (127.0.0.1 / host-gateway :7687).
+# Recrée neo4j-exporter → Bolt sur hostPort k8s (127.0.0.1:7687) en host network.
 # Requis après cutover Neo4j Docker → k8s (DNS wise-eat-neo4j mort).
 # Metrics restent sur 127.0.0.1:9217 (job Prometheus inchangé).
 #
@@ -31,17 +31,20 @@ set +a
 : "${NEO4J_PASSWORD:?NEO4J_PASSWORD requis}"
 NEO4J_USER="${NEO4J_USER:-neo4j}"
 BOLT_PORT="${NEO4J_BOLT_PORT:-7687}"
+# Fix: host.docker.internal → bridge instable post-cutover ; loopback + hostPort k8s.
+NEO4J_URI="${NEO4J_URI:-bolt://127.0.0.1:${BOLT_PORT}}"
+LISTEN_ADDR="${NEO4J_EXPORTER_LISTEN_ADDRESS:-127.0.0.1:9217}"
 
 docker rm -f wise-eat-neo4j-exporter 2>/dev/null || true
 
-# Bridge + host-gateway : joindre hostPort 7687 ; publish metrics :9217 (comme compose).
-log "Recreate neo4j-exporter → bolt://host.docker.internal:${BOLT_PORT} (listen :9217)"
+# host network : Bolt 127.0.0.1:7687 + metrics :9217 (pas de publish -p).
+log "Recreate neo4j-exporter → ${NEO4J_URI} (listen ${LISTEN_ADDR}, network=host)"
 docker run -d --name wise-eat-neo4j-exporter --restart unless-stopped \
-  --add-host=host.docker.internal:host-gateway \
-  -e NEO4J_URI="bolt://host.docker.internal:${BOLT_PORT}" \
+  --network host \
+  -e NEO4J_URI="${NEO4J_URI}" \
   -e NEO4J_USER="${NEO4J_USER}" \
   -e NEO4J_PASSWORD="${NEO4J_PASSWORD}" \
-  -p "127.0.0.1:9217:9121" \
+  -e NEO4J_EXPORTER_LISTEN_ADDRESS="${LISTEN_ADDR}" \
   "${EXPORTER_IMAGE}"
 
 sleep 3
@@ -53,13 +56,16 @@ else
   docker logs wise-eat-neo4j-exporter --tail=25 2>&1 || true
 fi
 
-# Sync creds monitoring pour futurs compose up
+# Sync creds + URI monitoring pour futurs compose up (ne pas réintroduire host.docker.internal).
+NEO4J_EXPORTER_LISTEN_ADDRESS="${LISTEN_ADDR}"
 if [[ -f "${MON_ENV}" ]]; then
-  for key in NEO4J_USER NEO4J_PASSWORD; do
+  for key in NEO4J_USER NEO4J_PASSWORD NEO4J_URI NEO4J_EXPORTER_LISTEN_ADDRESS; do
+    val="${!key:-}"
+    [[ -n "${val}" ]] || continue
     if grep -q "^${key}=" "${MON_ENV}" 2>/dev/null; then
-      sed -i "s|^${key}=.*|${key}=${!key}|" "${MON_ENV}"
+      sed -i "s|^${key}=.*|${key}=${val}|" "${MON_ENV}"
     else
-      echo "${key}=${!key}" >> "${MON_ENV}"
+      echo "${key}=${val}" >> "${MON_ENV}"
     fi
   done
 fi

@@ -77,12 +77,18 @@ bash "${SCRIPT_DIR}/fetch-grafana-dashboard.sh" 2>/dev/null || true
 
 reconcile_monitoring_compose_named_containers
 
-# k8s : exporter déjà via repair-neo4j-exporter-host ; ne pas écraser avec DNS Docker.
+# k8s : exporter déjà via repair-neo4j-exporter-host (host network + bolt://127.0.0.1).
+# Sync URI/listen dans .env.monitoring pour que compose up ne réintroduise pas host.docker.internal.
 if [[ "${neo4j_k8s_ready}" == "true" ]]; then
   if ! grep -q '^NEO4J_URI=' .env.monitoring 2>/dev/null; then
-    echo 'NEO4J_URI=bolt://host.docker.internal:7687' >> .env.monitoring
+    echo 'NEO4J_URI=bolt://127.0.0.1:7687' >> .env.monitoring
   else
-    sed -i 's|^NEO4J_URI=.*|NEO4J_URI=bolt://host.docker.internal:7687|' .env.monitoring
+    sed -i 's|^NEO4J_URI=.*|NEO4J_URI=bolt://127.0.0.1:7687|' .env.monitoring
+  fi
+  if ! grep -q '^NEO4J_EXPORTER_LISTEN_ADDRESS=' .env.monitoring 2>/dev/null; then
+    echo 'NEO4J_EXPORTER_LISTEN_ADDRESS=127.0.0.1:9217' >> .env.monitoring
+  else
+    sed -i 's|^NEO4J_EXPORTER_LISTEN_ADDRESS=.*|NEO4J_EXPORTER_LISTEN_ADDRESS=127.0.0.1:9217|' .env.monitoring
   fi
   log "Recréation Prometheus + Grafana (exporter k8s déjà OK)"
   if ! docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate prometheus grafana; then
