@@ -1,8 +1,9 @@
-# HTTPS — africa-meals-api (k3s NodePort) — api.wise-eat.com
+# HTTPS — africa-meals-api (k3s NodePort) — api (+ alias public apis)
+# Cert LE nommé API_WISE_EAT_DOMAIN ; SAN doit inclure chaque host de SERVER_NAMES.
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name ${API_WISE_EAT_DOMAIN};
+    server_name ${API_WISE_EAT_SERVER_NAMES};
 
     ssl_certificate /etc/letsencrypt/live/${API_WISE_EAT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${API_WISE_EAT_DOMAIN}/privkey.pem;
@@ -33,7 +34,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${API_WISE_EAT_DOMAIN};
+    server_name ${API_WISE_EAT_SERVER_NAMES};
 
     location /.well-known/acme-challenge/ {
         root ${CERTBOT_WEBROOT};

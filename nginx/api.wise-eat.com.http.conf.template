@@ -1,8 +1,8 @@
-# HTTP — africa-meals-api (k3s NodePort) — api.wise-eat.com
+# HTTP — africa-meals-api (k3s NodePort) — api (+ alias public apis, ACME webroot)
 server {
     listen 80;
     listen [::]:80;
-    server_name ${API_WISE_EAT_DOMAIN};
+    server_name ${API_WISE_EAT_SERVER_NAMES};
 
     client_max_body_size 32m;
 

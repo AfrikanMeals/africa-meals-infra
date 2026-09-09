@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installe / met à jour le vhost nginx api.wise-eat.com → k3s NodePort (30900).
+# Installe / met à jour le vhost nginx api.wise-eat.com (+ alias apis) → k3s NodePort (30900).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,8 +10,17 @@ source "${INFRA_ROOT}/scripts/lib/common.sh"
 require_root
 
 API_WISE_EAT_DOMAIN="${API_WISE_EAT_DOMAIN:-api.wise-eat.com}"
+# Défaut apis ; vider API_WISE_EAT_ALIAS_DOMAIN= pour n’écouter que api.
+API_WISE_EAT_ALIAS_DOMAIN="${API_WISE_EAT_ALIAS_DOMAIN-apis.wise-eat.com}"
 API_BACKEND_HOST="${API_BACKEND_HOST:-127.0.0.1}"
 API_BACKEND_PORT="${API_BACKEND_PORT:-30900}"
+
+# server_name nginx : api + alias public (même backend, un seul cert LE primaire).
+if [[ -n "${API_WISE_EAT_ALIAS_DOMAIN}" ]]; then
+  API_WISE_EAT_SERVER_NAMES="${API_WISE_EAT_DOMAIN} ${API_WISE_EAT_ALIAS_DOMAIN}"
+else
+  API_WISE_EAT_SERVER_NAMES="${API_WISE_EAT_DOMAIN}"
+fi
 
 mkdir -p "${CERTBOT_WEBROOT}/.well-known/acme-challenge"
 chown -R www-data:www-data "${CERTBOT_WEBROOT}"
@@ -19,17 +28,17 @@ chown -R www-data:www-data "${CERTBOT_WEBROOT}"
 SITE="/etc/nginx/sites-available/${API_WISE_EAT_DOMAIN}.conf"
 ENABLED="/etc/nginx/sites-enabled/${API_WISE_EAT_DOMAIN}.conf"
 
-export API_WISE_EAT_DOMAIN API_BACKEND_HOST API_BACKEND_PORT CERTBOT_WEBROOT
+export API_WISE_EAT_DOMAIN API_WISE_EAT_SERVER_NAMES API_BACKEND_HOST API_BACKEND_PORT CERTBOT_WEBROOT
 
 if [[ -f "/etc/letsencrypt/live/${API_WISE_EAT_DOMAIN}/fullchain.pem" ]]; then
   ensure_letsencrypt_nginx_tls_files
-  envsubst '${API_WISE_EAT_DOMAIN} ${API_BACKEND_HOST} ${API_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
+  envsubst '${API_WISE_EAT_DOMAIN} ${API_WISE_EAT_SERVER_NAMES} ${API_BACKEND_HOST} ${API_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
     < "${NGINX_CONF_SRC}/api.wise-eat.com.https.conf.template" > "${SITE}"
-  log "nginx HTTPS api → ${API_BACKEND_HOST}:${API_BACKEND_PORT}"
+  log "nginx HTTPS api (${API_WISE_EAT_SERVER_NAMES}) → ${API_BACKEND_HOST}:${API_BACKEND_PORT}"
 else
-  envsubst '${API_WISE_EAT_DOMAIN} ${API_BACKEND_HOST} ${API_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
+  envsubst '${API_WISE_EAT_DOMAIN} ${API_WISE_EAT_SERVER_NAMES} ${API_BACKEND_HOST} ${API_BACKEND_PORT} ${CERTBOT_WEBROOT}' \
     < "${NGINX_CONF_SRC}/api.wise-eat.com.http.conf.template" > "${SITE}"
-  log "nginx HTTP api (Certbot webroot) → ${API_BACKEND_HOST}:${API_BACKEND_PORT}"
+  log "nginx HTTP api (${API_WISE_EAT_SERVER_NAMES}, Certbot webroot) → ${API_BACKEND_HOST}:${API_BACKEND_PORT}"
 fi
 
 ln -sf "${SITE}" "${ENABLED}"
@@ -38,3 +47,6 @@ nginx -t
 systemctl reload nginx
 
 log "api nginx actif — https://${API_WISE_EAT_DOMAIN}/ → NodePort :${API_BACKEND_PORT}"
+if [[ -n "${API_WISE_EAT_ALIAS_DOMAIN}" ]]; then
+  log "alias public : https://${API_WISE_EAT_ALIAS_DOMAIN}/ (même origine ; SAN LE requis)"
+fi

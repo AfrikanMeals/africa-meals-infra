@@ -48,31 +48,58 @@ sudo STUNNEL_TLS_EMAIL=help@wise-eat.com \
 
 ---
 
-## HTTPS / TLS (api.wise-eat.com)
+## HTTPS / TLS (api.wise-eat.com + alias apis.wise-eat.com)
 
 Terminaison TLS sur **nginx** (Let's Encrypt) → backend HTTP **NodePort :30900** (pods k8s).
 
-**Prérequis** : DNS `api.wise-eat.com` → VPS, port **80** ouvert (validation ACME webroot), pods API up sur `:30900`.
+Architecture **option B** (sans Worker Cloudflare sur `apis`) :
+
+| Hostname | Rôle |
+|----------|------|
+| `api.wise-eat.com` | Origine backend (cert LE primaire) |
+| `apis.wise-eat.com` | Alias public clients — **même** vhost nginx + **SAN** sur le même cert |
+
+Sans le SAN `apis` sur le certificat **origine**, Cloudflare en **Full (strict)** renvoie **526**.
+
+**Prérequis** :
+
+1. DNS Cloudflare (Proxied) : `api` **et** `apis` → IP VPS (même cible).
+2. **Pas** de Custom Domain / Route Worker `apis.wise-eat.com/*` (sinon le trafic n’atteint pas nginx).
+3. SSL/TLS zone : **Full (strict)** — ne pas passer en Flexible.
+4. Port **80** ouvert (ACME webroot HTTP-01) ; pods API up sur `:30900`.
 
 ```bash
 cd /opt/wise-eat && git pull
 
-# Certificat + vhost HTTPS (redirect HTTP → HTTPS, HSTS)
+# Vhost api+apis + cert LE (expand SAN) + HTTPS
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com k8s/scripts/enable-api-nginx-ssl.sh
 
-# Vérifier
-curl -sI https://api.wise-eat.com/api/health | head -8
-openssl s_client -connect api.wise-eat.com:443 -servername api.wise-eat.com </dev/null 2>/dev/null | openssl x509 -noout -dates
+# Vérifier api + alias (plus de 526)
+curl -sI https://api.wise-eat.com/health | head -8
+curl -sI https://apis.wise-eat.com/health | head -8
+openssl s_client -connect apis.wise-eat.com:443 -servername apis.wise-eat.com </dev/null 2>/dev/null \
+  | openssl x509 -noout -ext subjectAltName
 sudo scripts/verify-tls.sh
 ```
 
+Désactiver l’alias : `API_WISE_EAT_ALIAS_DOMAIN= sudo …/enable-api-nginx-ssl.sh` (re-émettre cert sans SAN apis si besoin).
+
 Renouvellement auto : hook `certbot renew` → `install-api-nginx.sh` (inclus dans `./install.sh certbot`).
 
-Si certificat déjà présent (renouvellement manuel du vhost uniquement) :
+Si certificat déjà présent **avec** SAN apis (vhost uniquement) :
 
 ```bash
 sudo k8s/scripts/install-api-nginx.sh
 sudo nginx -t && sudo systemctl reload nginx
+```
+
+Étendre un cert existant sans repasser tout le script :
+
+```bash
+sudo STUNNEL_TLS_EMAIL=help@wise-eat.com certbot certonly --webroot \
+  -w /var/www/certbot -d api.wise-eat.com -d apis.wise-eat.com \
+  --cert-name api.wise-eat.com --expand --non-interactive --agree-tos
+sudo k8s/scripts/install-api-nginx.sh
 ```
 
 ---

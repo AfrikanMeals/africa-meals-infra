@@ -93,7 +93,7 @@ Composants:
   apache        apache2 + reverse-proxy WS + webroot Certbot
   web           nginx ou apache (WEB_SERVER=nginx|apache, défaut nginx)
   certbot       Let's Encrypt (WS + API + Redis TLS + Grafana + proxy + …)
-  api-tls       HTTPS api.wise-eat.com → k3s :30900 (Let's Encrypt nginx)
+  api-tls       HTTPS api (+ alias apis) → k3s :30900 (Let's Encrypt SAN)
   ws-tls        HTTPS ws.wise-eat.com → k3s :30800 (Let's Encrypt nginx)
   stunnel       Stunnel TLS (legacy) — préférer ./install.sh haproxy
   tls           certbot + haproxy (TLS TCP Redis/Mongo/Memcached + UI proxy)

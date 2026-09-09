@@ -37,6 +37,9 @@ APACHE_CONF_SRC="${INFRA_ROOT}/apache"
 
 WISE_EAT_DOMAIN="${WISE_EAT_DOMAIN:-wise-eat.cloud}"
 API_WISE_EAT_DOMAIN="${API_WISE_EAT_DOMAIN:-api.wise-eat.com}"
+# Alias public (clients web/admin) — même origine nginx que api ; vide = désactivé.
+# Fix Cloudflare 526 : sans SAN apis sur le cert origine, Full (strict) refuse le handshake.
+API_WISE_EAT_ALIAS_DOMAIN="${API_WISE_EAT_ALIAS_DOMAIN-apis.wise-eat.com}"
 API_BACKEND_HOST="${API_BACKEND_HOST:-127.0.0.1}"
 API_BACKEND_PORT="${API_BACKEND_PORT:-30900}"
 WS_WISE_EAT_DOMAIN="${WS_WISE_EAT_DOMAIN:-ws.wise-eat.com}"
