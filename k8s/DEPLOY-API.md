@@ -63,18 +63,30 @@ Sans le SAN `apis` sur le certificat **origine**, Cloudflare en **Full (strict)*
 
 **Prérequis** :
 
-1. DNS Cloudflare (Proxied) : `api` **et** `apis` → IP VPS (même cible).
-2. **Pas** de Custom Domain / Route Worker `apis.wise-eat.com/*` (sinon le trafic n’atteint pas nginx).
-3. SSL/TLS zone : **Full (strict)** — ne pas passer en Flexible.
-4. Port **80** ouvert (ACME webroot HTTP-01) ; pods API up sur `:30900`.
+1. DNS Cloudflare : `api` **et** `apis` → IP VPS (même cible).
+2. **Pas** de Custom Domain / Route Worker `apis.wise-eat.com/*`.
+3. **Pas** de Redirect / Page Rule qui préfixe `/api` sur `apis`  
+   (symptôme : `http://apis…/.well-known/…` → `301` vers `https://apis…/api/.well-known/…` — casse ACME).
+4. SSL/TLS zone : **Full (strict)** — ne pas passer en Flexible.
+5. Port **80** ouvert (ACME webroot HTTP-01) ; pods API up sur `:30900`.
+
+### Émission SAN (cercle 526)
+
+Sans SAN `apis` sur le cert origine, Proxied + Full (strict) = **526** sur HTTPS. LE suit le redirect HTTPS → ACME échoue.
+
+1. Cloudflare → DNS → `apis` : **DNS only** (nuage gris) *temporairement*.
+2. Supprimer toute Redirect Rule `apis` → `…/api/…`.
+3. Sur le VPS :
 
 ```bash
 cd /opt/wise-eat && git pull
-
-# Vhost api+apis + cert LE (expand SAN) + HTTPS
 sudo STUNNEL_TLS_EMAIL=help@wise-eat.com k8s/scripts/enable-api-nginx-ssl.sh
+```
 
-# Vérifier api + alias (plus de 526)
+4. Remettre `apis` en **Proxied** (orange). SSL zone reste **Full (strict)**.
+5. Vérifier :
+
+```bash
 curl -sI https://api.wise-eat.com/health | head -8
 curl -sI https://apis.wise-eat.com/health | head -8
 openssl s_client -connect apis.wise-eat.com:443 -servername apis.wise-eat.com </dev/null 2>/dev/null \
