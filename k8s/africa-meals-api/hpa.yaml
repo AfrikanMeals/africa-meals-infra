@@ -1,5 +1,5 @@
 # HPA API — scale horizontal sous charge (uploads / pics).
-# VPS 8 Go : min 1 libère ~2 Go de requests au calme ; max 5 plafonne à ~2,5 Go.
+# Base / overlay ha : max 5. Sur KVM 2 : overlays/vps-kvm2 force max 2 (VPS_SCALING.md).
 # MinIO reste replicas:1 (hostPath) — pas d’HPA storage.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

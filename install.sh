@@ -44,6 +44,8 @@ Composants:
   minio-k8s     Applique pods MinIO k8s (secret + kustomize, hostPath existant)
   migrate-minio-k8s  Cutover prod Docker → K8s (backup + stop + apply, zéro perte)
   repair-minio-site-replication-k8s  Reconfigure SR MinIO (Services k8s, plus DNS Docker)
+  apply-vps-kvm2  Profil KVM 2 (HPA max 2, HA replicas=0) — voir k8s/VPS_SCALING.md
+  apply-ha        Profil HA (réplicas + HPA base) — VPS ≥16 Go seulement
   emqx          EMQX MQTT Docker 1 primary (:1883) + 2 réplicas — legacy
   emqx-k8s      Applique pods EMQX k8s (hostPath Mnesia + hostPort primary)
   migrate-emqx-k8s  Cutover EMQX Docker → K8s (zéro perte data-emqx-*)
@@ -213,6 +215,14 @@ run_component() {
     repair-minio-site-replication-k8s)
       # Post-cutover : endpoints SR Docker morts → Services *.svc.cluster.local
       bash "${INFRA_ROOT}/k8s/scripts/repair-minio-site-replication-k8s.sh"
+      ;;
+    apply-vps-kvm2)
+      # Right-sizing Hostinger KVM 2 — primaries + HPA max 2 (VPS_SCALING.md).
+      bash "${INFRA_ROOT}/k8s/scripts/apply-vps-kvm2-profile.sh"
+      ;;
+    apply-ha)
+      # Rollback / HA multi-nœuds — ne pas utiliser sur 2 vCPU / 8 Go.
+      bash "${INFRA_ROOT}/k8s/scripts/apply-ha-profile.sh"
       ;;
     emqx)
       bash "${SCRIPTS}/install-emqx.sh"

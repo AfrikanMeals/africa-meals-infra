@@ -1,0 +1,11 @@
+# Standby Memcached — overlay HA uniquement.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - ../deployment-memcached-replica-1.yaml
+  - ../deployment-memcached-replica-2.yaml
+  - ../service-memcached-replica-1.yaml
+  - ../service-memcached-replica-2.yaml

@@ -1,4 +1,4 @@
-# HPA WS — min 1 au calme (MQTT/STOMP) ; max 3 sur VPS 8 Go (~1,5 Go requests).
+# HPA WS — min 1 au calme (MQTT/STOMP). Base/ha : max 3. KVM 2 : overlay vps-kvm2 → max 2 (VPS_SCALING.md).
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

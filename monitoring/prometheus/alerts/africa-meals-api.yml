@@ -2,15 +2,17 @@ groups:
   - name: africa-meals-api
     rules:
       - alert: AfricaMealsApiPodsDown
+        # Aligné HPA min 1 (profil vps-kvm2) — critique seulement si 0 ready.
         expr: |
-          kube_deployment_status_replicas_available{deployment="africa-meals-api", namespace="wise-eat"} < 3
+          kube_deployment_status_replicas_available{deployment="africa-meals-api", namespace="wise-eat"} < 1
         for: 2m
         labels:
           severity: critical
           service: africa-meals-api
         annotations:
-          summary: "Moins de 3 pods API disponibles"
-          description: "Deployment africa-meals-api : {{ $value }} pod(s) ready (attendu ≥ 3 sur 5)."
+          summary: "Aucun pod API disponible"
+          description: "Deployment africa-meals-api : {{ $value }} pod(s) ready (attendu ≥ 1, HPA max 2 sur KVM 2)."
+
 
       - alert: AfricaMealsApiPodNotReady
         expr: |

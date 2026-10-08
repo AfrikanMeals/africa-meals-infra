@@ -1,0 +1,11 @@
+# Réplicas MinIO site-replication — overlay HA uniquement.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - ../deployment-minio-replica-1.yaml
+  - ../deployment-minio-replica-2.yaml
+  - ../service-minio-replica-1.yaml
+  - ../service-minio-replica-2.yaml

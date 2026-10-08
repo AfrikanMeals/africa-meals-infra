@@ -1,0 +1,40 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/env/1",
+    "value": {
+      "name": "NEO4J_server_memory_heap_initial__size",
+      "value": "256m"
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/env/2",
+    "value": {
+      "name": "NEO4J_server_memory_heap_max__size",
+      "value": "256m"
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/env/3",
+    "value": {
+      "name": "NEO4J_server_memory_pagecache_size",
+      "value": "64m"
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/resources",
+    "value": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "384Mi"
+      },
+      "limits": {
+        "cpu": "1",
+        "memory": "768Mi"
+      }
+    }
+  }
+]

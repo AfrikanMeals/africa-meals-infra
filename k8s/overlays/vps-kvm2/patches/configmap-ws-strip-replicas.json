@@ -1,0 +1,8 @@
+[
+  { "op": "remove", "path": "/data/REDIS_REPLICA_1_PORT" },
+  { "op": "remove", "path": "/data/REDIS_REPLICA_2_PORT" },
+  { "op": "remove", "path": "/data/BULLMQ_REDIS_REPLICA_1_PORT" },
+  { "op": "remove", "path": "/data/BULLMQ_REDIS_REPLICA_2_PORT" },
+  { "op": "remove", "path": "/data/MEMCACHED_REPLICA_1_SERVERS" },
+  { "op": "remove", "path": "/data/MEMCACHED_REPLICA_2_SERVERS" }
+]

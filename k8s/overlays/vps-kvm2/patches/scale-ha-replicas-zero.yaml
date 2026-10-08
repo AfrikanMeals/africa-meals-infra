@@ -1,0 +1,81 @@
+# Scale-down déclaratif des Deployments HA inutiles sur single-node KVM 2.
+# replicas:0 → aucun pod / aucune request RAM ; Services restent (ports libres).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache-replica-1
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache-replica-2
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-bullmq-replica-1
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-bullmq-replica-2
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memcached-replica-1
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memcached-replica-2
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx-2
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx-3
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-replica-1
+  namespace: wise-eat
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-replica-2
+  namespace: wise-eat
+spec:
+  replicas: 0

@@ -1,0 +1,50 @@
+# Profil Hostinger KVM 2 (2 vCPU / 8 Go) — primaries only + HPA API/WS max 2.
+# Apply : sudo k8s/scripts/apply-vps-kvm2-profile.sh
+# Rollback HA : kubectl apply -k k8s/overlays/ha (voir VPS_SCALING.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: wise-eat
+
+resources:
+  - ../../africa-meals-api
+  - ../../africa-meals-ws
+  # Mongo ×3 — failover pod local (pas de rs.reconfig dans ce profil)
+  - ../../mongodb
+  - ../../neo4j
+  - ../../redis
+  - ../../memcached
+  - ../../emqx
+  - ../../minio
+
+patches:
+  - path: patches/hpa-api-max2.yaml
+  - path: patches/hpa-ws-max2.yaml
+  - path: patches/emqx-single-seed.yaml
+  - path: patches/scale-ha-replicas-zero.yaml
+  # Heap/pagecache literals (JSON6902) — strategic merge laissait value + valueFrom invalides.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: neo4j
+    path: patches/neo4j-kvm2-resources.json
+  - target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: africa-meals-api
+    path: patches/configmap-api-strip-replicas.json
+  - target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: africa-meals-ws
+    path: patches/configmap-ws-strip-replicas.json
+
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: wise-eat
+      africa-meals.io/vps-profile: kvm2
+    includeSelectors: false

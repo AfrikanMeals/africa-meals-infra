@@ -1,6 +1,8 @@
 # Déploiement africa-meals-ws — VPS Wise Eat (depuis zéro)
 
-Guide pas à pas pour **3 pods k8s**, **https://ws.wise-eat.com**, **wss://** (STOMP + Socket.IO), monitoring Grafana dossier **Servers**.
+Guide pas à pas pour pods k8s (HPA **1–2** sur KVM 2), **https://ws.wise-eat.com**, **wss://** (STOMP + Socket.IO), monitoring Grafana dossier **Servers**.
+
+Right-sizing CPU/RAM : **[VPS_SCALING.md](./VPS_SCALING.md)** (`sudo ./install.sh apply-vps-kvm2`).
 
 ## Layout VPS
 
@@ -71,7 +73,7 @@ docker ps | grep wise-eat
 
 ---
 
-## Phase 2 — k3s + WS (3 pods, 512 Mi + swap VPS)
+## Phase 2 — k3s + WS (HPA 1–2 × 512 Mi + swap VPS)
 
 ```bash
 cd /opt/wise-eat

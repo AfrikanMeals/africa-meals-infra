@@ -184,15 +184,16 @@ sudo k8s/scripts/deploy-api-production.sh /opt/wise-eat-api/.env.prod \
 | Paramètre | Valeur |
 |-----------|--------|
 | RAM request/limit | **512 Mi** / pod |
-| Total cluster API | **≈ 0,5–2,5 Gi** (1–5 × 512 Mi selon HPA) |
+| Total cluster API | **≈ 0,5–1 Gi** (1–2 × 512 Mi sur KVM 2) · jusqu’à ~2,5 Gi overlay `ha` |
 | CPU request | 100m |
 | CPU limit | 1 core |
-| Replicas | **1–5** (HPA) |
-| HPA | min **1** · max **5** · CPU **60 %** · mémoire **75 %** · scale-up rapide · scale-down 5 min |
+| Replicas | **1–2** HPA (`vps-kvm2`) · max **5** overlay `ha` |
+| HPA | min **1** · max **2** (kvm2) · CPU **60 %** · mémoire **75 %** · scale-down 5 min |
 | NodePort | **30900** |
-| PDB | min **3** pods sur 5 |
+| PDB | min **1** (aligné HPA min) |
 | Probes | `/api/health` (startup + readiness + liveness) |
 | MinIO (storage) | **1** pod primary · RAM **512 Mi** · CPU limit **2** (pas d’HPA replicas) |
+| Profil VPS | [VPS_SCALING.md](./VPS_SCALING.md) · `sudo ./install.sh apply-vps-kvm2` |
 
 ---
 

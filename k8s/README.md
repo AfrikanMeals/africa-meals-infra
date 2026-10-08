@@ -1,8 +1,10 @@
 # africa-meals-ws — production k8s (VPS Wise Eat)
 
-> **Déploiement depuis zéro (VPS `/opt/wise-eat` + `/opt/wise-eat-ws`) : [DEPLOY.md](./DEPLOY.md)**
+> **Déploiement depuis zéro (VPS `/opt/wise-eat` + `/opt/wise-eat-ws`) : [DEPLOY.md](./DEPLOY.md)**  
+> **Right-sizing / scale-up·down : [VPS_SCALING.md](./VPS_SCALING.md)**
 
-**3 pods** k3s, services locaux sur le VPS via `host.k3s.internal` → passerelle CNI (`10.42.0.1`).  
+HPA WS **min 1 / max 2** sur Hostinger KVM 2 (`overlays/vps-kvm2`) — pas 3 pods figés.  
+Services locaux via `host.k3s.internal` → passerelle CNI (`10.42.0.1`).  
 Mongo/Redis/Memcached en **plaintext local** ; Stunnel TLS réservé à l’accès distant.  
 **PM2 = dev uniquement** — pas de `africa-meals-ws` en PM2 prod sur le VPS.
 
@@ -13,10 +15,10 @@ Internet → nginx :443 (wise-eat.cloud / ws.wise-eat.com)
               ↓
          NodePort :30800
               ↓
-    Service (sessionAffinity ClientIP, 3 endpoints)
-         ↙    ↓    ↘
-      Pod 1  Pod 2  Pod 3   restartPolicy: Always
-         ↘    ↓    ↙
+    Service (sessionAffinity ClientIP, 1–2 endpoints HPA)
+         ↙         ↘
+      Pod …     Pod …   restartPolicy: Always
+         ↘         ↙
     host.k3s.internal → 10.42.0.1 (cni0) sur le VPS
       :6379 Redis   :6380 BullMQ   :27017|:27027|:27028 Mongo   :8883 MQTT
       :9000 MinIO (hostPort) — public https://storage.wise-eat.com via nginx
@@ -40,13 +42,14 @@ sudo ./install.sh migrate-minio-k8s
 
 | Mécanisme | Valeur |
 |-----------|--------|
-| Replicas | 3 |
+| Replicas | HPA **1–2** (kvm2) · jusqu’à 3 sur overlay `ha` |
 | `restartPolicy` | `Always` (redémarrage auto si crash) |
 | `maxUnavailable` | 0 (rolling update sans coupure) |
-| `PodDisruptionBudget` | `minAvailable: 2` |
+| `PodDisruptionBudget` | `minAvailable: 1` (aligné HPA min 1) |
 | Probes | startup + readiness + liveness sur `/api/health` |
 | `preStop` | 10 s (drain connexions WS/STOMP) |
 | `terminationGracePeriodSeconds` | 60 |
+| Profil VPS | `sudo ./install.sh apply-vps-kvm2` — voir [VPS_SCALING.md](./VPS_SCALING.md) |
 
 ## Commande de déploiement (production)
 

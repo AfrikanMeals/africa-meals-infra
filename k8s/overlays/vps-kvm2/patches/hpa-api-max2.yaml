@@ -1,0 +1,9 @@
+# Plafond HPA API pour KVM 2 — max 5 saturait ~2,5 Go de requests apps seuls.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: africa-meals-api
+  namespace: wise-eat
+spec:
+  minReplicas: 1
+  maxReplicas: 2

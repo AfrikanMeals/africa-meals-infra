@@ -1,0 +1,9 @@
+# Plafond HPA WS pour KVM 2 — max 3 + infra HA dépassait la RAM node.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: africa-meals-ws
+  namespace: wise-eat
+spec:
+  minReplicas: 1
+  maxReplicas: 2

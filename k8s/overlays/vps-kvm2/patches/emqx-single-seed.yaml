@@ -1,0 +1,14 @@
+# Fix: seeds static à 3 nœuds alors que seuls emqx-1 tourne → cluster noise / CPU.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx-1
+  namespace: wise-eat
+spec:
+  template:
+    spec:
+      containers:
+        - name: emqx
+          env:
+            - name: EMQX_CLUSTER__STATIC__SEEDS
+              value: "[emqx@wise-eat-emqx-1]"
