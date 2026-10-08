@@ -15,8 +15,9 @@ resources:
   - ../../emqx
   - ../../minio
 
+# Metadata only — ne jamais toucher spec.selector (immutable).
 labels:
   - pairs:
-      app.kubernetes.io/part-of: wise-eat
       africa-meals.io/vps-profile: ha
     includeSelectors: false
+

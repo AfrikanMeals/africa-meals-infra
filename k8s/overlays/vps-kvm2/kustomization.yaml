@@ -43,8 +43,9 @@ patches:
     path: patches/configmap-ws-strip-replicas.json
 
 
+# Metadata only — ne jamais toucher spec.selector (immutable sur Deployments existants).
 labels:
   - pairs:
-      app.kubernetes.io/part-of: wise-eat
       africa-meals.io/vps-profile: kvm2
     includeSelectors: false
+

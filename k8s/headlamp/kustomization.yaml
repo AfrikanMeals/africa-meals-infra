@@ -9,6 +9,9 @@ resources:
   - deployment.yaml
   - service.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: wise-eat
-  app.kubernetes.io/managed-by: kustomize
+# Labels metadata only — never mutate Deployment.spec.selector (immutable).
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: wise-eat
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false

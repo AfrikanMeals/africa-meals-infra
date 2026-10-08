@@ -94,9 +94,15 @@ disable_minio_site_replication() {
 
 disable_minio_site_replication
 
-# 2. Apply overlay déclaratif.
+# 2. Apply overlay déclaratif (continue si un Deployment a un selector immuable).
 log "kubectl apply -k ${OVERLAY}"
+set +e
 "${KUBECTL[@]}" apply -k "${OVERLAY}"
+APPLY_RC=$?
+set -e
+if [[ "${APPLY_RC}" -ne 0 ]]; then
+  warn "apply -k a renvoyé ${APPLY_RC} (souvent selector immutable EMQX) — filets manuels ci-dessous"
+fi
 
 # 3. Filet scale 0 (Deployments encore présents hors overlay drift).
 log "Scale sécurité replicas=0 sur Deployments HA"
@@ -105,6 +111,17 @@ for dep in "${HA_SCALE_ZERO[@]}"; do
     "${KUBECTL[@]}" -n "${NAMESPACE}" scale "deploy/${dep}" --replicas=0
   fi
 done
+
+# 3b. EMQX seeds single-node (évite patch selector via apply si échec partiel).
+log "Patch EMQX_CLUSTER__STATIC__SEEDS → emqx-1 seul"
+"${KUBECTL[@]}" -n "${NAMESPACE}" set env deploy/emqx-1 \
+  'EMQX_CLUSTER__STATIC__SEEDS=[emqx@wise-eat-emqx-1]' 2>/dev/null || \
+  warn "set env emqx-1 seeds échoué — vérifier manuellement"
+
+# 3c. HPA plafonds kvm2 (si apply HPA a réussi, no-op ; sinon force).
+log "Force HPA maxReplicas=2"
+"${KUBECTL[@]}" -n "${NAMESPACE}" patch hpa africa-meals-api --type=merge -p '{"spec":{"minReplicas":1,"maxReplicas":2}}' || true
+"${KUBECTL[@]}" -n "${NAMESPACE}" patch hpa africa-meals-ws --type=merge -p '{"spec":{"minReplicas":1,"maxReplicas":2}}' || true
 
 # 4. Rollout apps (ConfigMap strip + HPA).
 log "Restart API/WS pour recharger ConfigMaps (sans ports réplicas)"

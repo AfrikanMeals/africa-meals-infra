@@ -87,6 +87,24 @@ sudo ./install.sh apply-vps-kvm2
 sudo ./install.sh apply-ha
 ```
 
+### Erreur `spec.selector: field is immutable` (EMQX)
+
+Cause : d’anciens Deployments EMQX ont un selector sans `app.kubernetes.io/part-of` / `managed-by`, alors que `commonLabels` Kustomize essayait de les ajouter (champ immuable).
+
+Correctif dans le repo : `labels.includeSelectors: false` partout + filets `scale` / `set env` / `patch hpa` dans `apply-vps-kvm2-profile.sh`.
+
+Si un apply a échoué à mi-chemin **avant** ce fix :
+
+```bash
+cd /opt/wise-eat && git pull
+sudo ./install.sh apply-vps-kvm2
+# Ou filet manuel :
+kubectl -n wise-eat scale deploy/emqx-2 deploy/emqx-3 --replicas=0
+kubectl -n wise-eat set env deploy/emqx-1 'EMQX_CLUSTER__STATIC__SEEDS=[emqx@wise-eat-emqx-1]'
+kubectl -n wise-eat patch hpa africa-meals-api --type=merge -p '{"spec":{"maxReplicas":2}}'
+kubectl -n wise-eat patch hpa africa-meals-ws --type=merge -p '{"spec":{"maxReplicas":2}}'
+```
+
 ## Smoke post-apply
 
 ```bash
